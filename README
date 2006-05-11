@@ -1,0 +1,24 @@
+If you want to use the cdms module from within a pre-existing python
+installation without installing the rest of cdat and without disturbing
+the python installation this is for you.
+
+Here's what to do:
+  1. get cdat-4.0b3-cdat.tar.gz from cdat website
+  2. unpack this package into the cdat-4.0b3 directory
+  3. $ cd mini-install
+  4. Look at setup.py and change the settings if needed.
+  5. $ python setup.py <prefix>
+     where prefix is the directory where you'd like to install the cdms
+     packages.
+  6. $ export PYTHONPATH=<prefix>:$PYTHONPATH
+  7. enjoy.
+
+By default libcdms is built with only netcdf support.
+
+You will need Numeric installed in you python distribution and both
+the Numeric and Python header files accessible.  If these headers
+aren't in standard places you will need to edit the
+cdat-4.0b3/Packages/*/setup.py files in the packages you want to
+include these directories.  See the python distutils documentation for details.
+
+Stephen Pascoe.
