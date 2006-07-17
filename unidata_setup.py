@@ -9,6 +9,7 @@ setup (name = "udunits",
        url = "http://www-pcmdi.llnl.gov/software",
        packages = ['unidata'],
        package_dir = {'unidata': 'Lib'},
+       package_data = {'unidata': ['Src/udunits.dat']},
        ext_modules = [
     Extension('unidata.udunits_wrap',
               ['Src/udunits_wrap.c',
@@ -20,14 +21,3 @@ setup (name = "udunits",
               )
     ]
       )
-
-from glob import glob
-
-f=open('Src/udunits.dat')
-f2 = open(glob('./build/lib*/unidata')[0] + '/udunits.dat', 'w')
-#version=sys.version.split()[0].split('.')
-#version=string.join(version[:2],'.')
-#f2=open(sys.prefix+'/lib/python'+version+'/site-packages/unidata/udunits.dat','w')
-for l in f.xreadlines():
-    f2.write(l)
-f2.close()
