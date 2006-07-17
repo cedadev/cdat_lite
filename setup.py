@@ -16,7 +16,7 @@ netcdf_libdir = '/usr/local/lib'
 netcdf_incdir = '/usr/local/include'
 
 # Which packages do you want to include
-packages = ['cdms', 'cdtime', 'cdutil', 'genutil', 'regrid', 'Properties']
+packages = ['cdms', 'cdtime', 'cdutil', 'genutil', 'regrid', 'Properties', 'xmgrace', 'unidata']
 #############################################################################
 
 import sys, os
@@ -42,9 +42,16 @@ do_cmd('cd ../libcdms ; make db_util ; make cdunif')
 # Build each package
 sys.argv = ['setup.py', 'build']
 for package in packages:
-    do_cmd('cd ../Packages/%s ;'
-           'PYTHONPATH=%s python setup.py build'
-           % (package, os.path.abspath('.')))
+    if package == 'unidata':
+        # Unfortunately unidata assumes it's being installed in the default
+        # path and tries to install the udunits data file there.
+        do_cmd('cd ../Packages/%s ;'
+               'PYTHONPATH=%s python ../../mini-install/unidata_setup.py build'
+               % (package, os.path.abspath('.')))
+    else:
+        do_cmd('cd ../Packages/%s ;'
+               'PYTHONPATH=%s python setup.py build'
+               % (package, os.path.abspath('.')))
 
 do_cmd('install -d %s' % prefix)
 # Install each package
