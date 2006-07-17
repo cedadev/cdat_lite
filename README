@@ -6,12 +6,11 @@ Here's what to do:
   1. get cdat-4.0b3-cdat.tar.gz from cdat website
   2. unpack this package into the cdat-4.0b3 directory
   3. $ cd mini-install
-  4. Look at setup.py and change the settings if needed.
-  5. $ python setup.py <prefix>
+  4. $ python setup.py install --netcdf-prefix=<ncprefix> --home=<prefix>
      where prefix is the directory where you'd like to install the cdms
      packages.
-  6. $ export PYTHONPATH=<prefix>:$PYTHONPATH
-  7. enjoy.
+  5. $ export PYTHONPATH=<prefix>/lib/python:$PYTHONPATH
+  6. enjoy.
 
 By default libcdms is built with only netcdf support.
 
