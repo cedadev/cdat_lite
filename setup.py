@@ -46,22 +46,17 @@ for package in packages:
         # Unfortunately unidata assumes it's being installed in the default
         # path and tries to install the udunits data file there.
         do_cmd('cd ../Packages/%s ;'
-               'PYTHONPATH=%s python ../../mini-install/unidata_setup.py build'
-               % (package, os.path.abspath('.')))
+               'PYTHONPATH=%s python ../../mini-install/unidata_setup.py '
+               'install --home=%s'
+               % (package, os.path.abspath('.'), prefix))
     else:
         do_cmd('cd ../Packages/%s ;'
-               'PYTHONPATH=%s python setup.py build'
-               % (package, os.path.abspath('.')))
+               'PYTHONPATH=%s python setup.py install --home=%s'
+               % (package, os.path.abspath('.'), prefix))
 
-do_cmd('install -d %s' % prefix)
-# Install each package
-for package in packages:
-    packageDirs = glob('../Packages/%s/build/lib*' % package)
-    for packageDir in packageDirs:
-        do_cmd('cp -R %s/* %s' % (packageDir, prefix))
 
 print '''
 Success.
 
-Now just add %s to your PYTHONPATH to access cdms.
+Now just add %s/lib/python to your PYTHONPATH to access cdms.
 ''' % prefix
