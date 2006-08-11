@@ -11,8 +11,11 @@ directory use virtual_python.py.
 
 import sys, os
 
-from distutils.core import setup, Distribution
-from distutils.command.install import install
+from ez_setup import use_setuptools
+use_setuptools()
+
+from setuptools import setup, Distribution
+from setuptools.command.install import install
 from distutils.command.build import build
 
 
