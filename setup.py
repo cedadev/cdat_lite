@@ -2,12 +2,11 @@
 """
 Build minimal CDAT and install into a parallel directory.
 
-usage: python setup.py install --home=<home>
+usage: python setup.py install
 
 This script compiles libcdms.a and and a few essential CDAT packages
-then installs them in I{<home>}.  cdms can then be accessed by adding
-I{<home>/lib/python} to your python path.
-
+then installs them.  If you want to install it locally to your home
+directory use virtual_python.py.
 """
 
 import sys, os
@@ -28,6 +27,8 @@ class MyInstall(install):
          'Location of your netcdf include directory.  Overrides --netcdf-prefix'),
         ('netcdf-lib=', None,
          'Location of your netcdf lib directory.  Overrides --netcdf-prefix'),
+        ('cdat-dist=', None,
+         'Location of your CDAT distribution'),
         ('cdat-packages=', None,
          'List of packages to manage')
         ]
@@ -37,6 +38,7 @@ class MyInstall(install):
         self.netcdf_prefix = None
         self.netcdf_include = None
         self.netcdf_lib = None
+        self.cdat_dist = None
         self.cdat_packages = None
 
     def finalize_options(self):
@@ -45,6 +47,8 @@ class MyInstall(install):
             self.netcdf_include = self.netcdf_prefix + '/include'
         if not self.netcdf_lib:
             self.netcdf_lib = self.netcdf_prefix + '/lib'
+        if not self.cdat_dist:
+            self.cdat_dist = '..'
         if not self.cdat_packages:
             self.cdat_packages = ','.join(['cdms', 'cdtime', 'cdutil',
                                            'genutil', 'regrid', 'Properties',
@@ -56,27 +60,20 @@ class MyInstall(install):
 
     
     def buildLibcdms(self):
-        self._system('cd ../libcdms ; '
+        self._system('cd %s/libcdms ; '
                      './configure --disable-drs --disable-hdf --disable-dods '
                      '--disable-ql --with-ncinc=%s --with-ncincf=%s --with-nclib=%s'
-                     % (self.netcdf_include, self.netcdf_include,
+                     % (self.cdat_dist, self.netcdf_include, self.netcdf_include,
                         self.netcdf_lib))
-        self._system('cd ../libcdms ; make db_util ; make cdunif')
+        self._system('cd %s/libcdms ; make db_util ; make cdunif'
+                     % self.cdat_dist)
 
     def installPackages(self):
         curdir = os.path.abspath('.')
         for package in self.cdat_packages.split(','):
-            if package == 'unidata':
-                # Unfortunately unidata assumes it's being installed in the default
-                # path and tries to install the udunits data file there.
-                self._system('cd ../Packages/%s ;'
-                             'PYTHONPATH=%s python ../../mini-install/unidata_setup.py '
-                             'install --home=%s'
-                             % (package, curdir, self.home))
-            else:
-                self._system('cd ../Packages/%s ;'
-                             'PYTHONPATH=%s python setup.py install --home=%s'
-                             % (package, curdir, self.home))
+            self._system('cd %s/Packages/%s ;'
+                         'PYTHONPATH=%s python setup.py install'
+                         % (self.cdat_dist, package, curdir))
 
     def _system(self, cmd):
         self.execute(os.system, (cmd,))
