@@ -14,75 +14,96 @@ import sys, os
 from ez_setup import use_setuptools
 use_setuptools()
 
-from setuptools import setup, Distribution
+from setuptools import setup, Extension
 from setuptools.command.install import install
 from distutils.command.build import build
 
+def buildLibcdms(netcdf_include, netcdf_lib):
+    os.system('cd libcdms ; '
+                 './configure --disable-drs --disable-hdf --disable-dods '
+                 '--disable-ql --with-ncinc=%s --with-ncincf=%s --with-nclib=%s'
+                 % (netcdf_include, netcdf_include, netcdf_lib))
+    os.system('cd libcdms ; make db_util ; make cdunif')
 
-class MyInstall(install):
+packages = []
+package_dir = {}
+py_modules = []
 
-    description = "Install minimal CDAT"
+# cdutil
+packages.append('cdutil')
+package_dir['cdutil'] = 'Packages/cdutil/Lib'
+package_data = {}
 
-    user_options = install.user_options + [
-        ('netcdf-prefix=', None,
-         'Location of your netcdf distribution'),
-        ('netcdf-include=', None,
-         'Location of your netcdf include directory.  Overrides --netcdf-prefix'),
-        ('netcdf-lib=', None,
-         'Location of your netcdf lib directory.  Overrides --netcdf-prefix'),
-        ('cdat-dist=', None,
-         'Location of your CDAT distribution'),
-        ('cdat-packages=', None,
-         'List of packages to manage')
-        ]
+# cdtime
+extensions.append(Extension('cdtime',
+                            ['Packages/cdtime/Src/cdtimemodule.c'],
+                            include_dirs = ['Packages/cdtime/Include'] + cdunif_include_dirs,
+                            library_dirs = cdunif_library_dirs,
+                            libraries = cdat_info.cdunif_libs))
 
-    def initialize_options(self):
-        install.initialize_options(self)
-        self.netcdf_prefix = None
-        self.netcdf_include = None
-        self.netcdf_lib = None
-        self.cdat_dist = None
-        self.cdat_packages = None
+# unidata
+packages.append('unidata')
+package_dir['unidata'] = 'Packages/unidata/Lib'
+package_data['unidata'] = ['Packages/unidata/Src/*.dat']
+extensions.append(Extension('unidata.udunits_wrap',
+                            ['Packages/unidata/Src/udunits_wrap.c',
+                             'Packages/unidata/Src/utparse.c',
+                             'Packages/unidata/Src/utlib.c',
+                             'Packages/unidata/Src/utscan.c',
+                             ],
+                            include_dirs = ['Packages/unidata/Include'],
+                            ))
 
-    def finalize_options(self):
-        if not self.netcdf_prefix: self.netcdf_prefix = '/usr/local'
-        if not self.netcdf_include:
-            self.netcdf_include = self.netcdf_prefix + '/include'
-        if not self.netcdf_lib:
-            self.netcdf_lib = self.netcdf_prefix + '/lib'
-        if not self.cdat_dist:
-            self.cdat_dist = '..'
-        if not self.cdat_packages:
-            self.cdat_packages = ','.join(['cdms', 'cdtime', 'cdutil',
-                                           'genutil', 'regrid', 'Properties',
-                                           'xmgrace', 'unidata'])
+# cdms
+packages.append('cdms')
+package_dir['cdms'] = 'Packages/cdms/Lib'
+package_dir['MV'] = 'Packages/cdms'
+py_modules.append('MV')
+extensions += [
+    Extension('cdms.Cdunif',
+              ['Packages/cdms/Src/Cdunifmodule.c'],
+              include_dirs = ['Packages/cdms/Include'] + cdunif_include_dirs,
+              library_dirs = cdunif_library_dirs,
+              libraries = cdunif_libs,
+              ),
+    Extension('cdms._bindex',
+              ['Packages/cdms/Src/_bindexmodule.c', 'Packages/cdms/Src/bindex.c'],
+              include_dirs = ['Packages/cdms/Include'] + cdunif_include_dirs
+              )
+    ]
 
-    def run(self):
-        self.buildLibcdms()
-        self.installPackages()
+# xmgrace
+packages.append('xmgrace')
+package_dir['xmgrace'] = 'Packages/xmgrace/Lib'
 
-    
-    def buildLibcdms(self):
-        self._system('cd %s/libcdms ; '
-                     './configure --disable-drs --disable-hdf --disable-dods '
-                     '--disable-ql --with-ncinc=%s --with-ncincf=%s --with-nclib=%s'
-                     % (self.cdat_dist, self.netcdf_include, self.netcdf_include,
-                        self.netcdf_lib))
-        self._system('cd %s/libcdms ; make db_util ; make cdunif'
-                     % self.cdat_dist)
+# genutil
+packages.append('genutil')
+package_dir['genutil'] = 'Packages/genutil/Lib'
+extensions.append(Extension('genutil.array_indexing', ['Packages/genutil/Src/array_indexing.c']))
 
-    def installPackages(self):
-        curdir = os.path.abspath('.')
-        for package in self.cdat_packages.split(','):
-            self._system('cd %s/Packages/%s ;'
-                         'PYTHONPATH=%s python setup.py install'
-                         % (self.cdat_dist, package, curdir))
+# Properties
+packages.append('PropertiedClasses')
+package_dir['PropertiedClasses'] = 'Packages/Properties/Lib'
 
-    def _system(self, cmd):
-        self.execute(os.system, (cmd,))
+# regrid
+packages.append('regrid')
+package_dir['regrid'] = 'Packages/regrid/Lib'
+extensions += [
+    Extension('regrid._regrid', ['Packages/regrid/Src/_regridmodule.c']),
+    Extension('regrid._scrip', ['Packages/regrid/Src/_scripmodule.c','Packages/regrid/Src/regrid.c'])
+    ]
 
 
-setup(name = 'mini-cdat',
+
+setup(name = 'cdat-lite',
+      author="PCMDI Software Team -- repackaged by the BADC",
+      version="4.0",
+      description = "An Eggable distribution of core components from PCMDI's CDAT tools (http://cdat.sourceforge.net)",
+      url = "http://www.badc.rl.ac.uk",
+      packages = packages,
+      package_dir = package_dir,
+      py_modules = py_modules,
+      extensions = extensions,
       cmdclass = {'install': MyInstall}
       )
 
