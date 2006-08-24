@@ -1,7 +1,14 @@
 import udunits_wrap,sys,string,unidata
 version=sys.version.split()[0].split('.')
 version=string.join(version[:2],'.')
-udunits_name=sys.prefix+'/lib/python'+version+'/site-packages/unidata/udunits.dat'
+#--------------------------------------------
+# This line is incompatable with python eggs.
+# I've replaced it with a pkg_resources call.
+# @author: Stephen Pascoe
+#--------------------------------------------
+#udunits_name=sys.prefix+'/lib/python'+version+'/site-packages/unidata/udunits.dat'
+import pkg_resources
+udunits_name = pkg_resources.resource_filename('unidata', 'udunits.dat')
 
 class udunits(object):
     """UNIDATA/UDUNITS Python Object

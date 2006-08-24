@@ -10,7 +10,7 @@ directory use virtual_python.py.
 """
 
 
-import sys, os
+import sys, os, glob
 
 from ez_setup import use_setuptools
 use_setuptools()
@@ -20,9 +20,103 @@ from setuptools.command.install import install
 from setup_util import MyBuild_ext, MyBuild
 
 
+long_description = """
+= CDAT-lite =
+
+This package contains core components from the Climate Data Analysis Tools (CDAT)
+with slight modifications to make them compatable with python eggs.  The cdms package
+has been augmented with code to read UK Met. Office PP file format developed at the
+British Atmospheric Data Centre.
+
+Full documentation for CDAT is available from http://cdat.sf.net.
+"""
+
+# Numeric is a difficult case to get to work with setuptools.
+# As a legacy package it isn't easily findable from sourceforge, therefore easy_install
+# fails to download it on demand.  To complicate things further we need to know where
+# the headers to build the C modules.  setup_util.MyBuild_ext deals with this problem.
+# Here we only require Numeric if it isn't installed already.
+# In the end we should brobably distribute our own Numeric egg.
+try:
+    import Numeric
+    requires = []
+except ImportError:
+    requires = ['Numeric']
+
+def makeExtension(name, package_dir=None, sources=None,
+                  include_dirs=None, library_dirs=None, libraries=None):
+    """Convenience function for building extensions.
+    """
+
+    if not package_dir:
+        package_dir = name
+    if not sources:
+        sources = glob.glob('Packages/%s/Src/*.c' % package_dir)
+    if not include_dirs:
+        include_dirs = ['Packages/%s/Include' % package_dir, 'libcdms/include']
+    if not library_dirs:
+        library_dirs = ['Packages/%s/Lib' % package_dir, 'libcdms/lib']
+    if not libraries:
+        libraries = ['cdms', 'netcdf']
+
+    e = Extension(name, sources,
+                  include_dirs=include_dirs,
+                  library_dirs=library_dirs,
+                  libraries=libraries)
+
+    return e
+
+
+setup(name='cdat-lite',
+      description="Climate Data Analysis tools, core components",
+      long_description=long_description,
+      #!TODO: How do we sync this with the current CDAT version?
+      # Will need fixing when I decide whether to use a remote CDAT tree.
+      version="4.6-ppio",
+      url = 'http://www.badc.rl.ac.uk',
+      
+      setup_requires = requires,
+      install_requires = requires + ['setuptools>=0.6'],
+
+      packages = ['unidata', 'cdms', 'cdutil', 'xmgrace', 'genutil',
+                  'PropertiedClasses', 'regrid'],
+      py_modules = ['MV'],
+      package_dir = {'': 'Packages/cdms',
+                      'unidata': 'Packages/unidata/Lib',
+                      'cdms': 'Packages/cdms/Lib',
+                      'cdutil': 'Packages/cdutil/Lib',
+                      'xmgrace': 'Packages/xmgrace/Lib',
+                      'genutil': 'Packages/genutil/Lib',
+                      'PropertiedClasses': 'Packages/Properties/Lib',
+                      'regrid': 'Packages/regrid/Lib',
+                      },
+
+      ext_modules = [
+        makeExtension('cdtime'),
+        makeExtension('unidata.udunits_wrap', 'unidata'),
+        makeExtension('cdms.Cdunif', 'cdms',
+                      ['Packages/cdms/Src/Cdunifmodule.c']),
+        Extension('cdms._bindex',
+                  ['Packages/cdms/Src/_bindexmodule.c',
+                   'Packages/cdms/Src/bindex.c']),
+        makeExtension('genutil.array_indexing', 'genutil', library_dirs=[], libraries=[]),
+        Extension('regrid._regrid', ['Packages/regrid/Src/_regridmodule.c']),
+        Extension('regrid._scrip', ['Packages/regrid/Src/_scripmodule.c',
+                                    'Packages/regrid/Src/regrid.c'])
+        ],
+
+       # Since udunits.dat isn't in the Lib directory we use the data_files attribute
+       # to install data.
+       #include_package_data = True,
+       #package_data = {'unidata': ['Packages/unidata/Src/*.dat']},
+       data_files = [('unidata', ['Packages/unidata/Src/udunits.dat'])],
+
+       cmdclass = {'build_ext': MyBuild_ext}
+      )
+
+sys.exit()
+
 #--------------------------------------------------------------------------------
-
-
 
 setup (name = "cdtime",
        description = "Time utilities",
@@ -49,13 +143,15 @@ setup (name = "udunits",
        setup_requires = ['Numeric>=23.0'],
        install_requires = ['Numeric>=23.0'],
 
-       zip_safe = False,
-       #include_package_data = True,
-
        packages = ['unidata'],
        package_dir = {'unidata': 'Packages/unidata/Lib'},
+
+       # Since udunits.dat isn't in the Lib directory we use the data_files attribute
+       # to install data.
+       #include_package_data = True,
        #package_data = {'unidata': ['Packages/unidata/Src/*.dat']},
        data_files = [('unidata', ['Packages/unidata/Src/udunits.dat'])],
+
        ext_modules = [
          Extension('unidata.udunits_wrap',
                    ['Packages/unidata/Src/udunits_wrap.c',
@@ -63,9 +159,7 @@ setup (name = "udunits",
                     'Packages/unidata/Src/utlib.c',
                     'Packages/unidata/Src/utscan.c',
                     ],
-                   include_dirs = ['Packages/unidata/Include',
-                                   #'libcdms/include'
-                                   ]
+                   include_dirs = ['Packages/unidata/Include']
                    )
          ],
        cmdclass = {'build': MyBuild,

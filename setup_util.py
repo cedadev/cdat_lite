@@ -58,8 +58,7 @@ class MyBuild_ext(build_ext):
 
         build_ext.finalize_options(self)
 
-        from Numeric_headers import get_numeric_include
-        incdirs = [get_numeric_include()]
+        incdirs = [self._findNumericHeaders()]
 
         # We try to allow netcdf.h and libnetcdf.a to be detected automatically
         # or with command-line options here.
@@ -116,6 +115,24 @@ class MyBuild_ext(build_ext):
 
         return (incpath, libpath)
 
+    def _findNumericHeaders(self):
+        """We may or may not have the Numeric_headers module available.
+        """
+        try:
+            from Numeric_headers import get_numeric_include
+            return get_numeric_include()
+        except ImportError:
+            pass
+
+        # We assume we have Numeric (should be required in setup.py) and look for
+        # the includes.
+        sysinclude = sys.prefix+'/include/python%d.%d' % sys.version_info[:2]
+        if os.path.exists(os.path.join(sysinclude, 'Numeric')):
+            return sysinclude
+        
+        raise ConfigError, ("Sorry, Numeric cannot be installed automatically.  "
+                            "Please install it first.")
+        
 
     def _buildLibcdms(self):
         """Build the libcdms library.
