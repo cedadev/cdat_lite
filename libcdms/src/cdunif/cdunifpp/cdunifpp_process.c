@@ -643,8 +643,8 @@ int pp_process(CuFile *file)
 	sprintf(var->name,"time_bnd%d",idim);
 	CKP(   ppvar->data = pp_taxis_to_boundary_values(axis->axis,heaplist)   );
 	var->ndims=2;
-	var->dims[0]=tmdimid;
-	var->dims[1]=dimid;
+	var->dims[0]=dimid;
+	var->dims[1]=tmdimid;
 	
 	CKI(   pp_add_string_att(catts,"bounds",var->name,heaplist)   );
 
@@ -663,6 +663,14 @@ int pp_process(CuFile *file)
     strcpy(dim->name,"nv");
     dim->len=2;
     
+    /* Should have tmdimid=dimid, but actually we already set it above (it evaluates to ndims)
+     * as we needed it before we got here.  So just do a check here.
+     */
+    if ( tmdimid != dimid ) {
+      pp_error_mesg("cdunifpp_process","ID wrong for 'nv' dimension?");
+      ERR;
+    }
+
     dimid++;
   }
 
@@ -806,6 +814,11 @@ int pp_process(CuFile *file)
     
     var->ndims=4; /* rpw axeslist len */
 
+    /*
+     *  Axes in fvar->axes list are fastest varying first (lon,lat,lev,time)
+     *  But require them in netCDF-like order (time,lev,lat,lon), so
+     *  reverse the order while copying into var->dims.
+     */
     idim=var->ndims;
     pp_list_startwalk(fvar->axes,&thandle);
     while ((axis=pp_list_walk(&thandle,0)) != NULL) {
