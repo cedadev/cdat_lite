@@ -76,7 +76,7 @@ setup(name='cdat-lite',
       url = 'http://www.badc.rl.ac.uk',
       
       setup_requires = requires,
-      install_requires = requires + ['setuptools>=0.6'],
+      install_requires = requires + ['setuptools>=0.6c1'],
 
       packages = ['unidata', 'cdms', 'cdutil', 'xmgrace', 'genutil',
                   'PropertiedClasses', 'regrid'],

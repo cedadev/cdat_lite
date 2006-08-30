@@ -1,23 +1,54 @@
-If you want to use the cdms module from within a pre-existing python
-installation without installing the rest of cdat and without disturbing
-the python installation this is for you.
+This source distribution allows you to build the core CDAT components
+(cdms, cdutil, genutil, unidata and a couple of other packages) as a
+python egg.
 
-Here's what to do:
-  1. get cdat-4.0b3-cdat.tar.gz from cdat website
-  2. unpack this package into the cdat-4.0b3 directory
-  3. $ cd mini-install
-  4. $ python setup.py install --netcdf-prefix=<ncprefix> --home=<prefix>
-     where prefix is the directory where you'd like to install the cdms
-     packages.
-  5. $ export PYTHONPATH=<prefix>/lib/python:$PYTHONPATH
-  6. enjoy.
+== What you need ==
 
-By default libcdms is built with only netcdf support.
+1. A python 2.4 installation with distutils installed.  You cannot
+   build or run the egg without distutils.  If your python has been
+   installed by a unix package manager then you may have to install
+   the python-devel package.
+   
+  To test do the following:
 
-You will need Numeric installed in you python distribution and both
-the Numeric and Python header files accessible.  If these headers
-aren't in standard places you will need to edit the
-cdat-4.0b3/Packages/*/setup.py files in the packages you want to
-include these directories.  See the python distutils documentation for details.
+    $ python
+    
+    Python 2.4.1 (#1, Sep 13 2005, 00:39:20)
+    [GCC 4.0.2 20050901 (prerelease) (SUSE Linux)] on linux2
+    Type "help", "copyright", "credits" or "license" for more information.
+    >>> import distutils
+    Traceback (most recent call last):
+      File "<stdin>", line 1, in ?
+    ImportError: No module named distutils
+    >>>
 
-Stephen Pascoe.
+  Here you are unlucky and need to install python-devel.
+
+2. An internet connection.  The setup script will attempt to download
+   the setuptools egg.  If you don't have web access setup.py will tell
+   you where to get the file you need.
+
+3. Standard GNU development environment, including make (some linux
+   distributions don't install this by default, e.g. Ubuntu).
+
+4. Numeric.  Setuptools currently has problems automatically installing
+   the Numeric package so we assume it's already installed.
+
+== Procedure ==
+
+1. Run the setup.py script, passing it the bdist_egg command:
+
+  $ python setup.py bdist_egg
+
+  The setuptools egg will be downloaded to the distribution directory.
+  Libcdms will be built and the core cdat packages will be built and
+  packeged into an egg in the dist subdirectory.
+
+2. Add eggs to your python path
+
+  $ export PYTHONPATH=$PWD/setuptools-*.egg:$PWD/dist/cdat_lite-*.egg
+
+  You need to expand the wildcards manually as python won't do it for
+  you.  Naturally you can move the eggs to anywhere you like.
+
+That's it!  You should be able to import cdms and open NetCDF and PP files.
