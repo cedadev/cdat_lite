@@ -2,6 +2,10 @@ This source distribution allows you to build the core CDAT components
 (cdms, cdutil, genutil, unidata and a couple of other packages) as a
 python egg.
 
+The source is self contained but is kept in sync with the latest
+version of CDAT in the BADC Subversion repository.  The version string
+should correspond to one of the subdirectories of $SROOT/CDAT/tags.
+
 == What you need ==
 
 1. A python 2.4 installation with distutils installed.  You cannot
@@ -28,11 +32,8 @@ python egg.
    the setuptools egg.  If you don't have web access setup.py will tell
    you where to get the file you need.
 
-3. Standard GNU development environment, including make (some linux
-   distributions don't install this by default, e.g. Ubuntu).
-
-4. Numeric.  Setuptools currently has problems automatically installing
-   the Numeric package so we assume it's already installed.
+3. Numeric.  Setuptools currently has problems automatically downloading
+   the Numeric package.  Setup.py will complain if it isn't available.
 
 == Procedure ==
 
@@ -52,3 +53,17 @@ python egg.
   you.  Naturally you can move the eggs to anywhere you like.
 
 That's it!  You should be able to import cdms and open NetCDF and PP files.
+
+== Alternatives ==
+
+As usual you can install cdat_lite in your python with
+
+$ python setup.py install
+
+If you want to experiment with your installation locally without
+mucking about with PYTHONPATH I recomend the virtual-python.py script.  Do
+
+$ python ./virtual-python.py --prefix=<some-path>
+
+to create a symbolically linked duplicate of your python at <some-path>/bin/python.  You
+can then use that executable to install packages just in <some-path>.

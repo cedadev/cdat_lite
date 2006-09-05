@@ -130,8 +130,8 @@ class MyBuild_ext(build_ext):
         if os.path.exists(os.path.join(sysinclude, 'Numeric')):
             return sysinclude
         
-        raise ConfigError, ("Sorry, Numeric cannot be installed automatically.  "
-                            "Please install it first.")
+        raise ConfigError, ("Sorry, Numeric cannot be downloaded automatically.  "
+                            "Please install before proceeding.")
         
 
     def _buildLibcdms(self):

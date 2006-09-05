@@ -31,12 +31,15 @@ British Atmospheric Data Centre.
 Full documentation for CDAT is available from http://cdat.sf.net.
 """
 
-# Numeric is a difficult case to get to work with setuptools.
-# As a legacy package it isn't easily findable from sourceforge, therefore easy_install
-# fails to download it on demand.  To complicate things further we need to know where
-# the headers to build the C modules.  setup_util.MyBuild_ext deals with this problem.
-# Here we only require Numeric if it isn't installed already.
-# In the end we should brobably distribute our own Numeric egg.
+# Numeric is a difficult case to get to work with setuptools.  As a
+# legacy package it isn't easily findable from sourceforge, therefore
+# easy_install fails to download it on demand.  To complicate things
+# further we need to know where the headers to build the C modules but
+# the setup_requires keyword to setup() doesn't appear to work if
+# Numeric is installed but not an egg.  Here we only require Numeric
+# if it isn't installed already and the setup_util.MyBuild_ext handles
+# finding the headers.  In the end we should brobably distribute our
+# own Numeric egg.
 try:
     import Numeric
     requires = []
@@ -87,11 +90,13 @@ setup(name='cdat-lite',
       long_description=long_description,
       #!TODO: How do we sync this with the current CDAT version?
       # Will need fixing when I decide whether to use a remote CDAT tree.
-      version="4.6-ppio",
+      version="4.0_cdunifpp0.7",
       url = 'http://www.badc.rl.ac.uk',
-      
+
+      dependency_links = ['.'],
       setup_requires = requires,
       install_requires = requires + ['setuptools>=0.6c1'],
+
       
       packages = ['unidata', 'cdms', 'cdutil', 'xmgrace', 'genutil',
                   'PropertiedClasses', 'regrid', 'cdat_scripts'],
