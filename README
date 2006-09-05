@@ -54,7 +54,7 @@ should correspond to one of the subdirectories of $SROOT/CDAT/tags.
 
 That's it!  You should be able to import cdms and open NetCDF and PP files.
 
-== Alternatives ==
+== Alternative Installation ==
 
 As usual you can install cdat_lite in your python with
 
@@ -67,3 +67,41 @@ $ python ./virtual-python.py --prefix=<some-path>
 
 to create a symbolically linked duplicate of your python at <some-path>/bin/python.  You
 can then use that executable to install packages just in <some-path>.
+
+
+== Using CDMS scripts ==
+
+cdat_lite includes the libcdms script cdscan within the egg.  You have
+several options to get at it.
+
+1. Install the egg with easy_install
+
+  When you install eggs the setuptools way (rather than just putting them on
+  your PYTHONPATH) scripts stubs that call the code in the egg are
+  created automatically.  Therefore, assuming you can write to your default
+  python installation directory:
+
+  $ ez_setup.py
+  $ easy_install cdat_lite*.egg
+  $ cdscan ...
+
+2. Import cdscan as a module from within python
+
+  >>> import cdat_scripts.cdscan as cdscan
+  >>> cdscan.main(['cdscan', '-x', 'dataset.xml', filename, ...])
+
+  The argument to main() must be the equivilent of sys.argv when run
+  from the command line, i.e. the first element should be a pseudo
+  command name.
+
+3. Import a cdscan entry point using the pkg_resources API.
+
+  This is the way scripts are supposed to be found from within eggs and is
+  used by easy_install to automatically create script stubs.
+
+  >>> import pkg_resources
+  >>> cdscan = pkg_resources.load_entry_point('cdat_lite', 'console_scripts', 'cdscan')
+  >>> cdscan()
+
+  In this case sys.argv must be set to the arguments you want.
+
