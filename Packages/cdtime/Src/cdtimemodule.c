@@ -574,7 +574,7 @@ static void                     /* instance destructor function */
 PyCdReltime_Dealloc(PyCdReltimeObject *self)             /* when reference-count reaches zero */
 {                               /* do cleanup activity */
 					     /* The book says to free, but it causes a core dump! */
-	PyMem_DEL(self);        /* same as 'free(self)' */
+	Py_DECREF(self);        /* same as 'free(self)' */
 }
 
 static int
@@ -711,7 +711,7 @@ static void                     /* instance destructor function */
 PyCdComptime_Dealloc(PyCdComptimeObject *self)             /* when reference-count reaches zero */
 {                               /* do cleanup activity */
 					     /* The book says to free, but it causes a core dump! */
-	PyMem_DEL(self);        /* same as 'free(self)' */
+	Py_DECREF(self);        /* same as 'free(self)' */
 }
 
 static int
