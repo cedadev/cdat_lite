@@ -661,7 +661,7 @@ PyCdunifFileObject_dealloc(self)
   Py_XDECREF(self->name);
   Py_XDECREF(self->mode);
   Py_XDECREF(self->diminfo);
-  Py_DECREF(self);
+  PyObject_Del(self);			     /* PyMem_Del segfaults in 2.5 */
 }
 
 /* Create file object */
@@ -1312,7 +1312,7 @@ PyCdunifVariableObject_dealloc(self)
     free(self->name);
   Py_XDECREF(self->file);
   Py_XDECREF(self->attributes);
-  Py_DECREF(self);
+  PyObject_Del(self);			     /* PyMem_Del segfaults in 2.5 */
 }
 
 /* Create variable object */

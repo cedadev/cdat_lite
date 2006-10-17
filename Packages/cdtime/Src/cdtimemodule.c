@@ -573,8 +573,7 @@ newreltimeobject(double value, char *units)                 /* instance construc
 static void                     /* instance destructor function */
 PyCdReltime_Dealloc(PyCdReltimeObject *self)             /* when reference-count reaches zero */
 {                               /* do cleanup activity */
-					     /* The book says to free, but it causes a core dump! */
-	Py_DECREF(self);        /* same as 'free(self)' */
+	PyObject_Del(self);        /* PyMem_Del segfaults in 2.5 */
 }
 
 static int
@@ -710,8 +709,7 @@ newabstimeobject(long year, int month, int day, int hour, int minute, double sec
 static void                     /* instance destructor function */
 PyCdComptime_Dealloc(PyCdComptimeObject *self)             /* when reference-count reaches zero */
 {                               /* do cleanup activity */
-					     /* The book says to free, but it causes a core dump! */
-	Py_DECREF(self);        /* same as 'free(self)' */
+	PyObject_Del(self);        /* PyMem_Del segfaults in 2.5 */
 }
 
 static int
