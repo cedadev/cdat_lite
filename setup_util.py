@@ -23,20 +23,7 @@ class ConfigError(Exception):
     pass
 
 
-class MyBuild(build):
-    """Building multiple different distributions from the same directory
-    doesn't work with standard distutils or setuptools because the distribution's state
-    is stored in the build directory.  This class tries to fix the problem, although
-    it may not work with more advanced setuptools features.
-    """
-
-    def initialize_options(self):
-        build.initialize_options(self)
-
-        # Make build_base distribution-specific.
-        self.build_base = '%s-%s' % (self.build_base, self.distribution.metadata.name)
-
-class MyBuild_ext(build_ext):
+class build_ext_withCdms(build_ext):
 
     user_options = [
         ('netcdf-incdir=', None,
@@ -118,20 +105,23 @@ class MyBuild_ext(build_ext):
     def _findNumericHeaders(self):
         """We may or may not have the Numeric_headers module available.
         """
+
+        try:
+            import Numeric
+        except ImportError:
+            raise ConfigError, "Numeric is not installed."
+        
         try:
             from Numeric_headers import get_numeric_include
             return get_numeric_include()
         except ImportError:
             pass
 
-        # We assume we have Numeric (should be required in setup.py) and look for
-        # the includes.
         sysinclude = sys.prefix+'/include/python%d.%d' % sys.version_info[:2]
         if os.path.exists(os.path.join(sysinclude, 'Numeric')):
             return sysinclude
         
-        raise ConfigError, ("Sorry, Numeric cannot be downloaded automatically.  "
-                            "Please install before proceeding.")
+        raise ConfigError, "Cannot find Numeric header files."
         
 
     def _buildLibcdms(self):

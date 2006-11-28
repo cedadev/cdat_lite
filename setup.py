@@ -16,8 +16,10 @@ from ez_setup import use_setuptools
 use_setuptools()
 
 from setuptools import setup, Extension
-from setuptools.command.install import install
-from setup_util import MyBuild_ext, MyBuild
+from setup_util import build_ext_withCdms
+
+# This will change to somewhere more general soon
+NDG_EGG_REPOSITORY = 'http://home.badc.rl.ac.uk/spascoe/ndg_eggs'
 
 
 long_description = """
@@ -30,21 +32,6 @@ British Atmospheric Data Centre.
 
 Full documentation for CDAT is available from http://cdat.sf.net.
 """
-
-# Numeric is a difficult case to get to work with setuptools.  As a
-# legacy package it isn't easily findable from sourceforge, therefore
-# easy_install fails to download it on demand.  To complicate things
-# further we need to know where the headers to build the C modules but
-# the setup_requires keyword to setup() doesn't appear to work if
-# Numeric is installed but not an egg.  Here we only require Numeric
-# if it isn't installed already and the setup_util.MyBuild_ext handles
-# finding the headers.  In the end we should brobably distribute our
-# own Numeric egg.
-try:
-    import Numeric
-    requires = []
-except ImportError:
-    requires = ['Numeric']
 
 def makeExtension(name, package_dir=None, sources=None,
                   include_dirs=None, library_dirs=None, libraries=None):
@@ -93,9 +80,9 @@ setup(name='cdat-lite',
       version="4.0_cdunifpp0.7",
       url = 'http://www.badc.rl.ac.uk',
 
-      dependency_links = ['.'],
-      setup_requires = requires,
-      install_requires = requires + ['setuptools>=0.6c1'],
+      dependency_links = [NDG_EGG_REPOSITORY],
+      setup_requires = ['Numeric'],
+      install_requires = ['setuptools>=0.6c1', 'Numeric>=24.2'],
 
       
       packages = ['unidata', 'cdms', 'cdutil', 'xmgrace', 'genutil',
@@ -136,6 +123,6 @@ setup(name='cdat-lite',
         'console_scripts': ['cdscan = cdat_scripts:cdscan_main']
         },
       
-      cmdclass = {'build_ext': MyBuild_ext}
+      cmdclass = {'build_ext': build_ext_withCdms}
       )
 
