@@ -25,21 +25,8 @@ class ConfigError(Exception):
 
 class build_ext_withCdms(build_ext):
 
-    user_options = [
-        ('netcdf-incdir=', None,
-         'directory containing netcdf.h (overrides --netcdf-prefix)'),
-        ('netcdf-libdir=', None,
-         'directory containing libnetcdf.a (overrides --netcdf-prefix)'),
-        ('netcdf-prefix=', None,
-         'location of your netcdf installation')
-        ] + build_ext.user_options
-
-    def initialize_options(self):
-        build_ext.initialize_options(self)
-
-        self.netcdf_incdir = None
-        self.netcdf_libdir = None
-        self.netcdf_prefix = None
+    netcdf_incdir = 'exsrc/netcdf-3.5.1/src/include'
+    netcdf_libdir = 'exsrc/netcdf-3.5.1/src/lib'
 
     def finalize_options(self):
 
@@ -47,61 +34,28 @@ class build_ext_withCdms(build_ext):
 
         incdirs = [self._findNumericHeaders()]
 
-        # We try to allow netcdf.h and libnetcdf.a to be detected automatically
-        # or with command-line options here.
-        if not self.netcdf_incdir and self.netcdf_prefix:
-            self.netcdf_incdir = os.path.join(self.netcdf_prefix, 'include')
-        if not self.netcdf_libdir and self.netcdf_prefix:
-            self.netcdf_libdir = os.path.join(self.netcdf_prefix, 'lib')
+        # Add numeric and netcdf header directories
+        self.include_dirs = [self._findNumericHeaders(),
+                             self.netcdf_incdir] + self.include_dirs
+        self.library_dirs = [self.netcdf_libdir] + self.library_dirs
 
-        if self.netcdf_incdir:
-            incdirs.append(self.netcdf_incdir)
-
-        # prepend numeric and netcdf header directories
-        self.include_dirs = incdirs + self.include_dirs
-
-        if self.netcdf_libdir:
-            self.library_dirs = [self.netcdf_libdir] + self.library_dirs
-
-        # Finally re-scan self.*_dirs for the location of the netcdf files.
-        # This covers the case when --netcdf-* hasn't been set but they are
-        # in standard locations.
-        (self.netcdf_incdir, self.netcdf_libdir) = self._findNetcdfDirs()
 
     def run(self):
         """Makes the egg binary distribution, ensuring libcdms is built first.
         """
+        self._buildNetcdf()
         self._buildLibcdms()
         build_ext.run(self)
 
-    def _findNetcdfDirs(self):
-        """We expect to find netcdf.h on self.include_dirs and libnetcdf.a on
-        self.library_dirs.
+    def _buildNetcdf(self):
+        """Build the netcdf libraries."""
+        if not os.path.exists('exsrc/netcdf-3.5.1'):
+            self._system('cd exsrc; tar zxf netcdf.tar.gz')
+        if not os.path.exists('exsrc/netcdf-3.5.1/src/config.log'):
+            self._system('cd exsrc/netcdf-3.5.1/src; LD_FLAGS=-fPIC ./configure')
+        self._system('cd exsrc/netcdf-3.5.1/src; make')
 
-        @return: (netcdf_include_dir, netcdf_library_dir)
-        """
-
-        incpath = None
-        libpath = None
-
-        for dir in self.include_dirs + ['/usr/include', '/usr/local/include']:
-            if os.path.exists(os.path.join(dir, "netcdf.h")):
-                incpath = dir
-                break
-        else:
-            raise ConfigError, ("Cannot find your netcdf headers.  "
-                                "Please set --netcdf-incdir or --netcdf-prefix")
-
-        for dir in self.library_dirs + ['/usr/lib', '/usr/local/lib']:
-            if os.path.exists(os.path.join(dir, "libnetcdf.a")):
-                libpath = dir
-                break
-        else:
-            raise ConfigError, ("Cannot find your netcdf libraries.  "
-                                "Please set --netcdf-incdir or --netcdf-prefix")
-
-        return (incpath, libpath)
-
+        
     def _findNumericHeaders(self):
         """We may or may not have the Numeric_headers module available.
         """
@@ -126,19 +80,15 @@ class build_ext_withCdms(build_ext):
 
     def _buildLibcdms(self):
         """Build the libcdms library.
-
-        @param netcdf_include: the directory containing netcdf.h
-        @param netcdf_lib: the directory containing libnetcdf.a
         """
         if os.path.exists('libcdms/lib/libcdms.a'):
             return
 
         if not os.path.exists('libcdms/Makefile'):
-            netcdf_include, netcdf_lib = self._findNetcdfDirs()
             self._system('cd libcdms ; '
                          'CFLAGS=-fPIC ./configure --disable-drs --disable-hdf --disable-dods '
                          '--disable-ql --with-ncinc=%s --with-ncincf=%s --with-nclib=%s'
-                         % (netcdf_include, netcdf_include, netcdf_lib))
+                         % (self.netcdf_incdir, self.netcdf_incdir, self.netcdf_libdir))
 
         self._system('cd libcdms ; make db_util ; make cdunif')
 
