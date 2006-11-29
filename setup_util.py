@@ -60,6 +60,7 @@ class build_ext_withCdms(build_ext):
             return
 
         # Link the headers and libraries into the cdat_clib package
+        os.mkdir('%s/cdat_clib' % self.build_lib)
         os.mkdir('%s/cdat_clib/include' % self.build_lib)
         os.mkdir('%s/cdat_clib/lib' % self.build_lib)
         self._linkFiles(glob('exsrc/netcdf-install/include/*'),
