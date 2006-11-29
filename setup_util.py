@@ -14,6 +14,7 @@ directory use virtual_python.py.
 
 
 import sys, os
+from glob import glob
 
 from distutils.command.build_ext import build_ext
 from distutils.command.build import build
@@ -25,8 +26,7 @@ class ConfigError(Exception):
 
 class build_ext_withCdms(build_ext):
 
-    netcdf_incdir = 'exsrc/netcdf-3.5.1/src/include'
-    netcdf_libdir = 'exsrc/netcdf-3.5.1/src/lib'
+    netcdf_version = '3.5.1'
 
     def finalize_options(self):
 
@@ -35,9 +35,8 @@ class build_ext_withCdms(build_ext):
         incdirs = [self._findNumericHeaders()]
 
         # Add numeric and netcdf header directories
-        self.include_dirs = [self._findNumericHeaders(),
-                             self.netcdf_incdir] + self.include_dirs
-        self.library_dirs = [self.netcdf_libdir] + self.library_dirs
+        self.include_dirs = [self._findNumericHeaders(), '%s/cdat_clib/include' % self.build_lib] + self.include_dirs
+        self.library_dirs = ['%s/cdat_clib/lib' % self.build_lib] + self.library_dirs
 
 
     def run(self):
@@ -49,12 +48,33 @@ class build_ext_withCdms(build_ext):
 
     def _buildNetcdf(self):
         """Build the netcdf libraries."""
-        if not os.path.exists('exsrc/netcdf-3.5.1'):
+        if not os.path.exists('exsrc/netcdf-%s' % self.netcdf_version):
             self._system('cd exsrc; tar zxf netcdf.tar.gz')
-        if not os.path.exists('exsrc/netcdf-3.5.1/src/config.log'):
-            self._system('cd exsrc/netcdf-3.5.1/src; LD_FLAGS=-fPIC ./configure')
-        self._system('cd exsrc/netcdf-3.5.1/src; make')
+        if not os.path.exists('exsrc/netcdf-%s/src/config.log' % self.netcdf_version):
+            self._system('cd exsrc/netcdf-%s/src; LD_FLAGS=-fPIC ./configure --prefix=%s/exsrc/netcdf-install' % (self.netcdf_version, os.getcwd()))
+        if not os.path.exists('exsrc/netcdf-install'):
+            os.mkdir('exsrc/netcdf-install')
+        self._system('cd exsrc/netcdf-%s/src; make install' % self.netcdf_version)
 
+        if self.dry_run:
+            return
+
+        # Link the headers and libraries into the cdat_clib package
+        os.mkdir('%s/cdat_clib/include' % self.build_lib)
+        os.mkdir('%s/cdat_clib/lib' % self.build_lib)
+        self._linkFiles(glob('exsrc/netcdf-install/include/*'),
+                        '%s/cdat_clib/include' % self.build_lib)
+        self._linkFiles(glob('exsrc/netcdf-install/lib/*'),
+                        '%s/cdat_clib/lib' % self.build_lib)
+ 
+    def _linkFiles(self, files, destDir):
+        for file in files:
+            dest = os.path.abspath(os.path.join(destDir, os.path.basename(file)))
+            src = os.path.abspath(file)            
+            if os.path.exists(dest):
+                os.remove(dest)
+            os.symlink(src, dest)
+        
         
     def _findNumericHeaders(self):
         """We may or may not have the Numeric_headers module available.
@@ -81,7 +101,7 @@ class build_ext_withCdms(build_ext):
     def _buildLibcdms(self):
         """Build the libcdms library.
         """
-        if os.path.exists('libcdms/lib/libcdms.a'):
+        if os.path.exists('cdat_clib/lib/libcdms.a'):
             return
 
         if not os.path.exists('libcdms/Makefile'):
@@ -91,6 +111,11 @@ class build_ext_withCdms(build_ext):
                          % (self.netcdf_incdir, self.netcdf_incdir, self.netcdf_libdir))
 
         self._system('cd libcdms ; make db_util ; make cdunif')
+
+        # link into cdat_clib package
+        self._linkFiles(glob('libcdms/include/*.h'), 'cdat_clib/include')
+        self._linkFiles(glob('libcdms/lib/lib*.a'), 'cdat_clib/lib')
+        
 
         
     def _system(self, cmd):

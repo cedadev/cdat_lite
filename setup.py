@@ -86,7 +86,7 @@ setup(name='cdat-lite',
 
       
       packages = ['unidata', 'cdms', 'cdutil', 'xmgrace', 'genutil',
-                  'PropertiedClasses', 'regrid', 'cdat_scripts'],
+                  'PropertiedClasses', 'regrid', 'cdat_scripts', 'cdat_clib'],
       py_modules = ['MV'],
       package_dir = {'': 'Packages/cdms',
                      'unidata': 'Packages/unidata/Lib',
@@ -96,7 +96,8 @@ setup(name='cdat-lite',
                      'genutil': 'Packages/genutil/Lib',
                      'PropertiedClasses': 'Packages/Properties/Lib',
                      'regrid': 'Packages/regrid/Lib',
-                     'cdat_scripts': 'cdat_scripts'
+                     'cdat_scripts': 'cdat_scripts',
+                     'cdat_clib': 'cdat_clib'
                      },
       
       ext_modules = [
@@ -115,7 +116,8 @@ setup(name='cdat-lite',
 
       # Since udunits.dat isn't in the Lib directory we use the data_files attribute
       # to install data.
-      #include_package_data = True,
+      include_package_data = True,
+      package_data = {'cdat_clib': ['cdat_clib/include', 'cdat_clib/lib']},
       #package_data = {'unidata': ['Packages/unidata/Src/*.dat']},
       data_files = [('unidata', ['Packages/unidata/Src/udunits.dat'])],
       
