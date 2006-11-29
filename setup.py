@@ -117,7 +117,7 @@ setup(name='cdat-lite',
       # Since udunits.dat isn't in the Lib directory we use the data_files attribute
       # to install data.
       include_package_data = True,
-      package_data = {'cdat_clib': ['cdat_clib/include', 'cdat_clib/lib']},
+      package_data = {'cdat_clib': ['include/*', 'lib/*']},
       #package_data = {'unidata': ['Packages/unidata/Src/*.dat']},
       data_files = [('unidata', ['Packages/unidata/Src/udunits.dat'])],
       

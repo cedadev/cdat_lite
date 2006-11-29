@@ -32,11 +32,12 @@ class build_ext_withCdms(build_ext):
 
         build_ext.finalize_options(self)
 
-        incdirs = [self._findNumericHeaders()]
 
         # Add numeric and netcdf header directories
-        self.include_dirs = [self._findNumericHeaders(), '%s/cdat_clib/include' % self.build_lib] + self.include_dirs
-        self.library_dirs = ['%s/cdat_clib/lib' % self.build_lib] + self.library_dirs
+        self.netcdf_incdir = 'exsrc/netcdf-install/include'
+        self.netcdf_libdir = 'exsrc/netcdf-install/lib'
+        self.include_dirs = [self._findNumericHeaders(), self.netcdf_incdir] + self.include_dirs
+        self.library_dirs = [self.netcdf_libdir] + self.library_dirs
 
 
     def run(self):
@@ -60,9 +61,6 @@ class build_ext_withCdms(build_ext):
             return
 
         # Link the headers and libraries into the cdat_clib package
-        os.mkdir('%s/cdat_clib' % self.build_lib)
-        os.mkdir('%s/cdat_clib/include' % self.build_lib)
-        os.mkdir('%s/cdat_clib/lib' % self.build_lib)
         self._linkFiles(glob('exsrc/netcdf-install/include/*'),
                         '%s/cdat_clib/include' % self.build_lib)
         self._linkFiles(glob('exsrc/netcdf-install/lib/*'),
