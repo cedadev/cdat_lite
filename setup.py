@@ -97,7 +97,7 @@ setup(name='cdat-lite',
       
       packages = ['unidata', 'cdms', 'cdutil', 'xmgrace', 'genutil',
                   'PropertiedClasses', 'regrid', 
-                  'cdat', 'cdat.clib', 'cdat.scripts', 'cdat.test'],
+                  'cdat_lite', 'cdat_lite.clib', 'cdat_lite.scripts', 'cdat_lite.test'],
       py_modules = ['MV'],
       package_dir = {'': 'Packages/cdms',
                      'unidata': 'Packages/unidata/Lib',
@@ -107,10 +107,10 @@ setup(name='cdat-lite',
                      'genutil': 'Packages/genutil/Lib',
                      'PropertiedClasses': 'Packages/Properties/Lib',
                      'regrid': 'Packages/regrid/Lib',
-                     'cdat': 'cdat',
-                     'cdat.scripts': 'cdat/scripts',
-                     'cdat.clib': 'cdat/clib',
-                     'cdat.test': 'cdat/test'
+                     'cdat_lite': 'cdat_lite',
+                     'cdat_lite.scripts': 'cdat_lite/scripts',
+                     'cdat_lite.clib': 'cdat_lite/clib',
+                     'cdat_lite.test': 'cdat_lite/test'
                      },
       
       ext_modules = [
@@ -130,12 +130,12 @@ setup(name='cdat-lite',
       # Since udunits.dat isn't in the Lib directory we use the data_files attribute
       # to install data.
       include_package_data = True,
-      package_data = {'cdat.clib': ['include/*', 'lib/*']},
+      package_data = {'cdat_lite.clib': ['include/*', 'lib/*']},
       #package_data = {'unidata': ['Packages/unidata/Src/*.dat']},
       data_files = [('unidata', ['Packages/unidata/Src/udunits.dat'])],
       
       entry_points = {
-        'console_scripts': ['cdscan = cdat.scripts:cdscan_main']
+        'console_scripts': ['cdscan = cdat_lite.scripts:cdscan_main']
         },
       
       cmdclass = {'build_ext': build_ext, 'build_cdms': build_cdms}
