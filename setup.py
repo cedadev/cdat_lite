@@ -137,6 +137,8 @@ setup(name='cdat-lite',
       entry_points = {
         'console_scripts': ['cdscan = cdat_lite.scripts:cdscan_main']
         },
+
+      test_suite = 'cdat_lite.test.suite',
       
       cmdclass = {'build_ext': build_ext, 'build_cdms': build_cdms}
       )
