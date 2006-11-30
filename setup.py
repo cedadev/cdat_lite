@@ -16,10 +16,20 @@ from ez_setup import use_setuptools
 use_setuptools()
 
 from setuptools import setup, Extension
-from setup_util import build_ext_withCdms
+from setup_util import build_ext, build_cdms
+
 
 # This will change to somewhere more general soon
 NDG_EGG_REPOSITORY = 'http://home.badc.rl.ac.uk/spascoe/ndg_eggs'
+
+
+# cdat-lite versioning is complicated as it is a repackage of cdat-cdunifpp.  There are
+# therefore 3 version numbers to consider: CDAT, cdunifpp and cdat-lite
+cdat_version = '4.0'
+cdunifpp_version = '0.7'
+cdat_lite_version = '0.1'
+
+version = '%s-cdunifpp%s-%s' % (cdat_version, cdunifpp_version, cdat_lite_version)
 
 
 long_description = """
@@ -77,7 +87,7 @@ setup(name='cdat-lite',
       long_description=long_description,
       #!TODO: How do we sync this with the current CDAT version?
       # Will need fixing when I decide whether to use a remote CDAT tree.
-      version="4.0_cdunifpp0.7",
+      version=version,
       url = 'http://www.badc.rl.ac.uk',
 
       dependency_links = [NDG_EGG_REPOSITORY],
@@ -125,6 +135,6 @@ setup(name='cdat-lite',
         'console_scripts': ['cdscan = cdat_scripts:cdscan_main']
         },
       
-      cmdclass = {'build_ext': build_ext_withCdms}
+      cmdclass = {'build_ext': build_ext, 'build_cdms': build_cdms}
       )
 

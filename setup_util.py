@@ -16,54 +16,85 @@ directory use virtual_python.py.
 import sys, os
 from glob import glob
 
-from distutils.command.build_ext import build_ext
-from distutils.command.build import build
+from distutils.command.build_ext import build_ext as build_ext_orig
+from distutils.cmd import Command
+
 
 class ConfigError(Exception):
     """Configuration failed."""
     pass
 
 
-class build_ext_withCdms(build_ext):
+class build_ext(build_ext_orig):
+    """
+    Run subcommands first.
+    """
 
+    def run(self):
+        for cmd_name in self.get_sub_commands():
+            self.run_command(cmd_name)
+        build_ext_orig.run(self)
+
+    sub_commands = build_ext_orig.sub_commands + [('build_cdms', None)]
+
+
+class build_cdms(Command):
+
+    description = 'build libcdms'
+    user_options = [
+        ('build-base=', 'b',
+         "base directory for build library"),
+        ('build-lib=', None,
+         "build directory for all distribution"),
+        ]
+
+    boolean_options = ['debug', 'force']
+    
     netcdf_version = '3.5.1'
+
+    def initialize_options(self):
+        self.build_base = None
+        self.build_lib = None
+        self.debug = 0
+        self.force = 0
 
     def finalize_options(self):
 
-        build_ext.finalize_options(self)
-
+        self.set_undefined_options('build',
+                                   ('build_base', 'build_base'),
+                                   ('build_lib', 'build_lib'),
+                                   ('debug', 'debug'),
+                                   ('force', 'force'))
 
         # Add numeric and netcdf header directories
-        self.netcdf_incdir = 'exsrc/netcdf-install/include'
-        self.netcdf_libdir = 'exsrc/netcdf-install/lib'
-        self.include_dirs = [self._findNumericHeaders(), self.netcdf_incdir] + self.include_dirs
-        self.library_dirs = [self.netcdf_libdir] + self.library_dirs
+        self.netcdf_incdir = '%s/netcdf-install/include' % self.build_base
+        self.netcdf_libdir = '%s/netcdf-install/lib' % self.build_base
+        self.include_dirs = [self._findNumericHeaders(), self.netcdf_incdir]
+        self.library_dirs = [self.netcdf_libdir]
 
 
     def run(self):
-        """Makes the egg binary distribution, ensuring libcdms is built first.
-        """
         self._buildNetcdf()
         self._buildLibcdms()
-        build_ext.run(self)
 
     def _buildNetcdf(self):
         """Build the netcdf libraries."""
         if not os.path.exists('exsrc/netcdf-%s' % self.netcdf_version):
             self._system('cd exsrc; tar zxf netcdf.tar.gz')
         if not os.path.exists('exsrc/netcdf-%s/src/config.log' % self.netcdf_version):
-            self._system('cd exsrc/netcdf-%s/src; LD_FLAGS=-fPIC ./configure --prefix=%s/exsrc/netcdf-install' % (self.netcdf_version, os.getcwd()))
-        if not os.path.exists('exsrc/netcdf-install'):
-            os.mkdir('exsrc/netcdf-install')
-        self._system('cd exsrc/netcdf-%s/src; make install' % self.netcdf_version)
+            self._system('cd exsrc/netcdf-%s/src; LD_FLAGS=-fPIC ./configure --prefix=%s/netcdf-install' %
+                         (self.netcdf_version, os.path.abspath(self.build_base)))
+        if not os.path.exists('%s/netcdf-install' % self.build_base):
+            os.mkdir('%s/netcdf-install' % self.build_base)
+        self._system('cd exsrc/netcdf-%s/src; make install' % (self.netcdf_version))
 
         if self.dry_run:
             return
 
         # Link the headers and libraries into the cdat_clib package
-        self._linkFiles(glob('exsrc/netcdf-install/include/*'),
+        self._linkFiles(glob('%s/netcdf-install/include/*' % self.build_base),
                         '%s/cdat_clib/include' % self.build_lib)
-        self._linkFiles(glob('exsrc/netcdf-install/lib/*'),
+        self._linkFiles(glob('%s/netcdf-install/lib/*' % self.build_base),
                         '%s/cdat_clib/lib' % self.build_lib)
  
     def _linkFiles(self, files, destDir):
@@ -112,8 +143,8 @@ class build_ext_withCdms(build_ext):
         self._system('cd libcdms ; make db_util ; make cdunif')
 
         # link into cdat_clib package
-        self._linkFiles(glob('libcdms/include/*.h'), 'cdat_clib/include')
-        self._linkFiles(glob('libcdms/lib/lib*.a'), 'cdat_clib/lib')
+        self._linkFiles(glob('libcdms/include/*.h'), '%s/cdat_clib/include' % self.build_lib)
+        self._linkFiles(glob('libcdms/lib/lib*.a'), '%s/cdat_clib/lib' % self.build_lib)
         
 
         
