@@ -91,11 +91,11 @@ class build_cdms(Command):
         if self.dry_run:
             return
 
-        # Link the headers and libraries into the cdat_clib package
+        # Link the headers and libraries into the cdat.clib package
         self._linkFiles(glob('%s/netcdf-install/include/*' % self.build_base),
-                        '%s/cdat_clib/include' % self.build_lib)
+                        '%s/cdat/clib/include' % self.build_lib)
         self._linkFiles(glob('%s/netcdf-install/lib/*' % self.build_base),
-                        '%s/cdat_clib/lib' % self.build_lib)
+                        '%s/cdat/clib/lib' % self.build_lib)
  
     def _linkFiles(self, files, destDir):
         for file in files:
@@ -131,7 +131,7 @@ class build_cdms(Command):
     def _buildLibcdms(self):
         """Build the libcdms library.
         """
-        if os.path.exists('cdat_clib/lib/libcdms.a'):
+        if os.path.exists('cdat/clib/lib/libcdms.a'):
             return
 
         if not os.path.exists('libcdms/Makefile'):
@@ -142,9 +142,9 @@ class build_cdms(Command):
 
         self._system('cd libcdms ; make db_util ; make cdunif')
 
-        # link into cdat_clib package
-        self._linkFiles(glob('libcdms/include/*.h'), '%s/cdat_clib/include' % self.build_lib)
-        self._linkFiles(glob('libcdms/lib/lib*.a'), '%s/cdat_clib/lib' % self.build_lib)
+        # link into cdat.clib package
+        self._linkFiles(glob('libcdms/include/*.h'), '%s/cdat/clib/include' % self.build_lib)
+        self._linkFiles(glob('libcdms/lib/lib*.a'), '%s/cdat/clib/lib' % self.build_lib)
         
 
         

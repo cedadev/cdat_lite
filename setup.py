@@ -68,11 +68,11 @@ def makeExtension(name, package_dir=None, sources=None,
 
 def linkScripts(scripts=['cdscan']):
     """In order to put cdat scripts in their own package they are symbolically
-    linked into the cdat_scripts directory.
+    linked into the cdat/scripts directory.
     """
     for script in scripts:
         src = os.path.abspath(os.path.join('libcdms/src/python', script))
-        dest = os.path.abspath(os.path.join('cdat_scripts', script+'.py'))
+        dest = os.path.abspath(os.path.join('cdat', 'scripts', script+'.py'))
         if not os.path.exists(dest):
             os.symlink(src, dest)
     
@@ -96,7 +96,8 @@ setup(name='cdat-lite',
 
       
       packages = ['unidata', 'cdms', 'cdutil', 'xmgrace', 'genutil',
-                  'PropertiedClasses', 'regrid', 'cdat_scripts', 'cdat_clib'],
+                  'PropertiedClasses', 'regrid', 
+                  'cdat', 'cdat.clib', 'cdat.scripts', 'cdat.test'],
       py_modules = ['MV'],
       package_dir = {'': 'Packages/cdms',
                      'unidata': 'Packages/unidata/Lib',
@@ -106,8 +107,10 @@ setup(name='cdat-lite',
                      'genutil': 'Packages/genutil/Lib',
                      'PropertiedClasses': 'Packages/Properties/Lib',
                      'regrid': 'Packages/regrid/Lib',
-                     'cdat_scripts': 'cdat_scripts',
-                     'cdat_clib': 'cdat_clib'
+                     'cdat': 'cdat',
+                     'cdat.scripts': 'cdat/scripts',
+                     'cdat.clib': 'cdat/clib',
+                     'cdat.test': 'cdat/test'
                      },
       
       ext_modules = [
@@ -127,12 +130,12 @@ setup(name='cdat-lite',
       # Since udunits.dat isn't in the Lib directory we use the data_files attribute
       # to install data.
       include_package_data = True,
-      package_data = {'cdat_clib': ['include/*', 'lib/*']},
+      package_data = {'cdat.clib': ['include/*', 'lib/*']},
       #package_data = {'unidata': ['Packages/unidata/Src/*.dat']},
       data_files = [('unidata', ['Packages/unidata/Src/udunits.dat'])],
       
       entry_points = {
-        'console_scripts': ['cdscan = cdat_scripts:cdscan_main']
+        'console_scripts': ['cdscan = cdat.scripts:cdscan_main']
         },
       
       cmdclass = {'build_ext': build_ext, 'build_cdms': build_cdms}
