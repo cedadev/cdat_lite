@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 """
-Test suite for CDAT mini-install
+Test importing sub-packages.
 
-@author: Stephen pascoe
+@author: Stephen Pascoe
 """
 
 import unittest
@@ -21,6 +21,3 @@ class ImportTests(unittest.TestCase):
     def testGenutil(self): self.tryImport('genutil')
     def testRegrid(self): self.tryImport('regrid')
 
-
-if __name__ == '__main__':
-    unittest.main()

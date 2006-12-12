@@ -5,8 +5,7 @@ Build minimal CDAT and install into a parallel directory.
 usage: python setup.py install
 
 This script compiles libcdms.a and and a few essential CDAT packages
-then installs them.  If you want to install it locally to your home
-directory use virtual_python.py.
+then installs them.
 """
 
 
@@ -19,8 +18,7 @@ from setuptools import setup, Extension
 from setup_util import build_ext, build_cdms
 
 
-# This will change to somewhere more general soon
-NDG_EGG_REPOSITORY = 'http://home.badc.rl.ac.uk/spascoe/ndg_eggs'
+NDG_EGG_REPOSITORY = 'http://ndg.nerc.ac.uk/dist/'
 
 
 # cdat-lite versioning is complicated as it is a repackage of cdat-cdunifpp.  There are
@@ -72,7 +70,7 @@ def linkScripts(scripts=['cdscan']):
     """
     for script in scripts:
         src = os.path.abspath(os.path.join('libcdms/src/python', script))
-        dest = os.path.abspath(os.path.join('cdat', 'scripts', script+'.py'))
+        dest = os.path.abspath(os.path.join('cdat_lite', 'scripts', script+'.py'))
         if not os.path.exists(dest):
             os.symlink(src, dest)
     
