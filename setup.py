@@ -15,7 +15,7 @@ from ez_setup import use_setuptools
 use_setuptools()
 
 from setuptools import setup, Extension
-from setup_util import build_ext, build_cdms
+from setup_util import build_ext, build_cdms, numericHeaders
 
 
 NDG_EGG_REPOSITORY = 'http://ndg.nerc.ac.uk/dist/'
@@ -51,11 +51,12 @@ def makeExtension(name, package_dir=None, sources=None,
     if not sources:
         sources = glob.glob('Packages/%s/Src/*.c' % package_dir)
     if not include_dirs:
-        include_dirs = ['Packages/%s/Include' % package_dir, 'libcdms/include']
+        include_dirs = ['Packages/%s/Include' % package_dir, 'libcdms/include',
+                        numericHeaders]
     if not library_dirs:
         library_dirs = ['Packages/%s/Lib' % package_dir, 'libcdms/lib']
     if not libraries:
-        libraries = ['cdms', 'netcdf']
+        libraries = ['cdms']
 
     e = Extension(name, sources,
                   include_dirs=include_dirs,
@@ -118,11 +119,14 @@ setup(name='cdat-lite',
                       ['Packages/cdms/Src/Cdunifmodule.c']),
         Extension('cdms._bindex',
                   ['Packages/cdms/Src/_bindexmodule.c',
-                   'Packages/cdms/Src/bindex.c']),
+                   'Packages/cdms/Src/bindex.c'],
+                  include_dirs=[numericHeaders]),
         makeExtension('genutil.array_indexing', 'genutil', library_dirs=[], libraries=[]),
-        Extension('regrid._regrid', ['Packages/regrid/Src/_regridmodule.c']),
+        Extension('regrid._regrid', ['Packages/regrid/Src/_regridmodule.c'],
+                  include_dirs=[numericHeaders]),
         Extension('regrid._scrip', ['Packages/regrid/Src/_scripmodule.c',
-                                    'Packages/regrid/Src/regrid.c'])
+                                    'Packages/regrid/Src/regrid.c'],
+                  include_dirs=[numericHeaders])
         ],
 
       # Since udunits.dat isn't in the Lib directory we use the data_files attribute

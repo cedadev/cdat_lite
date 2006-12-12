@@ -69,7 +69,7 @@ class build_cdms(Command):
         # Add numeric and netcdf header directories
         self.netcdf_incdir = '%s/netcdf-install/include' % self.build_base
         self.netcdf_libdir = '%s/netcdf-install/lib' % self.build_base
-        self.include_dirs = [self._findNumericHeaders(), self.netcdf_incdir]
+        self.include_dirs = [findNumericHeaders(), self.netcdf_incdir]
         self.library_dirs = [self.netcdf_libdir]
 
 
@@ -103,30 +103,7 @@ class build_cdms(Command):
             src = os.path.abspath(file)            
             if os.path.exists(dest):
                 os.remove(dest)
-            os.symlink(src, dest)
-        
-        
-    def _findNumericHeaders(self):
-        """We may or may not have the Numeric_headers module available.
-        """
-
-        try:
-            import Numeric
-        except ImportError:
-            raise ConfigError, "Numeric is not installed."
-        
-        try:
-            from Numeric_headers import get_numeric_include
-            return get_numeric_include()
-        except ImportError:
-            pass
-
-        sysinclude = sys.prefix+'/include/python%d.%d' % sys.version_info[:2]
-        if os.path.exists(os.path.join(sysinclude, 'Numeric')):
-            return sysinclude
-        
-        raise ConfigError, "Cannot find Numeric header files."
-        
+            os.symlink(src, dest)        
 
     def _buildLibcdms(self):
         """Build the libcdms library.
@@ -154,3 +131,40 @@ class build_cdms(Command):
         """
         self.spawn(['sh', '-c', cmd])
 
+
+
+def findNumericHeaders():
+    """We may or may not have the Numeric_headers module available.
+    """
+
+    try:
+        import Numeric
+    except ImportError:
+        raise ConfigError, "Numeric is not installed."
+
+    try:
+        from Numeric_headers import get_numeric_include
+        return get_numeric_include()
+    except ImportError:
+        pass
+
+    sysinclude = sys.prefix+'/include/python%d.%d' % sys.version_info[:2]
+    if os.path.exists(os.path.join(sysinclude, 'Numeric')):
+        return sysinclude
+
+    raise ConfigError, "Cannot find Numeric header files."
+
+class DelayedObject(object):
+    """This class wraps a callable, delaying evaluation until it's representation
+    is requested.
+
+    We use this to delay looking for Numeric headers until they have been installed.
+    """
+
+    def __init__(self, obj):
+        self._obj = obj
+
+    def __repr__(self):
+        return str(self._obj())
+
+numericHeaders = DelayedObject(findNumericHeaders)
