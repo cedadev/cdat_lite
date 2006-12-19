@@ -67,14 +67,11 @@ class build_cdms(Command):
                                    ('force', 'force'))
 
         # Add numeric and netcdf header directories
-        self.netcdf_incdir = '%s/netcdf-install/include' % self.build_base
-        self.netcdf_libdir = '%s/netcdf-install/lib' % self.build_base
-        self.include_dirs = [findNumericHeaders(), self.netcdf_incdir]
-        self.library_dirs = [self.netcdf_libdir]
-
+        self.netcdf_incdir = findNetcdfInc()
+        self.netcdf_libdir = findNetcdfLib()
 
     def run(self):
-        self._buildNetcdf()
+        #self._buildNetcdf()
         self._buildLibcdms()
 
     def _buildNetcdf(self):
@@ -131,9 +128,7 @@ class build_cdms(Command):
         """
         self.spawn(['sh', '-c', cmd])
 
-
-
-def findNumericHeaders():
+def findNumericHeaders(include_dirs=[]):
     """We may or may not have the Numeric_headers module available.
     """
 
@@ -148,13 +143,37 @@ def findNumericHeaders():
     except ImportError:
         pass
 
-    sysinclude = sys.prefix+'/include/python%d.%d' % sys.version_info[:2]
-    if os.path.exists(os.path.join(sysinclude, 'Numeric')):
-        return sysinclude
+    include_dirs = include_dirs + [sys.prefix+'/include/python%d.%d' % sys.version_info[:2]]
+    for dir in include_dirs:
+        if os.path.exists(os.path.join(dir, 'Numeric')):
+            return dir
 
     raise ConfigError, "Cannot find Numeric header files."
 
-class DelayedObject(object):
+def findNetcdfInc(include_dirs=[]):
+    """Try to locate the netcdf include directory.
+    """
+
+    include_dirs = include_dirs + [sys.prefix+'/include', '/usr/include', '/usr/local/include']
+    for dir in include_dirs:
+        if os.path.exists(os.path.join(dir, 'netcdf.h')):
+            return dir
+
+    raise ConfigError, "Cannot find Netcdf header files"
+
+def findNetcdfLib(library_dirs=[]):
+    """Try to locate libnetcdf.
+    """
+
+    library_dirs = library_dirs + [sys.lib, sys.prefix+'/lib', '/usr/lib', '/usr/local/lib']
+    for dir in library_dirs:
+        if os.path.exists(os.path.join(dir, 'libnetcdf.a')):
+            return dir
+
+    raise ConfigError, "Cannot find Netcdf libraries"
+    
+
+class DelayedString(object):
     """This class wraps a callable, delaying evaluation until it's representation
     is requested.
 
@@ -167,4 +186,4 @@ class DelayedObject(object):
     def __repr__(self):
         return str(self._obj())
 
-numericHeaders = DelayedObject(findNumericHeaders)
+numericHeaders = DelayedString(findNumericHeaders)

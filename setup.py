@@ -84,8 +84,6 @@ linkScripts()
 setup(name='cdat-lite',
       description="Climate Data Analysis tools, core components",
       long_description=long_description,
-      #!TODO: How do we sync this with the current CDAT version?
-      # Will need fixing when I decide whether to use a remote CDAT tree.
       version=version,
       url = 'http://www.badc.rl.ac.uk',
 
@@ -96,7 +94,8 @@ setup(name='cdat-lite',
       
       packages = ['unidata', 'cdms', 'cdutil', 'xmgrace', 'genutil',
                   'PropertiedClasses', 'regrid', 
-                  'cdat_lite', 'cdat_lite.clib', 'cdat_lite.scripts', 'cdat_lite.test'],
+                  'cdat_lite', 'cdat_lite.clib',
+                  'cdat_lite.scripts', 'cdat_lite.test'],
       py_modules = ['MV'],
       package_dir = {'': 'Packages/cdms',
                      'unidata': 'Packages/unidata/Lib',
@@ -129,11 +128,10 @@ setup(name='cdat-lite',
                   include_dirs=[numericHeaders])
         ],
 
-      # Since udunits.dat isn't in the Lib directory we use the data_files attribute
-      # to install data.
       include_package_data = True,
       package_data = {'cdat_lite.clib': ['include/*', 'lib/*']},
-      #package_data = {'unidata': ['Packages/unidata/Src/*.dat']},
+      # Since udunits.dat isn't in the Lib directory we use the data_files attribute
+      # to install data.
       data_files = [('unidata', ['Packages/unidata/Src/udunits.dat'])],
       
       entry_points = {
