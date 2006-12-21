@@ -15,7 +15,7 @@ from ez_setup import use_setuptools
 use_setuptools()
 
 from setuptools import setup, Extension
-from setup_util import build_ext, build_cdms, numericHeaders
+from setup_util import build_ext, build_cdms, numericHeaders, netcdfHome
 
 
 NDG_EGG_REPOSITORY = 'http://ndg.nerc.ac.uk/dist/'
@@ -52,11 +52,11 @@ def makeExtension(name, package_dir=None, sources=None,
         sources = glob.glob('Packages/%s/Src/*.c' % package_dir)
     if not include_dirs:
         include_dirs = ['Packages/%s/Include' % package_dir, 'libcdms/include',
-                        numericHeaders]
+                        numericHeaders, netcdfHome+'/include']
     if not library_dirs:
-        library_dirs = ['Packages/%s/Lib' % package_dir, 'libcdms/lib']
+        library_dirs = ['Packages/%s/Lib' % package_dir, 'libcdms/lib', netcdfHome+'/lib']
     if not libraries:
-        libraries = ['cdms']
+        libraries = ['cdms', 'netcdf']
 
     e = Extension(name, sources,
                   include_dirs=include_dirs,
@@ -84,6 +84,8 @@ linkScripts()
 setup(name='cdat-lite',
       description="Climate Data Analysis tools, core components",
       long_description=long_description,
+      #!TODO: How do we sync this with the current CDAT version?
+      # Will need fixing when I decide whether to use a remote CDAT tree.
       version=version,
       url = 'http://www.badc.rl.ac.uk',
 
@@ -94,8 +96,7 @@ setup(name='cdat-lite',
       
       packages = ['unidata', 'cdms', 'cdutil', 'xmgrace', 'genutil',
                   'PropertiedClasses', 'regrid', 
-                  'cdat_lite', 'cdat_lite.clib',
-                  'cdat_lite.scripts', 'cdat_lite.test'],
+                  'cdat_lite', 'cdat_lite.clib', 'cdat_lite.scripts', 'cdat_lite.test'],
       py_modules = ['MV'],
       package_dir = {'': 'Packages/cdms',
                      'unidata': 'Packages/unidata/Lib',
@@ -119,19 +120,20 @@ setup(name='cdat-lite',
         Extension('cdms._bindex',
                   ['Packages/cdms/Src/_bindexmodule.c',
                    'Packages/cdms/Src/bindex.c'],
-                  include_dirs=[numericHeaders]),
+                  include_dirs=[numericHeaders, netcdfHome+'/include']),
         makeExtension('genutil.array_indexing', 'genutil', library_dirs=[], libraries=[]),
         Extension('regrid._regrid', ['Packages/regrid/Src/_regridmodule.c'],
-                  include_dirs=[numericHeaders]),
+                  include_dirs=[numericHeaders, netcdfHome+'/include']),
         Extension('regrid._scrip', ['Packages/regrid/Src/_scripmodule.c',
                                     'Packages/regrid/Src/regrid.c'],
-                  include_dirs=[numericHeaders])
+                  include_dirs=[numericHeaders, netcdfHome+'/include'])
         ],
 
-      include_package_data = True,
-      package_data = {'cdat_lite.clib': ['include/*', 'lib/*']},
       # Since udunits.dat isn't in the Lib directory we use the data_files attribute
       # to install data.
+      include_package_data = True,
+      package_data = {'cdat_lite.clib': ['include/*', 'lib/*']},
+      #package_data = {'unidata': ['Packages/unidata/Src/*.dat']},
       data_files = [('unidata', ['Packages/unidata/Src/udunits.dat'])],
       
       entry_points = {

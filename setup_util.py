@@ -19,6 +19,8 @@ from glob import glob
 from distutils.command.build_ext import build_ext as build_ext_orig
 from distutils.cmd import Command
 
+netcdf_version = '3.5.1'
+
 
 class ConfigError(Exception):
     """Configuration failed."""
@@ -50,8 +52,6 @@ class build_cdms(Command):
 
     boolean_options = ['debug', 'force']
     
-    netcdf_version = '3.5.1'
-
     def initialize_options(self):
         self.build_base = None
         self.build_lib = None
@@ -67,23 +67,26 @@ class build_cdms(Command):
                                    ('force', 'force'))
 
         # Add numeric and netcdf header directories
-        self.netcdf_incdir = findNetcdfInc()
-        self.netcdf_libdir = findNetcdfLib()
+        self.netcdf_incdir = os.path.abspath('%s/netcdf-install/include' % self.build_base)
+        self.netcdf_libdir = os.path.abspath('%s/netcdf-install/lib' % self.build_base)
+        self.include_dirs = [findNumericHeaders(), self.netcdf_incdir]
+        self.library_dirs = [self.netcdf_libdir]
+
 
     def run(self):
-        #self._buildNetcdf()
+        self._buildNetcdf()
         self._buildLibcdms()
 
     def _buildNetcdf(self):
         """Build the netcdf libraries."""
-        if not os.path.exists('exsrc/netcdf-%s' % self.netcdf_version):
+        if not os.path.exists('exsrc/netcdf-%s' % netcdf_version):
             self._system('cd exsrc; tar zxf netcdf.tar.gz')
-        if not os.path.exists('exsrc/netcdf-%s/src/config.log' % self.netcdf_version):
-            self._system('cd exsrc/netcdf-%s/src; LD_FLAGS=-fPIC ./configure --prefix=%s/netcdf-install' %
-                         (self.netcdf_version, os.path.abspath(self.build_base)))
+        if not os.path.exists('exsrc/netcdf-%s/src/config.log' % netcdf_version):
+            self._system('cd exsrc/netcdf-%s/src; CFLAGS=-fPIC ./configure --prefix=%s/netcdf-install' %
+                         (netcdf_version, os.path.abspath(self.build_base)))
         if not os.path.exists('%s/netcdf-install' % self.build_base):
             os.mkdir('%s/netcdf-install' % self.build_base)
-        self._system('cd exsrc/netcdf-%s/src; make install' % (self.netcdf_version))
+        self._system('cd exsrc/netcdf-%s/src; make install' % (netcdf_version))
 
         if self.dry_run:
             return
@@ -110,7 +113,7 @@ class build_cdms(Command):
 
         if not os.path.exists('libcdms/Makefile'):
             self._system('cd libcdms ; '
-                         'CFLAGS=-fPIC ./configure --disable-drs --disable-hdf --disable-dods '
+                         'CFLAGS="-fPIC -g" ./configure --disable-drs --disable-hdf --disable-dods '
                          '--disable-ql --with-ncinc=%s --with-ncincf=%s --with-nclib=%s'
                          % (self.netcdf_incdir, self.netcdf_incdir, self.netcdf_libdir))
 
@@ -128,7 +131,9 @@ class build_cdms(Command):
         """
         self.spawn(['sh', '-c', cmd])
 
-def findNumericHeaders(include_dirs=[]):
+
+
+def findNumericHeaders():
     """We may or may not have the Numeric_headers module available.
     """
 
@@ -143,37 +148,13 @@ def findNumericHeaders(include_dirs=[]):
     except ImportError:
         pass
 
-    include_dirs = include_dirs + [sys.prefix+'/include/python%d.%d' % sys.version_info[:2]]
-    for dir in include_dirs:
-        if os.path.exists(os.path.join(dir, 'Numeric')):
-            return dir
+    sysinclude = sys.prefix+'/include/python%d.%d' % sys.version_info[:2]
+    if os.path.exists(os.path.join(sysinclude, 'Numeric')):
+        return sysinclude
 
     raise ConfigError, "Cannot find Numeric header files."
 
-def findNetcdfInc(include_dirs=[]):
-    """Try to locate the netcdf include directory.
-    """
-
-    include_dirs = include_dirs + [sys.prefix+'/include', '/usr/include', '/usr/local/include']
-    for dir in include_dirs:
-        if os.path.exists(os.path.join(dir, 'netcdf.h')):
-            return dir
-
-    raise ConfigError, "Cannot find Netcdf header files"
-
-def findNetcdfLib(library_dirs=[]):
-    """Try to locate libnetcdf.
-    """
-
-    library_dirs = library_dirs + [sys.lib, sys.prefix+'/lib', '/usr/lib', '/usr/local/lib']
-    for dir in library_dirs:
-        if os.path.exists(os.path.join(dir, 'libnetcdf.a')):
-            return dir
-
-    raise ConfigError, "Cannot find Netcdf libraries"
-    
-
-class DelayedString(object):
+class DelayedObject(object):
     """This class wraps a callable, delaying evaluation until it's representation
     is requested.
 
@@ -186,4 +167,5 @@ class DelayedString(object):
     def __repr__(self):
         return str(self._obj())
 
-numericHeaders = DelayedString(findNumericHeaders)
+numericHeaders = DelayedObject(findNumericHeaders)
+netcdfHome = os.path.abspath('build/netcdf-install')
