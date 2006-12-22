@@ -4,7 +4,7 @@ Run all tests.
 @author: Stephen Pascoe
 """
 
-import unittest
+import unittest, sys
 import test_import, test_cdms
 test_modules = [test_import, test_cdms]
 

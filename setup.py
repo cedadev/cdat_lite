@@ -70,8 +70,8 @@ setup(name='cdat-lite',
       version='%s-%s' % (cdat_release, cdat_lite_version),
       url = CDAT_LITE_URL,
       download_url = NDG_EGG_REPOSITORY,
-      author = 'Stephen Pascoe',
-      author_email = 'S.Pascoe@rl.ac.uk',
+      maintainer = 'Stephen Pascoe',
+      maintainer_email = 'S.Pascoe@rl.ac.uk',
       license = CDAT_LICENCE_URL,
 
       classifiers = [
