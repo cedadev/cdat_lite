@@ -1,7 +1,7 @@
 
 # line 2 "utparse.y"
 /*
- * $Id: utparse.c,v 1.1.1.1 1995/08/04 20:54:13 steve Exp $
+ * $Id$
  *
  * yacc(1)-based parser for decoding formatted units(3) specifications.
  */

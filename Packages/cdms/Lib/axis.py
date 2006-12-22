@@ -740,18 +740,24 @@ class AbstractAxis(CdmsObj):
         return result
 
     def toRelativeTime(self, units, calendar=None):
-        "Convert time axis values to another unit"
+        "Convert time axis values to another unit possibly in another calendar"
         if not hasattr(self, 'units'):
             raise CDMSError, "No time units defined"
         n=len(self[:])
         b=self.getBounds()
+        scal = self.getCalendar()
         if calendar is None:
-            calendar = self.getCalendar()
+            calendar = scal
+        else:
+            self.setCalendar(calendar)
         for i in range(n):
-            self[i]=cdtime.reltime(self[i], self.units).torel(units, calendar).value
+            tmp=cdtime.reltime(self[i], self.units).tocomp(scal)
+            self[i]=tmp.torel(units, calendar).value
             if b is not None:
-                b[i,0]=cdtime.reltime(b[i,0], self.units).torel(units, calendar).value
-                b[i,1]=cdtime.reltime(b[i,1], self.units).torel(units, calendar).value
+                tmp=cdtime.reltime(b[i,0], self.units).tocomp(scal)
+                b[i,0]=tmp.torel(units, calendar).value
+                tmp=cdtime.reltime(b[i,1], self.units).tocomp(scal)
+                b[i,1]=tmp.torel(units, calendar).value
         if b is not None:
             self.setBounds(b)
         self.units=units
@@ -1853,6 +1859,13 @@ class FileAxis(AbstractAxis):
         if self.parent is not None and hasattr(self.parent, 'format') and self.parent.format=='GRADS':
             return 0
         return (self._obj_ is None)
+
+    def isUnlimited(self):
+        "Return true iff the axis is 'Unlimited' (extensible)"
+        if self.parent is not None and self.parent.dimensions.has_key(self.id):
+            return (self.parent.dimensions[self.id] is None)
+        else:
+            return False
 
 PropertiedClasses.set_property (FileAxis, 'units', 
                                 acts=FileAxis._setunits,

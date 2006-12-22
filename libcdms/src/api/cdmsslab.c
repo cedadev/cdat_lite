@@ -8,7 +8,7 @@
  * Author:      Bob Drach, Lawrence Livermore National Laboratory
  *              drach@llnl.gov
  *
- * Version:     $Id: cdmsslab.c,v 1.3 1997/12/03 22:22:06 drach Exp $
+ * Version:     $Id$
  *
  * Revision History:
  *
@@ -52,7 +52,7 @@ long cdDimGetDouble(long dsetid, long dimid, long start, long count, long stride
 	long *lp;
 	long dlen, dlenbytes;
 	long kcycle, kbase;
-#if !defined(sgi) && !defined(__alpha)
+#if !defined(sgi) && !defined(__alpha) && !defined(__ia64) && !defined(__x86_64__)
 	long double *ldp;
 #endif
 	short *sp;
@@ -132,7 +132,7 @@ long cdDimGetDouble(long dsetid, long dimid, long start, long count, long stride
 			*dp++ = (double)cp[kbase] + kcycle*direc*modulus;
 		}				
 		break;
-#if !defined(sgi) && !defined(__alpha)
+#if !defined(sgi) && !defined(__alpha) && !defined(__ia64) && !defined(__x86_64__)
 	  case cdLongDouble:
 		ldp = (long double*)dim;
 		direc = (*ldp<=*(ldp+dlen-1) ? 1 : -1);

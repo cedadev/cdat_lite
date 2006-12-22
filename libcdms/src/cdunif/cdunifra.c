@@ -8,7 +8,7 @@
  * Author:      Bob Drach, Lawrence Livermore National Laboratory
  *              drach@llnl.gov
  *
- * Version:     $Id: cdunifra.c,v 1.1.1.1 1997/12/09 18:57:40 drach Exp $
+ * Version:     $Id$
  *
  * Revision History:
  *
@@ -815,7 +815,7 @@ int cuCast(CuType fromType, CuType toType, long nelems, void *array){
 				  case CuFloat:
 					cuFloat2Double(nelems,array);
 					break;
-#if !defined(sgi) && !defined(__alpha)
+#if !defined(sgi) && !defined(__alpha) && !defined(__ia64) && !defined(__x86_64__)
 				  case CuDouble:
 					cuDouble2LongDouble(nelems,array);
 					break;
@@ -832,7 +832,7 @@ int cuCast(CuType fromType, CuType toType, long nelems, void *array){
 				  case CuDouble:
 					cuDouble2Float(nelems,array);
 					break;
-#if !defined(sgi) && !defined(__alpha)
+#if !defined(sgi) && !defined(__alpha) && !defined(__ia64) && !defined(__x86_64__)
 				  case CuLongDouble:
 					cuLongDouble2Double(nelems, array);
 					break;
@@ -908,7 +908,7 @@ void cuFloat2Double(long nelems, void *buf){
 
 	return;
 }
-#if !defined(sgi) && !defined(__alpha)
+#if !defined(sgi) && !defined(__alpha) && !defined(__ia64) && !defined(__x86_64__)
 void cuDouble2LongDouble(long nelems, void *buf){
 	double *from;
 	long double *to;
@@ -953,7 +953,7 @@ void cuShort2Int(long nelems, void *buf){
 	return;
 }
 void cuInt2Long(long nelems, void *buf){
-#if defined(__alpha)
+#if defined(__alpha) || defined(__ia64) || defined(__x86_64__)
 	int *from;
 	long *to;
 	long i;
@@ -979,7 +979,7 @@ void cuDouble2Float(long nelems, void *buf){
 
 	return;
 }
-#if !defined(sgi) && !defined(__alpha)
+#if !defined(sgi) && !defined(__alpha) && !defined(__ia64) && !defined(__x86_64__)
 void cuLongDouble2Double(long nelems, void *buf){
 	long double *from;
 	double *to;
@@ -1021,7 +1021,7 @@ void cuInt2Short(long nelems, void *buf){
 	return;
 }
 void cuLong2Int(long nelems, void *buf){
-#if defined(__alpha)
+#if defined(__alpha) || defined(__ia64) || defined(__x86_64__)
 	long *from;
 	int *to;
 	long i;

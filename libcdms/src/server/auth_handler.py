@@ -7,7 +7,7 @@
 # interested in using this software in a commercial context, or in
 # purchasing support, please contact the author.
 
-RCS_ID =  '$Id: auth_handler.py,v 1.4 1998/10/26 21:48:55 rushing Exp $'
+RCS_ID =  '$Id$'
 
 # support for 'basic' authenticaion.
 

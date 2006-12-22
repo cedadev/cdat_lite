@@ -91,8 +91,7 @@ main(int argc, char *argv[]){
   /* close */
   status = cuclose(fileid);
   if (status!=0) goto err;
-
-  puts("Testpp completed successfully.");
+  
   exit(0);
   
  err:

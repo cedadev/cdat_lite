@@ -8,7 +8,7 @@
  * Author:      Bob Drach, Lawrence Livermore National Laboratory
  *              drach@llnl.gov
  *
- * Version:     $Id: cdunif.c,v 1.1.1.1 1997/12/09 18:57:39 drach Exp $
+ * Version:     $Id$
  *
  * Revision History:
  *
@@ -462,7 +462,7 @@ int cutypelen(CuType datatype){
 		return sizeof(float);
 	  case CuDouble:
 		return sizeof(double);
-#if !defined(sgi) && !defined(__alpha)
+#if !defined(sgi) && !defined(__alpha) && !defined(__ia64) && !defined(__x86_64__)
 	  case CuLongDouble:
 		return sizeof(long double);
 #endif

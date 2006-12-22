@@ -9,7 +9,7 @@
  * Author:      Bob Drach, Lawrence Livermore National Laboratory
  *              drach@llnl.gov
  *
- * Version:     $Id: timeConv.c,v 1.2 1998/02/20 00:24:49 drach Exp $
+ * Version:     $Id$
  *
  * Revision History:
  *

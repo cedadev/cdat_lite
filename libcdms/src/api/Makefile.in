@@ -8,7 +8,7 @@
 # Author:      Bob Drach, Lawrence Livermore National Laboratory
 #              drach@llnl.gov
 #
-# Version:     $Id: Makefile.in,v 1.1.1.1 1997/12/09 18:57:40 drach Exp $
+# Version:     $Id$
 #
 # Revision History:
 #
@@ -45,7 +45,15 @@ LIBDIR=$(exec_prefix)/lib
 MANDIR=$(prefix)/man
 PARMDIR=$(prefix)/lib/lats
 
+# Set the compiler flag for the 64-bit Opteron platform
 CC = @CC@
+ARCH=$(shell uname -m)
+ifeq ($(ARCH),ia64)
+   CC = gcc -fPIC -D__ia64
+endif
+ifeq ($(ARCH),x86_64)
+   CC = gcc -fPIC -D__x86_64__
+endif
 CFLAGS = -I../../include @CFLAGS@ $(DEBUG) -Dgrads
 CPPFLAGS = @CPPFLAGS@ -DSTNDALN=1 -DBYTEORDER=@GRADS_BYTEORDER@ -DGRADS_CRAY=@GRADS_CRAY@
 DEBUG = -O

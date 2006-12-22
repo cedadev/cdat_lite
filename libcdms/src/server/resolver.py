@@ -4,7 +4,7 @@
 #	Author: Sam Rushing <rushing@nightmare.com>
 #
 
-RCS_ID =  '$Id: resolver.py,v 1.19 1999/07/27 00:30:01 rushing Exp $'
+RCS_ID =  '$Id$'
 
 
 # Fast, low-overhead asynchronous name resolver.  uses 'pre-cooked'

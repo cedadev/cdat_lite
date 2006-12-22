@@ -272,17 +272,6 @@ class Dataset(CdmsObj, cuDataset):
         self._status_ = 'open'
         self._convention_ = convention.getDatasetConvention(self)
 
-        # Create the internal filemap, if attribute 'cdms_filemap' is present.
-        # _filemap_ is a dictionary, maps variable name => slicelist
-        # The format of _filemap_ is (varname, timestart, levstart) => path
-        if hasattr(self, 'cdms_filemap'):
-            self._filemap_ = {}
-            filemap = parseFileMap(self.cdms_filemap)
-            for varlist, varmap in filemap:
-                for varname in varlist:
-                    for tstart, tend, levstart, levend, path in varmap:
-                        self._filemap_[(varname, tstart, levstart)] = path
-
         # Collect named children (having attribute 'id') into dictionaries
         if datasetNode is not None:
             coordsaux = self._convention_.getDsetnodeAuxAxisIds(datasetNode)
@@ -395,6 +384,44 @@ class Dataset(CdmsObj, cuDataset):
                 var = self.variables[name]
                 bounds = self._convention_.getVariableBounds(self, var)
                 var.setBounds(bounds)
+
+        # Create the internal filemap, if attribute 'cdms_filemap' is present.
+        # _filemap_ is a dictionary, mapping (varname, timestart, levstart) => path
+        #
+        # Also, for each partitioned variable, set attribute '_varpart_' to [timepart, levpart]
+        # where timepart is the partition for time (or None if not time-dependent)
+        # and levpart is the partition in the level dimension, or None if not applicable.
+        #
+        # For variables partitioned in both time and level dimension, it is assumed that
+        # for a given variable the partitions are orthogonal. That is, for a given
+        # variable, at any timeslice the level partition is the same.
+        if hasattr(self, 'cdms_filemap'):
+            self._filemap_ = {}
+            filemap = parseFileMap(self.cdms_filemap)
+            for varlist, varmap in filemap:
+                for varname in varlist:
+                    timemap = {}
+                    levmap = {}
+                    for tstart, tend, levstart, levend, path in varmap:
+                        self._filemap_[(varname, tstart, levstart)] = path
+                        if tstart is not None:
+                            timemap[(tstart, tend)] = 1 # Collect unique (tstart, tend) tuples
+                        if levstart is not None:
+                            levmap[(levstart, levend)] = 1
+                    tkeys = timemap.keys()
+                    if len(tkeys)>0:
+                        tkeys.sort()
+                        tpart = map(lambda x: list(x), tkeys)
+                    else:
+                        tpart = None
+                    levkeys = levmap.keys()
+                    if len(levkeys)>0:
+                        levkeys.sort()
+                        levpart = map(lambda x: list(x), levkeys)
+                    else:
+                        levpart = None
+                    if self.variables.has_key(varname):
+                        self.variables[varname]._varpart_ = [tpart, levpart]
 
     def getConvention(self):
         """Get the metadata convention associated with this dataset or file."""

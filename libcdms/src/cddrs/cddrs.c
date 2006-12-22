@@ -8,7 +8,7 @@
  * Author:      Bob Drach, Lawrence Livermore National Laboratory
  *              drach@llnl.gov
  *
- * Version:     $Id: cddrs.c,v 1.21 1997/01/28 15:08:32 drach Exp $
+ * Version:     $Id$
  *
  * Revision History:
  *
@@ -1836,7 +1836,7 @@ int cw_dimget(int fileid, int dimid, double** values, long *dimlen){
 	int i;
 	long *lp;
 	long dlen, dlenbytes;
-#if !defined(sgi) && !defined(__alpha)
+#if !defined(sgi) && !defined(__alpha) && !defined(__ia64) && !defined(__x86_64__)
 	long double *ldp;
 #endif
 	int *ip;
@@ -1904,7 +1904,7 @@ int cw_dimget(int fileid, int dimid, double** values, long *dimlen){
 		for(i=0, dp=tab;i<dlen;i++)
 			*dp++ = (double)(*cp++);
 		break;
-#if !defined(sgi) && !defined(__alpha)
+#if !defined(sgi) && !defined(__alpha) && !defined(__ia64) && !defined(__x86_64__)
 	  case CuLongDouble:
 		ldp = (long double*)dim;
 		for(i=0, dp=tab;i<dlen;i++)
@@ -2177,7 +2177,7 @@ CuType cw_drs_to_unif_datatype(const char* drstype){
 		  case 2:
 			return CuShort;
 		  case 4:
-#if defined(__alpha)
+#if defined(__alpha) || defined(__ia64) || defined(__x86_64__)
 			return CuInt;
 #else
 			return CuLong;
@@ -2220,7 +2220,7 @@ int cw_unif_to_drs_datatype(CuType dtype, char* drstype){
 #endif		
 		break;
 	  case CuLong:
-#if defined(cray) || defined(__alpha)
+#if defined(cray) || defined(__alpha) || defined(__ia64) || defined(__x86_64__)
 		strcpy(drstype,"I*8");
 #else
 		strcpy(drstype,"I*4");
@@ -2268,7 +2268,7 @@ int cw_unif_to_drs_enumtype(CuType dtype, int* enumtype){
 		*enumtype = IDRS_I4;
 #endif		
 	  case CuLong:
-#if defined(cray) || defined(__alpha)
+#if defined(cray) || defined(__alpha) || defined(__ia64) || defined(__x86_64__)
 		*enumtype = IDRS_I8;
 #else
 		*enumtype = IDRS_I4;

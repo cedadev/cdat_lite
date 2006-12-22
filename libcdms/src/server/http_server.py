@@ -9,7 +9,7 @@
 # interested in using this software in a commercial context, or in
 # purchasing support, please contact the author.
 
-RCS_ID =  '$Id: http_server.py,v 3.38 2000/01/14 17:41:44 rushing Exp $'
+RCS_ID =  '$Id$'
 
 # python modules
 import os

@@ -1,69 +1,55 @@
 #!/usr/bin/env python
-"""
-Build minimal CDAT and install into a parallel directory.
-
-usage: python setup.py install
-
-This script compiles libcdms.a and and a few essential CDAT packages
-then installs them.
+"""Build the cdat_lite distribution.
 """
 
 
-import sys, os, glob
+import sys, os
 
 from ez_setup import use_setuptools
 use_setuptools()
 
 from setuptools import setup, Extension
-from setup_util import build_ext, build_cdms, numericHeaders, netcdfHome
+from setup_util import build_ext, makeExtension
 
 
 NDG_EGG_REPOSITORY = 'http://ndg.nerc.ac.uk/dist/'
-
+CDAT_LITE_URL = 'http://proj.badc.rl.ac.uk/ndg/wiki/CdatLite'
+CDAT_LICENCE_URL = 'http://www-pcmdi.llnl.gov/software-portal/cdat/docs/cdat-license'
+CDAT_HOME_URL = 'http://www-pcmdi.llnl.gov/software-portal/cdat'
 
 # cdat-lite versioning is complicated as it is a repackage of cdat-cdunifpp.  There are
-# therefore 3 version numbers to consider: CDAT, cdunifpp and cdat-lite
-cdat_version = '4.0'
+# therefore 3 version numbers to consider: CDAT, cdunifpp and cdat-lite.  Once we start
+# using versions of CDAT from the PCMDI SVN the version string could become very long
+# indeed therefore the following strategy is used:
+#
+#  1. Eggs are quoted with the version: <cdat-release>-<cdat-lite-version>
+#  2. If a PCMDI SVN version of CDAT is used it is stated in long_description not
+#     in <cdat-release>.
+#  3. The cdunifpp version is stated in long_description not in the version.  Any
+#     change to the cdunifpp version naturally triggers a new <cdat-lite-version>.
+cdat_release = '4.1.2'
+cdat_tag = '-r5752'
 cdunifpp_version = '0.7'
-cdat_lite_version = '0.1'
-
-version = '%s-cdunifpp%s-%s' % (cdat_version, cdunifpp_version, cdat_lite_version)
+cdat_lite_version = '0.2'
 
 
 long_description = """
-= CDAT-lite =
+This package contains core components from the Climate Data Analysis
+Tools (CDAT) with slight modifications to make them compatable with
+python eggs.  The cdms package has been augmented with the latest code
+to read UK Met. Office PP file format developed at the British
+Atmospheric Data Centre.
 
-This package contains core components from the Climate Data Analysis Tools (CDAT)
-with slight modifications to make them compatable with python eggs.  The cdms package
-has been augmented with code to read UK Met. Office PP file format developed at the
-British Atmospheric Data Centre.
+This software is based on CDAT-%(cdat_release)s%(cdat_tag)s and
+cdunfpp%(cdunifpp_version)s.  It is distributed under the CDAT licence
+%(CDAT_LICENCE_URL)s.
 
-Full documentation for CDAT is available from http://cdat.sf.net.
-"""
+Full documentation for CDAT is available from the CDAT homepage
+%(CDAT_HOME_URL)s.
 
-def makeExtension(name, package_dir=None, sources=None,
-                  include_dirs=None, library_dirs=None, libraries=None):
-    """Convenience function for building extensions.
-    """
+""" % globals()
 
-    if not package_dir:
-        package_dir = name
-    if not sources:
-        sources = glob.glob('Packages/%s/Src/*.c' % package_dir)
-    if not include_dirs:
-        include_dirs = ['Packages/%s/Include' % package_dir, 'libcdms/include',
-                        numericHeaders, netcdfHome+'/include']
-    if not library_dirs:
-        library_dirs = ['Packages/%s/Lib' % package_dir, 'libcdms/lib', netcdfHome+'/lib']
-    if not libraries:
-        libraries = ['cdms', 'netcdf']
-
-    e = Extension(name, sources,
-                  include_dirs=include_dirs,
-                  library_dirs=library_dirs,
-                  libraries=libraries)
-
-    return e
+#------------------------------------------------------------------------------
 
 def linkScripts(scripts=['cdscan']):
     """In order to put cdat scripts in their own package they are symbolically
@@ -74,25 +60,34 @@ def linkScripts(scripts=['cdscan']):
         dest = os.path.abspath(os.path.join('cdat_lite', 'scripts', script+'.py'))
         if not os.path.exists(dest):
             os.symlink(src, dest)
-    
-
+linkScripts()
 
 #------------------------------------------------------------------------------
-
-linkScripts()
     
 setup(name='cdat-lite',
       description="Climate Data Analysis tools, core components",
       long_description=long_description,
-      #!TODO: How do we sync this with the current CDAT version?
-      # Will need fixing when I decide whether to use a remote CDAT tree.
-      version=version,
-      url = 'http://www.badc.rl.ac.uk',
+      version='%s-%s' % (cdat_release, cdat_lite_version),
+      url = CDAT_LITE_URL,
+      download_url = NDG_EGG_REPOSITORY,
+      author = 'Stephen Pascoe',
+      author_email = 'S.Pascoe@rl.ac.uk',
+      license = CDAT_LICENCE_URL
+
+      classifiers = [
+        'Development Status :: 4 - Beta',
+        'Environment :: Console',
+        'Intended Audience :: Science/Research',
+        'License :: Other/Proprietary License',
+        'Operating System :: POSIX :: Linux',
+        'Topic :: Scientific/Engineering :: Atmospheric Science',
+        ],
+        
 
       dependency_links = [NDG_EGG_REPOSITORY],
       setup_requires = ['Numeric'],
       install_requires = ['setuptools>=0.6c1', 'Numeric>=24.2'],
-
+      zip_safe = False,
       
       packages = ['unidata', 'cdms', 'cdutil', 'xmgrace', 'genutil',
                   'PropertiedClasses', 'regrid', 
@@ -120,13 +115,13 @@ setup(name='cdat-lite',
         Extension('cdms._bindex',
                   ['Packages/cdms/Src/_bindexmodule.c',
                    'Packages/cdms/Src/bindex.c'],
-                  include_dirs=[numericHeaders, netcdfHome+'/include']),
-        makeExtension('genutil.array_indexing', 'genutil', library_dirs=[], libraries=[]),
+                  ),
+        makeExtension('genutil.array_indexing', 'genutil'),
         Extension('regrid._regrid', ['Packages/regrid/Src/_regridmodule.c'],
-                  include_dirs=[numericHeaders, netcdfHome+'/include']),
+                  ),
         Extension('regrid._scrip', ['Packages/regrid/Src/_scripmodule.c',
                                     'Packages/regrid/Src/regrid.c'],
-                  include_dirs=[numericHeaders, netcdfHome+'/include'])
+                  )
         ],
 
       # Since udunits.dat isn't in the Lib directory we use the data_files attribute
@@ -142,6 +137,8 @@ setup(name='cdat-lite',
 
       test_suite = 'cdat_lite.test.suite',
       
-      cmdclass = {'build_ext': build_ext, 'build_cdms': build_cdms}
+      cmdclass = {'build_ext': build_ext}
       )
+
+    
 

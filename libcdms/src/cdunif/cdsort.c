@@ -7,7 +7,7 @@
  *
  * Author:      See below
  *
- * Version:     $Id: cdsort.c,v 1.1 1995/07/31 17:38:02 drach Exp $
+ * Version:     $Id$
  *
  * Revision History:
  *

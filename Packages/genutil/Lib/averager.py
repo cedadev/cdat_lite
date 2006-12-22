@@ -911,11 +911,25 @@ Note:
                 newaxorder.append(i)
             # if not i in newaxorder:
         # end of for i in range(len(MA.shape(V))):
+        #doloop = False
         if newaxorder != range(len(V.shape)):
             x = MA.transpose(V, newaxorder)
             if __DEBUG__: print 'Reordered shape = ', x.shape
+            #osh=list(x.shape)
+            #na=len(axis)
+            #if n!=x.rank():
+            #    nsh=osh[:na] # the axes of operations....
+            #    n=1
+            #    for m in osh[na:]:
+            #        n*=m
+            #    nsh.append(n)
+            #    x = MA.reshape(x,nsh)
+            #    if n>35000000:
+            #        doloop=
         else:
             x = V
+
+        
         # end of if newaxorder != range(len(V.shape)):
         #
         # Check the weight options

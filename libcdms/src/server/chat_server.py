@@ -8,7 +8,7 @@
 # interested in using this software in a commercial context, or in
 # purchasing support, please contact the author.
 
-RCS_ID = '$Id: chat_server.py,v 1.5 1998/01/28 21:47:09 rushing Exp $'
+RCS_ID = '$Id$'
 
 import string
 

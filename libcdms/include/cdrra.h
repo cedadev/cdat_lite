@@ -8,7 +8,7 @@
  * Author:      Bob Drach, Lawrence Livermore National Laboratory
  *              drach@llnl.gov
  *
- * Version:     $Id: cdrra.h,v 1.1 1994/11/18 23:42:26 drach Exp $
+ * Version:     $Id$
  *
  * Revision History:
  *

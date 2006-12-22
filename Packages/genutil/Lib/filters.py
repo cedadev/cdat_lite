@@ -66,7 +66,7 @@ def custom1D(x,filter,axis=0):
 
 def smooth121(x,axis=0):
     """
-    Function smooth121(x
+    Function smooth121(x,axis=0)
      
     Description of function:
         Apply a 121 filter to an array over a specified axis 
@@ -81,14 +81,14 @@ def smooth121(x,axis=0):
     
 def runningaverage(x,N,axis=0):
     """
-    Function smooth121(x
+    Function runningaverage(x,N,axis=0)
      
     Description of function:
         Apply a running average of length N to an array over a specified axis 
     Usage:
         smooth = runningaverage(x,12)
     Options:
-    n: length of the running average
+        N: length of the running average
         axisoptions: 'x' | 'y' | 'z' | 't' | '(dimension_name)' | 0 | 1 ... | n 
             default value = 0. You can pass the name of the dimension or index
             (integer value 0...n) over which you want to compute the statistic.

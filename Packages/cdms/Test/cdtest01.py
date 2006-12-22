@@ -69,6 +69,12 @@ if not MA.allclose(u[:], uoutar): markError("Extended write")
 
 out.close()
 
+# Test strides across the partitioned dimension
+try:
+    x = u[0:3:2,0:16:2,0:32:2]
+except:
+    markError("Strides across partitioned dimension")
+
 f.close()
 
 try:

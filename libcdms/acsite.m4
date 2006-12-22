@@ -365,7 +365,7 @@ AC_DEFUN([PC_CHECK_C_HEADER],
     echo "checking that $4 is in $$1 (modify with --with-$3=DIR)"
     AC_CHECK_HEADER($$1/$4, dnl
       [PC_ENSURE(CFLAGS$3, -I$$1)], dnl
-      [$1=.])
+      [$1=])
 ])
 dnl
 dnl Set default directory for FORTRAN include file, and check

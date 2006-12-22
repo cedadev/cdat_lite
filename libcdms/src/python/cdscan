@@ -59,7 +59,17 @@ Options:
     --exclude var,var,...
                    Exclude specified variables. The argument
                    is a comma-separated list of variables containing no blanks.
+                   In contrast to --exclude-file, this skips the variables regardless
+                   of the file(s) in which they are contained, but processes other
+                   variables in the files.
                    Also see --include.
+
+    --exclude-file pattern
+                   Exclude files with a basename matching the regular expression pattern.
+                   In contrast to --exclude, this skips the file entirely. Multiple patterns
+                   may be listed by separating with vertical bars (e.g. abc|def ). Note
+                   that the match is to the initial part of the basename. For example, the
+                   pattern 'st' matches any basename starting with 'st'.
 
     -f file_list:  file containing a list of absolute data file names, one per
                    line. <files> arguments are ignored.
@@ -72,10 +82,21 @@ Options:
                    "hours since xxxx", set the interval delta to 6.  The default value is
                    the difference of the first two timepoints.
 
+    --ignore-open-error:
+                   Ignore open errors. Print a warning and continue.
+
     --include var,var,...
                    Only include specified variables in the output. The argument
                    is a comma-separated list of variables containing no blanks.
                    Also see --exclude.
+
+    --include-file pattern
+                   Only include files with a basename matching the regular expression pattern.
+                   In contrast to --include, this skips files entirely if they do not
+                   match the pattern. Multiple patterns
+                   may be listed by separating with vertical bars (e.g. abc|def ). Note
+                   that the match is to the initial part of the basename. For example, the
+                   pattern 'st' matches any basename starting with 'st'.
 
     -j:		   scan time as a vector dimension. Time values are listed
 		   individually. Turns off the -i option.
@@ -127,6 +148,17 @@ Options:
                    Example: --time-linear '0,1,months since 1980,noleap'
 
                    Note (6) compares this option with [-i] and [-r]
+
+    --var-locate 'var,file_pattern':
+                   Only scan a variable if the basename of the file matches the pattern. This
+                   may be used to resolve duplicate variable errors. var and file_pattern are
+                   separated by a comma, with no blanks.
+                   
+                   var is the name of the variable
+                   file_pattern is a regular expression following the Python re module syntax.e
+
+                   Example: to scan variable ps from files starting with the string 'ps_':
+                     --var-locate 'ps,ps_.*'
 
     -x xmlfile:    XML filename. By default, output is written to standard output.
 
@@ -269,7 +301,7 @@ def combineKeys(dict, typedict, timeIsLinear=0, referenceDelta = None):
                     iind = lookupArray(prevvals, i0)
                     jind = lookupArray(prevvals, i1)
                 if len(values)!=(jind-iind+1):
-                    raise RuntimeError, 'Dimension %s in files %s, %s, is inconsistent'%(name, prevpath, path)
+                    raise RuntimeError, 'Dimension %s in files %s [len(%s)=%d], %s [len(%s)=%d], is inconsistent'%(name, prevpath, name, (jind-iind+1), path, name, len(values))
                 coordToInd[(i0,i1)] = (iind, jind)
                 
                 prevspart, prevepart = partition[-1]
@@ -495,7 +527,7 @@ def main(argv):
     global notrimlat
 
     try:
-        args, lastargs = getopt.getopt(argv[1:],"a:c:d:e:f:hi:jl:m:p:qr:s:t:x:",["include=","exclude=","time-linear=","notrim-lat"])
+        args, lastargs = getopt.getopt(argv[1:],"a:c:d:e:f:hi:jl:m:p:qr:s:t:x:",["include=","include-file=","exclude=","exclude-file=","time-linear=","notrim-lat","var-locate=","ignore-open-error"])
     except getopt.error:
         print sys.exc_value
         print usage
@@ -524,6 +556,10 @@ def main(argv):
     includeList = None
     excludeList = None
     overrideTimeLinear = None
+    varLocate = None
+    ignoreOpenError = False
+    excludePattern = None
+    includePattern = None
     for flag, arg in args:
         if flag=='-a':
             aliasMapFile = arg
@@ -550,6 +586,8 @@ def main(argv):
             if arg[0]=='-':
                 raise RuntimeError, "--exclude option requires an argument"
             excludeList = string.split(arg,',')
+        elif flag=='--exclude-file':
+            excludePattern = arg
         elif flag=='-f':
             readFromFile = 1
             filelistpath = arg
@@ -561,10 +599,14 @@ def main(argv):
             referenceDelta = string.atof(arg)
             timeIsLinear = 1
             timeIsVector = None
+        elif flag=='--ignore-open-error':
+            ignoreOpenError = True
         elif flag=='--include':
             if arg[0]=='-':
                 raise RuntimeError, "--include option requires an argument"
             includeList = string.split(arg,',')
+        elif flag=='--include-file':
+            includePattern = arg
         elif flag=='-j':
             timeIsVector = 1
             timeIsLinear = None
@@ -602,6 +644,11 @@ def main(argv):
             else:
                 tcalendar = None
             overrideTimeLinear = [ttzero,tdelta,tunits,tcalendar]
+        elif flag=='--var-locate':
+            if varLocate is None:
+                varLocate = {}
+            vname, pattern = string.split(arg,',')
+            varLocate[vname]=pattern
         elif flag=='-x':
             writeToStdout = 0
             xmlpath = arg
@@ -849,14 +896,35 @@ def main(argv):
     if verbose:
         print 'Scanning files ...'
 
+    boundsmap = {}                      # boundsmap : varid => timebounds_id
+    boundsdict = {}                     # Same as vardict for time bounds
     for path in fileargs:
         path = string.strip(path)
+
+        # Check if the path is included
+        if includePattern is not None:
+            base = os.path.basename(path)
+            mobj = re.match(includePattern, base)
+            if mobj is None:
+                continue
+
+        # Check if the path is excluded
+        if excludePattern is not None:
+            base = os.path.basename(path)
+            mobj = re.match(excludePattern, base)
+            if mobj is not None:
+                continue
+
         if verbose:
             print path
         try:
             f = cdms.open(path)
         except:
-            raise RuntimeError,'Error opening file '+path
+            if not ignoreOpenError:
+                raise RuntimeError,'Error opening file '+path
+            else:
+                print 'Warning: cannot open file, skipping: %s'%path
+                continue
 
         # Add/modify attributes
         addAttrs(f, extraAttrs)
@@ -884,9 +952,28 @@ def main(argv):
             if verbose:
                 print 'Warning: path %s does not match template %s'%(basepath, templatestr)
 
+        # Find time boundary variables
+        boundsids = []
+        if splitOnTime:
+            tmpdict = {}
+            for axisname in f.axes.keys():
+                axis = f[axisname]
+                if axis.isTime() and hasattr(axis, 'bounds'):
+                    tmpdict[axis.bounds] = 1
+            boundsids = tmpdict.keys()
+
         varnames = f.variables.keys()
         varnames.sort()
         for varname in varnames:
+
+            # If --var-locate is specified for the variable, match the basename before processing
+            if varLocate is not None and varLocate.has_key(varname):
+                varpattern = varLocate[varname]
+                base = os.path.basename(path)
+                mobj = re.match(varpattern, base)
+                if mobj is None:
+                    continue
+
             var = f.variables[varname]
 
             # Reset the variable ID to any specified alias
@@ -940,7 +1027,11 @@ def main(argv):
                     tempdomain.append(axis)
 
             # Create a dictionary entry for the variable if not already there.
-            if not vardict.has_key(var.id):
+            if var.id in boundsids:
+                boundsattrs = copyDict(var.attributes)
+                boundsdict[var.id] = [tempdomain, boundsattrs, var.typecode()]
+                continue                # Don't set a filemap entry until axes are sorted out
+            elif not vardict.has_key(var.id):
                 varattrs = copyDict(var.attributes)
                 if varsuffix is not None or aliasMapFile is not None:
                     varattrs['name_in_file'] = var.name_in_file
@@ -949,9 +1040,10 @@ def main(argv):
                 currentdomain, attrs, tcode = vardict[var.id]
                 if comparedomains(currentdomain, tempdomain):
                     sepname = disambig(var.id, vardict, var.size(), compareVarDictValues, (tempdomain, None))
-                    var.name_in_file = var.id
-                    var.id = sepname
+                    saveid = var.id
+                    varname  = var.id = sepname
                     varattrs = copyDict(var.attributes)
+                    var.name_in_file = varattrs['name_in_file']  = saveid
                     vardict[sepname] = [tempdomain, varattrs, var.typecode()]
 
             # Create a filemap entry for this variable/file, if split on time
@@ -1025,6 +1117,11 @@ def main(argv):
                 filemap[varname].append(tuple(varentry))
             else:
                 filemap[varname] = [tuple(varentry)]
+
+            # Set boundsmap : varid => timebounds_id
+            if splitOnTime and vartime is not None and hasattr(vartime, "bounds") and not boundsmap.has_key(varname):
+                boundsmap[varname] = vartime.bounds
+
         f.close()
 
     # Generate varindex, by combining variable names with
@@ -1119,6 +1216,7 @@ def main(argv):
             axes2.append((copy.copy(vlist1),axis1, name1, partition1, coordToInd1, units1, opartition1, linCoordToInd1, calen1))
 
     # Disambiguate axis names
+    assignedBounds = {}
     for vlist, axis, name, partition, coordToInd, units, opartition, linCoordToInd, calendar in axes2:
         # print vlist, coordToInd
         uniqname = disambig(name, axisdict, len(axis), compareaxes, axis)
@@ -1138,13 +1236,33 @@ def main(argv):
         if axisobj.isTime():
             axisobj.calendar = reverseCalendarMap[calendar]
         # axisobj.reference_partition = str(MA.ravel(MA.array(opartition)))
-        axisdict[uniqname] = axisobj
+        if not axisdict.has_key(uniqname):
+            axisdict[uniqname] = axisobj
         for varname in vlist:
             domain, attributes, tcode = vardict[varname]
             for i in range(len(domain)):
                 item = domain[i]
                 if type(item)==types.StringType and item==name:
                     domain[i] = axisobj
+
+        # Add bounds variables to vardict, varindex
+        if axisobj.isTime():
+            reprVar = vlist[0]              # 'Representative' variable having this time axis
+            if boundsmap.has_key(reprVar):
+                boundsname = boundsmap[reprVar]
+                boundsinfo = boundsdict[boundsname]
+                boundsattrs = boundsinfo[1]
+                if uniqname!=name:
+                    boundsattrs['name_in_file'] = boundsname
+                    boundsname = uniqname+'_bnds'
+                if not assignedBounds.has_key(boundsname):
+                    axisobj.bounds = boundsname
+                    for varids, ranges in varindex:
+                        if reprVar in varids:
+                            varids.append(boundsname)
+                    boundsdomain = (axisobj, boundsinfo[0][1])
+                    vardict[boundsname] = (boundsdomain, boundsinfo[1], boundsinfo[2])
+                    assignedBounds[boundsname] = 1
 
     # Collapse like indices in filemap. For example, transform
     # [x,[[0,10,-,-,file1], [0,10,-,-,file2]]] into
@@ -1187,6 +1305,8 @@ def main(argv):
     illegalvars = []
     for varlist in duplicatevars.keys():
         for varname in varlist:
+            if (excludeList is not None) and (varname in excludeList):
+                continue
             dom, attrs, tcode = vardict[varname]
             for axisobj in dom:
                 if axisobj.isLatitude() or axisobj.isLongitude():
@@ -1200,20 +1320,6 @@ def main(argv):
         for varlist in duplicatevars.keys():
             path1, path2 = duplicatevars[varlist]
             print '\t',varlist,'\t',path1,'\t',path2
-
-    # Check that the bounds attribute is correct. A variable is considered a
-    # bounds variable if:
-    # (1) it is 2-D,
-    # (2) the length of its 2nd dimension is 2, 3, 4, or 5
-    # (3) its ID starts with "bounds_"
-    for key in vardict.keys():
-        dom, attrs, tcode = vardict[key]
-        if (len(dom)==2) and (len(dom[1]) in [2,3,4,5]) and (key[0:7]=="bounds_"):
-            axis = dom[0]
-            if not hasattr(axis,"bounds"):
-                if verbose:
-                    print "Setting %s.bounds = '%s'"%(axis.id, key)
-                axis.bounds = key
 
     # Generate the cdms_filemap attribute
     cdms_filemap = str(cdms_filemap_list)

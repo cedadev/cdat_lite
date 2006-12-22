@@ -8,7 +8,7 @@
  * Author:      Bob Drach, Lawrence Livermore National Laboratory
  *              drach@llnl.gov
  *
- * Version:     $Id: gaussLats.h,v 1.2 1994/10/25 00:59:13 drach Exp $
+ * Version:     $Id$
  *
  * Revision History:
  *

@@ -8,7 +8,7 @@
  * Author:      Bob Drach, Lawrence Livermore National Laboratory
  *              drach@llnl.gov
  *
- * Version:     $Id: fcdTimeConv.c,v 1.2 1996/09/09 18:28:34 drach Exp $
+ * Version:     $Id$
  *
  * Revision History:
  *

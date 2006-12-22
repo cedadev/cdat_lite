@@ -11,7 +11,7 @@
  * Author:      Bob Drach, Lawrence Livermore National Laboratory
  *              drach@llnl.gov
  *
- * Version:     $Id: cdunifgen.c,v 1.4 1995/07/31 17:41:20 drach Exp $
+ * Version:     $Id$
  *
  * Revision History:
  *

@@ -1,5 +1,5 @@
 /*
-     $Id: drscdf.h,v 2.8 1995/10/26 23:22:46 drach Exp $
+     $Id$
      $Log: drscdf.h,v $
  * Revision 2.8  1995/10/26  23:22:46  drach
  * - Added automatic copy of dictionary to/from NSL, NSL version

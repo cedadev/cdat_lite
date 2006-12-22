@@ -8,7 +8,7 @@
  * Author:      Bob Drach, Lawrence Livermore National Laboratory
  *              drach@llnl.gov
  *
- * Version:     $Id: cdunifint.c,v 1.3 1998/07/02 23:40:49 drach Exp $
+ * Version:     $Id$
  *
  * Revision History:
  *
@@ -367,7 +367,7 @@ CuFileType CuGetFileType(const char *controlpath){
 #ifdef cray
 			magic &= 0xffffffff00000000;
 #endif
-#ifdef __alpha
+#if defined(__alpha) || defined(__ia64) || defined(__x86_64__)
 			magic &= 0x00000000ffffffff;
 #endif
 			if(magic==NETCDF_MAGIC_COOKIE){
@@ -381,7 +381,7 @@ CuFileType CuGetFileType(const char *controlpath){
 #ifdef cray
 			magic &= 0xffffffff00000000;
 #endif
-#ifdef __alpha
+#if defined(__alpha) || defined(__ia64) || defined(__x86_64__)
 			magic &= 0x00000000ffffffff;
 #endif
 			if(magic==HDF_MAGIC_COOKIE){

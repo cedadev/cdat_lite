@@ -8,7 +8,7 @@
  * Author:      Bob Drach, Lawrence Livermore National Laboratory
  *              drach@llnl.gov
  *
- * Version:     $Id: cdunifslab.c,v 1.2 1997/12/03 22:22:12 drach Exp $
+ * Version:     $Id$
  *
  * Revision History:
  *

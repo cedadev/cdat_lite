@@ -8,7 +8,7 @@
 # interested in using this software in a commercial context, or in
 # purchasing support, please contact the author.
 
-RCS_ID =  '$Id: unix_user_handler.py,v 1.4 1998/12/21 03:43:19 rushing Exp $'
+RCS_ID =  '$Id$'
 
 # support for `~user/public_html'.
 

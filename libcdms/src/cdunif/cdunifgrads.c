@@ -7,7 +7,7 @@
  *
  * Author:      Mike Fiorino      
  *
- * Version:     $Id: cdunifgrads.c,v 1.1.1.1 1997/12/09 18:57:39 drach Exp $
+ * Version:     $Id$
  *
  * Revision History:
  *

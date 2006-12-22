@@ -1,5 +1,5 @@
 /*
- * $Id: utscan.h,v 1.1.1.1 1995/08/04 20:54:13 steve Exp $
+ * $Id$
  * $__Header$
  *
  * Header-file for the private part of the Unidata units(3) library.

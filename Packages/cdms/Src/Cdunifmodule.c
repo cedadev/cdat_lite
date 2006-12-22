@@ -584,7 +584,7 @@ set_attribute(fileid, varid, attributes, name, value)
     return 0;
   }
   else if (PyString_Check(value)) {
-    if (ncattput(fileid, varid, name, NC_CHAR, PyString_Size(value)+1,
+    if (ncattput(fileid, varid, name, NC_CHAR, PyString_Size(value),
 		 PyString_AsString(value)) == -1) {
       Cdunif_seterror();
       return -1;

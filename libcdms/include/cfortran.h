@@ -117,6 +117,12 @@ only C calling FORTRAN subroutines will work using K&R style.*/
 #if      defined(__alpha) && defined(__unix__)
 #define              DECFortran
 #endif
+#if      defined(__ia64) && defined(__unix__)
+#define              LinuxFortran
+#endif
+#if      defined(__x86_64__) && defined(__unix__)
+#define              LinuxFortran
+#endif
 #if   defined(__convex__)
 #define           CONVEXFortran
 #endif

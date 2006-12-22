@@ -271,7 +271,8 @@ class AbstractCurveGrid(AbstractHorizontalGrid):
         if mask is None:
             mask = Numeric.ones((ni, nj), Numeric.Int32)
         else:
-            mask[:] = 1 - mask
+            tmp = 1 - mask
+            mask[:] = tmp.astype(mask.typecode())
             mask = mask.astype(Numeric.Int32)
         ngrid = ni*nj
         centerLat = copy.copy(lat)

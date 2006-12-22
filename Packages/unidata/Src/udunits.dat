@@ -1,4 +1,4 @@
-# $Id: udunits.dat,v 1.15 2003/08/29 18:31:12 steve Exp $
+# $Id$
 #
 # The first column is the unit name.  The second column indicates whether or
 # not the unit name has a plural form (i.e. with an 's' appended).  

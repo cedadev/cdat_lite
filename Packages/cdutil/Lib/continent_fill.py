@@ -172,28 +172,32 @@ class Gcf:
             print 'Error in continents:',err
 
 if __name__ == '__main__':
-    co=Gcf()
-    fnm='/pcmdi/obs/mo/tas/rnl_ncep/tas.rnl_ncep.ctl'
+    import os,sys,cdutil,vcs,cdms
+    fnm=os.path.join(sys.prefix,'sample_data','clt.nc')
     f=cdms.open(fnm)
-    s=f('tas',0,longitude=(-180.,180.))
+    s=f('clt',0,longitude=(-180.,180.))
     x=vcs.init()
-    b=x.createboxfill('new')
-    b.datawc_x1=-180.
-    b.datawc_x2=180.
-    b.datawc_y1=-90.
-    b.datawc_y2=90.
-
-##     x.plot(s,b,continents=0)
-    co.plot(x)
     iso=x.createisoline('new')
     iso.datawc_x1=-180.
     iso.datawc_x2=180.
     iso.datawc_y1=-90.
     iso.datawc_y2=90.
     t=x.createtemplate('new')
-    t.data.priority=2
+    t.data.priority=1
     t.legend.priority=0
     x.plot(s,t,iso,continents=0)
+    co=cdutil.continent_fill.Gcf()
+    co.line='y'
+    co.line_width=1
+    co.line_color=241
+    co.fill='y'
+    co.fill_color=252
+    co.datawc_x1 = -180.0
+    co.datawc_x2 =  180.0
+    co.datawc_y1 = - 90.0
+    co.datawc_y2 =   90.0
+    co.projection='linear'
+    co.plot(x)
     x.postscript('tmp.ps')
     sys.stdin.readline()
     

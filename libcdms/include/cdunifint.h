@@ -8,7 +8,7 @@
  * Author:      Bob Drach, Lawrence Livermore National Laboratory
  *              drach@llnl.gov
  *
- * Version:     $Id: cdunifint.h,v 1.2 1998/07/02 23:40:47 drach Exp $
+ * Version:     $Id$
  *
  * Revision History:
  *
@@ -91,6 +91,14 @@
 #define NETCDF_MAGIC_COOKIE 0x4344460100000000
 #define HDF_MAGIC_COOKIE 0x0e03130100000000
 #elif defined(__alpha)
+#define DRS_MAGIC_COOKIE 0x5443494420535244
+#define NETCDF_MAGIC_COOKIE 0x0000000001464443
+#define HDF_MAGIC_COOKIE 0x000000000113030e
+#elif defined(__ia64)
+#define DRS_MAGIC_COOKIE 0x5443494420535244
+#define NETCDF_MAGIC_COOKIE 0x0000000001464443
+#define HDF_MAGIC_COOKIE 0x000000000113030e
+#elif defined(__x86_64__)
 #define DRS_MAGIC_COOKIE 0x5443494420535244
 #define NETCDF_MAGIC_COOKIE 0x0000000001464443
 #define HDF_MAGIC_COOKIE 0x000000000113030e

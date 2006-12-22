@@ -35,7 +35,7 @@ def grower(x, y, singleton=0):
             if o!=')':
                txt=txt+o
             else:
-                forder.append(txt)
+                forder.append('(%s)' % txt)
                 prev=0
                 txt=''
         else:
@@ -51,9 +51,9 @@ def grower(x, y, singleton=0):
             if o!=')':
                txt=txt+o
             else:
-                nyorder.append(txt)
+                nyorder.append('(%s)' % txt)
                 if not txt in forder:
-                    forder.append(txt)
+                    forder.append('(%s)' % txt)
                 prev=0
                 txt=''
         else:
@@ -109,10 +109,4 @@ def grower(x, y, singleton=0):
                     newaxes.insert(0,ax)
                     y.setAxisList(newaxes)
     # Figure out the string to reorder x and y
-    order=''
-    for o in forder:
-        if o in ['t','y','z','x']:
-            order=order+o
-        else:
-            order=order+'('+o+')'
-    return x(order=order),y(order=order)
+    return x(order=forder),y(order=forder)

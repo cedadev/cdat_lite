@@ -1,5 +1,7 @@
-import MA,cdms,cdutil,Numeric,MV
-import genutil
+import MA,cdms,Numeric,MV
+#import genutil
+from grower import grower
+import arrayindexing,array_indexing
 
 class StatisticsError (Exception):
     def __init__ (self, args=None):
@@ -172,11 +174,13 @@ def _treat_missing(out,x,max_pct_missing=100.):
     # If fraction of data that is missing is more than the max_pct_missing allows mask point out
     """
 ##     xmask=MA.less_equal((1. - max_pct_missing/100.),(MA.size(x,axis=0)-MA.count(x,axis=0))/float(MA.size(x,axis=0)))
+##     print 'X:',x.shape,MA.size(x,axis=0),MA.count(x,axis=0)
     xmask = MA.less_equal((max_pct_missing/100.),(MA.size(x,axis=0)-MA.count(x,axis=0))/float(MA.size(x,axis=0)))
     # MA.sum ignores missing_data, mask out results where amount of missing_data
     # is over the specified max_pct_missing
 ##     inverse_mask=Numeric.choose(MA.getmaskarray(out),(1.0,0,0)) * xmask
 ##     return MA.masked_where(Numeric.choose(inverse_mask,(1.0,0.0)),out)
+##     print 'TM:',xmask.shape,out.shape
     return MA.masked_where(xmask,out)
     
 def __covariance(x,y,weights=None,centered=1,biased=1):
@@ -505,7 +509,7 @@ def __makeweights(x,w,axes):
     if type(axes)==type(1): tmpaxes=str(axes)
     # First make sure x and w have same dims if w is MV
     if cdms.isVariable(w) and cdms.isVariable(x) and x.shape!=w.shape:
-        x,w=genutil.grower(x,w)
+        x,w=grower(x,w)
     w=cdutil.__check_weightoptions(x, tmpaxes, w)
     if not MA.isarray(w):
         # Ok Krishna returned a list of 1D arrays.... Let's put it together
@@ -590,7 +594,7 @@ def __checker(x,y,w,axes,smally=0):
                 raise StatisticsError,'Error you have '+str(len(x.shape))+' dimensions and try to work on dim:'+str(i)
     else:
         if not y is None:
-            x,y=genutil.grower(x,y)
+            x,y=grower(x,y)
             if x.shape!=y.shape :
                 raise StatisticsError,'Error x and y have different shapes'+str(x.shape)+', '+str(y.shape)
         ax=x.getAxisList()
@@ -602,7 +606,7 @@ def __checker(x,y,w,axes,smally=0):
             for o in worder:
                 if not o in xorder:
                     raise StatisticsError,'Error weights have a dimension that is neither in x or y:'+o
-            x,w=genutil.grower(x,w)
+            x,w=grower(x,w)
             if x.shape!=w.shape:
                 raise StatisticsError,'Error x and weights have different shapes'+str(x.shape)+', '+str(w.shape)
         # Last thing convert the axes input to numbers
@@ -924,6 +928,7 @@ def laggedcovariance(x,y,lag=None,axis=0,centered=1,partial=1,noloop=0,max_pct_m
 
     for k in lags:
         lcov=MA.array(__laggedcovariance(x,y,lag=k,centered=centered,partial=partial))
+        lcov =_treat_missing(lcov,x,max_pct_missing=max_pct_missing)
         sh=list(lcov.shape)
         sh.insert(0,1)
         lcov=MA.resize(lcov,sh)
@@ -932,7 +937,7 @@ def laggedcovariance(x,y,lag=None,axis=0,centered=1,partial=1,noloop=0,max_pct_m
         else:
             lcovs=MA.concatenate((lcovs,lcov),0)
             
-    lcovs=_treat_missing(lcovs,x,max_pct_missing=max_pct_missing)
+    #lcovs=_treat_missing(lcovs,x,max_pct_missing=max_pct_missing)
     if not ax is None:
         newax=cdms.createAxis(lags)
         newax.id='lag'
@@ -995,6 +1000,7 @@ def laggedcorrelation(x,y,lag=None,axis=0,centered=1,partial=1,biased=1,noloop=0
         
     for k in lags:
         lcor=MA.array(__laggedcorrelation(x,y,lag=k,centered=centered,partial=partial,biased=biased))
+        lcor=_treat_missing(lcor,x,max_pct_missing=max_pct_missing)
         sh=list(lcor.shape)
         sh.insert(0,1)
         lcor=MA.resize(lcor,sh)
@@ -1002,7 +1008,6 @@ def laggedcorrelation(x,y,lag=None,axis=0,centered=1,partial=1,biased=1,noloop=0
             lcors=lcor
         else:
             lcors=MA.concatenate((lcors,lcor),0)
-    lcor=_treat_missing(lcor,x,max_pct_missing=max_pct_missing)
     if not ax is None:
         newax=cdms.createAxis(lags)
         newax.id='lag'
@@ -1061,6 +1066,7 @@ def autocovariance(x,lag=None,axis=0,centered=1,partial=1,noloop=0,max_pct_missi
 
     for k in lags:
         acov=MA.array(__autocovariance(x,lag=k,centered=centered,partial=partial))
+        acov=_treat_missing(acov,x,max_pct_missing=max_pct_missing)
         sh=list(acov.shape)
         sh.insert(0,1)
         acov=MA.resize(acov,sh)
@@ -1068,7 +1074,6 @@ def autocovariance(x,lag=None,axis=0,centered=1,partial=1,noloop=0,max_pct_missi
             acovs=acov
         else:
             acovs=MA.concatenate((acovs,acov),0)
-    acovs=_treat_missing(acovs,x,max_pct_missing=max_pct_missing)
     if not ax is None:
         newax=cdms.createAxis(lags)
         newax.id='lag'
@@ -1128,6 +1133,7 @@ def autocorrelation(x,lag=None,axis=0,centered=1,partial=1,biased=1,noloop=0,max
     
     for k in lags:
         acov=MA.array(__autocorrelation(x,lag=k,centered=centered,partial=partial))
+        acov=_treat_missing(acov,x,max_pct_missing=max_pct_missing)
         sh=list(acov.shape)
         sh.insert(0,1)
         acov=MA.resize(acov,sh)
@@ -1135,7 +1141,6 @@ def autocorrelation(x,lag=None,axis=0,centered=1,partial=1,biased=1,noloop=0,max
             acovs=acov
         else:
             acovs=MA.concatenate((acovs,acov),0)
-    acovs=_treat_missing(acovs,x,max_pct_missing=max_pct_missing)
     if not ax is None:
         newax=cdms.createAxis(lags)
         newax.id='lag'
@@ -1491,8 +1496,8 @@ def _percentiles(out,percent):
         ii=Numeric.where(Numeric.equal(ii,ns),ns-1,ii)
 ##         tmp = (p-Ai)/(Aii-Ai)*array_indexing.extract(out,ii) + \
 ##              (Aii-p)/(Aii-Ai)*array_indexing.extract(out,i)
-        tmp = (p-Ai)/(Aii-Ai)*genutil.arrayindexing.get(out,ii) + \
-             (Aii-p)/(Aii-Ai)*genutil.arrayindexing.get(out,i)
+        tmp = (p-Ai)/(Aii-Ai)*arrayindexing.get(out,ii) + \
+             (Aii-p)/(Aii-Ai)*arrayindexing.get(out,i)
         try:
             sh=list(tmp.shape)
             sh.insert(0,1)
@@ -1588,7 +1593,7 @@ def rank(x,axis=0):
 
     # Get the indices
 ##     print 'Indices are:',a0,x
-    b=genutil.array_indexing.rank(b,a0)
+    b=array_indexing.rank(b,a0)
     m=x.mask()
     if not m is None:
         b=MV.masked_where(m,b)
@@ -1596,10 +1601,10 @@ def rank(x,axis=0):
         b=MV.array(b)
     n=MV.count(b,0)
     n.setAxisList(b.getAxisList()[1:])
-    b,n=genutil.grower(b,n)
+    b,n=grower(b,n)
     b=100.*b/(n-1)
 
-    print 'Axis:',axis
+##     print 'Axis:',axis
     # Now reorders everything
     if not ax is None:
         # First set the unchanged axes

@@ -8,7 +8,7 @@
  * Author:      Bob Drach, Lawrence Livermore National Laboratory
  *              drach@llnl.gov
  *
- * Version:     $Id: cdunifdrs.c,v 1.14 1997/12/03 22:22:11 drach Exp $
+ * Version:     $Id$
  *
  * Revision History:
  *
@@ -167,7 +167,7 @@ int cuopenread_drs(const char* controlpath, const char* datapath){
 			var->datatype = CuFloat;
 			break;
 		  case IDRS_I4:
-#if defined(__alpha)
+#if defined(__alpha) || defined(__ia64) || defined(__x86_64__)
 			var->datatype = CuInt;
 			break;
 #endif

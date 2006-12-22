@@ -247,6 +247,21 @@ class DatasetVariable(AbstractVariable):
             filename = getPathFromTemplate(template,matchnames)
         return filename
 
+    def getPartition(self, axis):
+        """Get the partition attribute for this variable, axis.
+        axis is either a time or level axis. If cdms_filemap is being used,
+        get the partition from the _varpart_ attribute, otherwise (for templating) use
+        axis.partition.
+        """
+        if hasattr(self.parent,'cdms_filemap'):
+            if axis.isTime():
+                partition = self._varpart_[0]
+            else:
+                partition = self._varpart_[1]
+        else:                           # Template method
+            partition = axis.partition
+        return partition
+
     def expertPaths (self, slist):
         """ expertPaths(self, slicelist)
         takes a list of slices,
@@ -318,7 +333,7 @@ class DatasetVariable(AbstractVariable):
             # intersect the slice and partition for that axis
             slice1 = slicelist[npart1]
             (axis,startelem,length,true_length) = self.domain[npart1]
-            partition = slicePartition(slice1,axis.partition)
+            partition = slicePartition(slice1, self.getPartition(axis))
             if partition==[]:
                 return (1, (npart1,), None)
 
@@ -335,8 +350,12 @@ class DatasetVariable(AbstractVariable):
                 if prevhigh<low:
                     missing_interval = (prevhigh,low)
                     missing_slice = sliceIntersect(slice1, missing_interval)
-                    slicelist[npart1] = missing_slice
-                    resultlist.append((None,copy.copy(slicelist)))
+
+                    # Note: if the slice has a stride>1, it might not intersect,
+                    # so don't interpose missing data in this case.
+                    if missing_slice is not None:
+                        slicelist[npart1] = missing_slice
+                        resultlist.append((None,copy.copy(slicelist)))
                 prevhigh = interval[1]
 
                 # generate the filename
@@ -361,8 +380,8 @@ class DatasetVariable(AbstractVariable):
             slice2 = slicelist[npart2]
             (axis1,startelem1,length1,true_length1) = self.domain[npart1]
             (axis2,startelem2,length2,true_length2) = self.domain[npart2]
-            partition1 = slicePartition(slice1,axis1.partition)
-            partition2 = slicePartition(slice2,axis2.partition)
+            partition1 = slicePartition(slice1, self.getPartition(axis1))
+            partition2 = slicePartition(slice2, self.getPartition(axis2))
             if partition1==[] or partition2==[]:
                 return (2, (npart1,npart2), None)
 
@@ -379,8 +398,9 @@ class DatasetVariable(AbstractVariable):
                 if prevhigh1<low:
                     missing_interval = (prevhigh1,low)
                     missing_slice = sliceIntersect(slice1, missing_interval)
-                    slicelist[npart1] = missing_slice
-                    resultlist.append( [(None,copy.copy(slicelist))] )
+                    if missing_slice is not None:
+                        slicelist[npart1] = missing_slice
+                        resultlist.append( [(None,copy.copy(slicelist))] )
                 prevhigh1 = interval1[1]
 
                 # generate matchnames
@@ -406,8 +426,9 @@ class DatasetVariable(AbstractVariable):
                     if prevhigh2<low:
                         missing_interval = (prevhigh2,low)
                         missing_slice = sliceIntersect(slice1, missing_interval)
-                        slicelist[npart2] = missing_slice
-                        chunklist.append((None,copy.copy(slicelist)))
+                        if missing_slice is not None:
+                            slicelist[npart2] = missing_slice
+                            chunklist.append((None,copy.copy(slicelist)))
                     prevhigh2 = interval2[1]
 
                     # generate the filename

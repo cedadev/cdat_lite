@@ -326,10 +326,10 @@ class TimeSlicer:
         self.prev=0
         self.title=''
         
-    def get(self,slab,slicerarg=None,criteriaarg=None,statusbar=None):
-        return _get(self,slab,slicerarg,criteriaarg,statusbar)
+    def get(self,slab,slicerarg=None,criteriaarg=None,statusbar=None,weights=False):
+        return _get(self,slab,slicerarg,criteriaarg,statusbar,weights)
     
-    def _get(self,slab,slicerarg=None,criteriaarg=None,statusbar=None):
+    def _get(self,slab,slicerarg=None,criteriaarg=None,statusbar=None,weights=False):
         '''
     Returns the slices wanted, appropriately masked
        Input:
@@ -361,8 +361,9 @@ class TimeSlicer:
         # Check we have something
         if slices==[] : raise 'Error Slicer return nothing for: '+str(slicerarg)
         # How many slices ?
-        out=self.average(slab,slices,bounds,norm,criteriaarg,statusbar)
-            
+        out=self.average(slab,slices,bounds,norm,criteriaarg,statusbar,weights=weights)
+        if weights:
+            out,w = out
         # Put the dimensions
         out=cdms.createVariable(out,id=slab.id,copy=0)
         for i in range(1,len(slab.shape)):
@@ -387,8 +388,15 @@ class TimeSlicer:
         t.units=tim.units
         t.setCalendar(tim.getCalendar())
         out.setAxis(0,t)
+        if weights:
+##             print out.shape,w.shape
+            w=MV.array(w,id='weights')
+            w.setAxisList(out.getAxisList())
         if out.getOrder(ids=1)!=initialorder:
-            return out(order=initialorder)
+            out = out(order=initialorder)
+            w = w(order=initialorder)
+        if weights:
+            return out,w
         else:
             return out
             
@@ -432,7 +440,7 @@ class TimeSlicer:
             return out
 
 
-    def average(self,slab,slices,bounds,norm,criteriaarg=None,statusbar=None):
+    def average(self,slab,slices,bounds,norm,criteriaarg=None,statusbar=None,weights=False):
         '''
     Return the average of the result of slicer
        Input:
@@ -447,7 +455,8 @@ class TimeSlicer:
         n=len(slices)
         sh=list(slab.shape)
         sh[0]=n
-        out=MA.zeros(sh,typecode=MA.Float)
+        out  = MA.zeros(sh,typecode=MA.Float)
+        wout = MA.ones(sh,typecode=MA.Float)
         for i in range(n):
             self.statusbar1(i,n,statusbar)
             sub=slices[i]
@@ -456,23 +465,25 @@ class TimeSlicer:
             subb=bounds[i]
             nrm=norm[i][0]
 ##             print sub,subb,nrm,'are subb, nrm',len(sub)
-            if len(sub)==1:
-                out[i]=slab[sub[0]]
-                if not criteriaarg is None:
-                    w=float(subb[0][1]-subb[0][0])/nrm
-                    msk=msk*w
-            else:
-                for j in range(len(sub)):
-                    w=float(subb[j][1]-subb[j][0])/nrm
-                    m=slab[sub[j]].mask()
-                    if not m is None:
-                        msk[j]=msk[j]*(1.-m.astype(MV.Float))*w
-                    else:
-                        msk[j]=msk[j]*w
+##             if len(sub)==1:
+##                 out[i]=slab[sub[0]]
+##                 w=float(subb[0][1]-subb[0][0])/nrm
+##                 msk=msk*w
+##             else:
+            for j in range(len(sub)):
+                w=float(subb[j][1]-subb[j][0])/nrm
+##                 print j,w
+                m=slab[sub[j]].mask()
+                if m is not None:
+                    msk[j]=msk[j]*(1.-m.astype(MV.Float))*w
+                else:
+                    msk[j]=msk[j]*w
 ##                 print msk.shape,slab[sub[0]:sub[-1]+1].shape
                 out[i]=MA.sum(slab[sub[0]:sub[-1]+1]*msk,axis=0)
-                out[i]=out[i]/MA.sum(msk,axis=0)
-            if not criteriaarg is None:
+                wout[i]=MA.sum(msk,axis=0)
+                out[i]=out[i]/wout[i]
+                
+            if criteriaarg is not None:
                 msk=cdms.asVariable(msk)
                 ax=msk.getAxis(0)
                 b=Numeric.array(bounds[i])
@@ -480,9 +491,10 @@ class TimeSlicer:
                 msk.setAxis(0,ax)
                 out[i]=self.criteria(out[i],msk,[norm[i][1],norm[i][1]+norm[i][0],],criteriaarg)
         self.statusbar2(statusbar)
-        return out
-
-
+        if weights:
+            return out,wout
+        else:
+            return out
     
     def statusbar1(self,i,n,statusbar):
         if not statusbar is None and n!=1:
@@ -1202,27 +1214,23 @@ class Seasons(ASeason):
             v2=cdtime.reltime(months[-1],'months since 0').torel('days since 0',timecalendar)
             vals[i]=float(v1.value+v2.value)/2.
             bnds[i]=[v1.value,v2.value]
-            tmp=self._get(slab,self.seasons[i],criteriaarg,statusbar=statusbar)
-            if not criteriaargclim is None:
-                tmp2=tmp.mask().astype(MV.Float)
-                if tmp2 is None:
-                    tmp2=Numeric.ones(tmp.shape,typecode=Numeric.Float)
-                else:
-                    tmp2=1.-tmp2
-                tim=tmp.getTime()
-                bnd=tim.getBounds()
-                tot=0
-                for j in range(len(bnd)):
-                    w=float(bnd[j][1]-bnd[j][0])
-                    tot=tot+w
-                    tmp2[j]=tmp2[j]*w
-                tmp2=tmp2/tot
-                if not cdms.isVariable(tmp2): tmp2=cdms.asVariable(tmp2)
-                tmp2.setAxis(0,tim)
-                tmp=MA.average(tmp)
+            tmp,w=self._get(slab,self.seasons[i],criteriaarg,statusbar=statusbar,weights=True)
+            tmp2=tmp.mask()
+            if tmp2 is None:
+                tmp2=Numeric.ones(tmp.shape,typecode=Numeric.Float)*w
+            else:
+                tmp2=tmp2.astype(MV.Float)
+                tmp2=(1.-tmp2)*w
+            tim=tmp.getTime()
+            bnd=tim.getBounds()
+            tot=0
+            if not cdms.isVariable(tmp2):
+                tmp2=cdms.asVariable(tmp2)
+            tmp2.setAxis(0,tim)
+            if  criteriaargclim is not None:
                 tmp=self.criteria(tmp,tmp2,bnds[i],criteriaargclim)
             else:
-                tmp=MA.average(tmp)                
+                tmp=MA.average(tmp,weights=tmp2)                
             s[i]=tmp
         if not statusbar is None and len(self.seasons)!=1 :
             if type(statusbar) in [type([]),type(())]: statusbar.pop(0)

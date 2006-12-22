@@ -15,7 +15,7 @@
  * Author:      Bob Drach, Lawrence Livermore National Laboratory
  *              drach@llnl.gov
  *
- * Version:     $Id: cdRegTrfm.c,v 1.2 1996/02/21 23:56:46 drach Exp $
+ * Version:     $Id$
  *
  * Revision History:
  *

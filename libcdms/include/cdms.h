@@ -8,7 +8,7 @@
  * Author:      Bob Drach, Lawrence Livermore National Laboratory
  *              drach@llnl.gov
  *
- * Version:     $Id: cdms.h,v 1.1.1.1 1997/12/09 18:57:39 drach Exp $
+ * Version:     $Id$
  *
  * Revision History:
  *

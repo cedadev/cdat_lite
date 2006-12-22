@@ -8,7 +8,7 @@
 # interested in using this software in a commercial context, or in
 # purchasing support, please contact the author.
 
-RCS_ID = '$Id: default_handler.py,v 1.13 1999/02/10 05:35:56 rushing Exp $'
+RCS_ID = '$Id$'
 
 # standard python modules
 import os

@@ -1493,7 +1493,10 @@ static PyObject *rgd_rgdarea(PyObject *self, PyObject *args)
 
     /* ------------------------------------------------------- */
 
-    return Py_BuildValue(("O"), object_amskout);
+    /* NB! Don't use Py_BuildValue here, since it increments the reference count!
+       PyArray_FromDims has already incremented it. */
+    return PyArray_Return(object_amskout);
+    
 }
 
 

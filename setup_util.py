@@ -1,12 +1,7 @@
 #!/usr/bin/env python
-"""
-Build minimal CDAT and install into a parallel directory.
+"""Support module for the cdat_lite setup.py script.
 
-usage: python setup.py install
 
-This script compiles libcdms.a and and a few essential CDAT packages
-then installs them.  If you want to install it locally to your home
-directory use virtual_python.py.
 """
 
 #--------------------------------------------------------------------------------
@@ -16,10 +11,9 @@ directory use virtual_python.py.
 import sys, os
 from glob import glob
 
+from setuptools import setup, Extension
 from distutils.command.build_ext import build_ext as build_ext_orig
 from distutils.cmd import Command
-
-netcdf_version = '3.5.1'
 
 
 class ConfigError(Exception):
@@ -27,66 +21,72 @@ class ConfigError(Exception):
     pass
 
 
+def makeExtension(name, package_dir=None, sources=None,
+                  include_dirs=None, library_dirs=None):
+    """Convenience function for building extensions from the Packages directory.
+    """
+
+    if not package_dir:
+        package_dir = name
+    if not sources:
+        sources = glob('Packages/%s/Src/*.c' % package_dir)
+    if not include_dirs:
+        include_dirs = ['Packages/%s/Include' % package_dir]
+    if not library_dirs:
+        library_dirs = ['Packages/%s/Lib' % package_dir]
+
+    e = Extension(name, sources,
+                  include_dirs=include_dirs,
+                  library_dirs=library_dirs)
+
+    return e
+
+
 class build_ext(build_ext_orig):
     """
-    Run subcommands first.
+    Add distribution specific search paths and build libcdms first.
     """
 
-    def run(self):
-        for cmd_name in self.get_sub_commands():
-            self.run_command(cmd_name)
-        build_ext_orig.run(self)
-
-    sub_commands = build_ext_orig.sub_commands + [('build_cdms', None)]
+    netcdf_version = '3.5.1'
 
 
-class build_cdms(Command):
-
-    description = 'build libcdms'
-    user_options = [
-        ('build-base=', 'b',
-         "base directory for build library"),
-        ('build-lib=', None,
-         "build directory for all distribution"),
-        ]
-
-    boolean_options = ['debug', 'force']
-    
-    def initialize_options(self):
-        self.build_base = None
-        self.build_lib = None
-        self.debug = 0
-        self.force = 0
 
     def finalize_options(self):
+        """Append NetCDF and libcdms libraries and includes.
+        """
 
-        self.set_undefined_options('build',
-                                   ('build_base', 'build_base'),
-                                   ('build_lib', 'build_lib'),
-                                   ('debug', 'debug'),
-                                   ('force', 'force'))
+        build_ext_orig.finalize_options(self)        
 
-        # Add numeric and netcdf header directories
+        # Non-option attributes used during run()
+        self.build_base = self.distribution.command_obj['build'].build_base
+        self.build_lib = self.distribution.command_obj['build'].build_lib
         self.netcdf_incdir = os.path.abspath('%s/netcdf-install/include' % self.build_base)
         self.netcdf_libdir = os.path.abspath('%s/netcdf-install/lib' % self.build_base)
-        self.include_dirs = [findNumericHeaders(), self.netcdf_incdir]
-        self.library_dirs = [self.netcdf_libdir]
 
+        # Option attributes
+        self.include_dirs += [self.findNumericHeaders(), self.netcdf_incdir,
+                              'libcdms/include']
+        self.library_dirs += [self.netcdf_libdir, 'libcdms/lib']
+        self.libraries += ['cdms', 'netcdf']
 
     def run(self):
+
         self._buildNetcdf()
         self._buildLibcdms()
 
+        build_ext_orig.run(self)
+
+
     def _buildNetcdf(self):
         """Build the netcdf libraries."""
-        if not os.path.exists('exsrc/netcdf-%s' % netcdf_version):
+        if not os.path.exists('exsrc/netcdf-%s' % self.netcdf_version):
             self._system('cd exsrc; tar zxf netcdf.tar.gz')
-        if not os.path.exists('exsrc/netcdf-%s/src/config.log' % netcdf_version):
+        if not os.path.exists('exsrc/netcdf-%s/src/config.log' % self.netcdf_version):
             self._system('cd exsrc/netcdf-%s/src; CFLAGS=-fPIC ./configure --prefix=%s/netcdf-install' %
-                         (netcdf_version, os.path.abspath(self.build_base)))
+                         (self.netcdf_version, os.path.abspath(self.build_base)))
         if not os.path.exists('%s/netcdf-install' % self.build_base):
             os.mkdir('%s/netcdf-install' % self.build_base)
-        self._system('cd exsrc/netcdf-%s/src; make install' % (netcdf_version))
+        self._system('cd exsrc/netcdf-%s/src; make install' % (self.netcdf_version))
 
         if self.dry_run:
             return
@@ -113,7 +113,7 @@ class build_cdms(Command):
 
         if not os.path.exists('libcdms/Makefile'):
             self._system('cd libcdms ; '
-                         'CFLAGS="-fPIC -g" ./configure --disable-drs --disable-hdf --disable-dods '
+                         'CFLAGS="-fPIC" ./configure --disable-drs --disable-hdf --disable-dods '
                          '--disable-ql --with-ncinc=%s --with-ncincf=%s --with-nclib=%s'
                          % (self.netcdf_incdir, self.netcdf_incdir, self.netcdf_libdir))
 
@@ -133,39 +133,23 @@ class build_cdms(Command):
 
 
 
-def findNumericHeaders():
-    """We may or may not have the Numeric_headers module available.
-    """
+    def findNumericHeaders(self):
+        """We may or may not have the Numeric_headers module available.
+        """
 
-    try:
-        import Numeric
-    except ImportError:
-        raise ConfigError, "Numeric is not installed."
+        try:
+            import Numeric
+        except ImportError:
+            raise ConfigError, "Numeric is not installed."
 
-    try:
-        from Numeric_headers import get_numeric_include
-        return get_numeric_include()
-    except ImportError:
-        pass
+        try:
+            from Numeric_headers import get_numeric_include
+            return get_numeric_include()
+        except ImportError:
+            pass
 
-    sysinclude = sys.prefix+'/include/python%d.%d' % sys.version_info[:2]
-    if os.path.exists(os.path.join(sysinclude, 'Numeric')):
-        return sysinclude
+        sysinclude = sys.prefix+'/include/python%d.%d' % sys.version_info[:2]
+        if os.path.exists(os.path.join(sysinclude, 'Numeric')):
+            return sysinclude
 
-    raise ConfigError, "Cannot find Numeric header files."
-
-class DelayedObject(object):
-    """This class wraps a callable, delaying evaluation until it's representation
-    is requested.
-
-    We use this to delay looking for Numeric headers until they have been installed.
-    """
-
-    def __init__(self, obj):
-        self._obj = obj
-
-    def __repr__(self):
-        return str(self._obj())
-
-numericHeaders = DelayedObject(findNumericHeaders)
-netcdfHome = os.path.abspath('build/netcdf-install')
+        raise ConfigError, "Cannot find Numeric header files."

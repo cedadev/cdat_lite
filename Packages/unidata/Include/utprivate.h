@@ -1,5 +1,5 @@
 /*
- * $Id: utprivate.h,v 1.1.1.1 1995/08/04 20:54:13 steve Exp $
+ * $Id$
  *
  * Copyright (C) 1991,1995 UCAR/Unidata
  *

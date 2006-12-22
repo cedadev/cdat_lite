@@ -282,6 +282,9 @@ int cudiminq_hdf(CuFile* file, int dimidx, char* dimname, char* dimunits, CuType
 	if(found){
                 sds_id = SDselect(cdfid, dimvarid);
 
+		/* Set the length of an unlimited dimension. */
+		if (len==0 && length) *length = dim_sizes[0];
+
         	/* Find the data set attribute name index. */
         	attr_index = SDfindattr(sds_id, "units");
 

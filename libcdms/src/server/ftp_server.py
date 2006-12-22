@@ -8,7 +8,7 @@
 # If you are interested in using this software in a commercial context,
 # or in purchasing support, please contact the author.
 
-RCS_ID =  '$Id: ftp_server.py,v 2.39 1999/11/19 09:25:34 rushing Exp $'
+RCS_ID =  '$Id$'
 
 # An extensible, configurable, asynchronous FTP server.
 # 

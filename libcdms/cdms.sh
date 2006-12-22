@@ -13,7 +13,12 @@ else
 fi
 export FC
 if (test "${U}" = "Darwin") then
-  export CPPFLAGS="-Df2cFortran"
+  CDMSARCH=`uname -m`
+  if (test "${CDMSARCH}" = "i386") then
+     export CPPFLAGS="-Df2cFortran -DBYTESWAP"
+  else
+     export CPPFLAGS="-Df2cFortran"
+  fi 
 fi
 if (test "${U}" = "FreeBSD") then
   export CPPFLAGS="-Df2cFortran"
@@ -24,7 +29,11 @@ fi
 # Define compilation flags for itanium based NEC TX-7 (and gcc)
 CDMSARCH=`uname -m`
 if (test "${CDMSARCH}" = "ia64") then
-  export CFLAGS="$CFLAGS -fpic -D__alpha"
+  export CFLAGS="$CFLAGS -Bshareable -fPIC -D__ia64"
+  #export CFLAGS="$CFLAGS -fpic -D__alpha"
+fi
+if (test "${CDMSARCH}" = "x86_64") then
+  export CC="gcc -fPIC -D__x86_64__"
 fi
 target="cddrs cdunif db_util cduniftest"
 if (test $# -eq 0) then 

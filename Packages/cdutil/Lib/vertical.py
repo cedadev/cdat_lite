@@ -191,8 +191,10 @@ def logLinearInterpolation(A,P,levels=[100000, 92500, 85000, 70000, 60000, 50000
         t[ilev]=tl.astype(MV.Float32)
         
     ax=A.getAxisList()
+    autobnds=cdms.getAutoBounds()
     cdms.setAutoBounds('off')
     lvl=cdms.createAxis(MV.array(levels).filled())
+    cdms.setAutoBounds(autobnds)
     try:
         lvl.units=P.units
     except:

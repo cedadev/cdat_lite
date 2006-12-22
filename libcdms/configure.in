@@ -128,15 +128,11 @@ if test "X$ENABLE_HDF" = "Xyes"; then
   esac
 PC_CHECK_C_HEADER(HDFINC,/usr/local/include,[hdfinc],$HDF_HEADER_OPTIONS, dnl
   [--with-hdfinc=DIR       hdf.h is in DIR (default [HDFINC])])
-else
-  HDFINC=.
 fi
 dnl ----------------------------------------------------------------------
 if test "X$ENABLE_DRS" = "Xyes"; then
   PC_CHECK_C_HEADER(DRSINC,/usr/local/include,[drsinc],drscdf.h, dnl
   [--with-drsinc=DIR       drscdf.h is in DIR (default [DRSINC])])
-else
-  DRSINC=.
 fi
 
 dnl ----------------------------------------------------------------------
@@ -239,6 +235,8 @@ dnl Checks for library functions.
 
 dnl ----------------------------------------------------------------------
 dnl Set flags for CDMS compilation and linking
+AC_SYS_LARGEFILE
+
 GRADS_CRAY=0
 GRADS_BYTEORDER=1
 GRADS_IEEE2CRAY_OBJECT=

@@ -1,5 +1,5 @@
 /*
- * $Id: utlib.c,v 1.19 2003/08/29 18:37:21 steve Exp $
+ * $Id$
  *
  * Support functions for the units(3) library.
  */

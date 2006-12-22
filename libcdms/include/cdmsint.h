@@ -8,7 +8,7 @@
  * Author:      Bob Drach, Lawrence Livermore National Laboratory
  *              drach@llnl.gov
  *
- * Version:     $Id: cdmsint.h,v 1.1.1.1 1997/12/09 18:57:39 drach Exp $
+ * Version:     $Id$
  *
  * Revision History:
  *
@@ -57,7 +57,7 @@
 #define cdSetLong(vp,val) {long *lp; lp=(long*)(vp); *lp=(val);}
 #define cdSetFloat(vp,val) {float *fp; fp = (float *)(vp); *fp=(val);}
 #define cdSetDouble(vp,val) {double *dp; dp=(double*)(vp); *dp=(val);}
-#if !defined(sgi) && !defined(__alpha)
+#if !defined(sgi) && !defined(__alpha) && !defined(__x86_64__) && !defined(__ia64)
 #define cdSetLongDouble(vp,val) {long double *ldp; ldp=(long double*)(vp); *ldp=(val);}
 #endif
 #define cdSetCharTime(vp,val) {char *cp; cp=(char*)(vp); strncpy(cp,(val),CD_MAX_CHARTIME); cp[CD_MAX_CHARTIME-1]='\0';}

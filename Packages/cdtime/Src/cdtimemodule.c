@@ -8,7 +8,7 @@
  * Author:      Bob Drach, Lawrence Livermore National Laboratory
  *              drach@llnl.gov
  *
- * Version:     $Id: cdtimemodule.c,v 1.3 1998/07/09 22:55:25 drach Exp $
+ * Version:     $Id$
  *
  * Revision History:
  *

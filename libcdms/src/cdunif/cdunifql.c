@@ -14299,7 +14299,7 @@ void pql_read_wrt( var_pql_read *rd,    /* pql read */
 
               m = att->length;
               if( typ == NC_CHAR )
-                 m = 1 + strlen( att->values );
+                 m = strlen( att->values );
 
               k = ncattput( ncid, var_id[i], att->name, typ, m, 
                             att->values );
@@ -14332,7 +14332,7 @@ void pql_read_wrt( var_pql_read *rd,    /* pql read */
 
         m = att->length;
         if( typ == NC_CHAR )
-           m = 1 + strlen( att->values );
+           m = strlen( att->values );
 
         k = ncattput( ncid, var_id[n], att->name, typ,
                       m, att->values );
@@ -23868,7 +23868,7 @@ void wrt_ds_to_netcdf( cdDset_new *dset,  /* dataset struct */
 
         m = att->length;
         if( typ == NC_CHAR )
-           m = 1 + strlen( att->values );
+           m = strlen( att->values );
 
         k = ncattput( ncid, NC_GLOBAL, att->name, typ, m,
                       att->values );
@@ -23927,7 +23927,7 @@ void wrt_ds_to_netcdf( cdDset_new *dset,  /* dataset struct */
 
               m = att->length;
               if( typ == NC_CHAR )
-                 m = 1 + strlen( att->values );
+                 m = strlen( att->values );
 
               k = ncattput( ncid, var_id[i], att->name, typ, m, 
                             att->values );
@@ -24004,7 +24004,7 @@ void wrt_ds_to_netcdf( cdDset_new *dset,  /* dataset struct */
 
            m = att->length;
            if( typ == NC_CHAR )
-              m = 1 + strlen( att->values );
+              m = strlen( att->values );
 
            k = ncattput( ncid, var_id[i], att->name, typ,
                          m, att->values );
