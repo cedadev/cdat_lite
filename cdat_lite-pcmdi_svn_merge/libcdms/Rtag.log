@@ -1,0 +1,104 @@
+-------------------
+        Version: V1_10, Date: Wed Dec  3 14:38:13 PST 1997, Module: cdms, User: drach
+-------------------
+- In cdunifdrs.c, dimensions which are reversed or subsetted wrt a
+  coordinate dimension are now treated as local.
+- Added cdDimGetDouble to cdmsslab.c
+- Fixed wraparound, reading wraparound dimensions in cdmsslab.c
+- Added cdDimGetDouble
+-------------------
+        Version: V1_9, Date: Mon Nov 24 09:32:35 PST 1997, Module: cdms, User: drach
+-------------------
+- Added QL package to cdunif
+- Added NdimIntersect function to CDMS slab routines
+-------------------
+        Version: V1_8, Date: Mon Nov 10 11:26:21 PST 1997, Module: cdms, User: drach
+-------------------
+- Added cuvargets to cdunif, cdSlabRead to cdms
+-------------------
+        Version: V1_7, Date: Fri Oct 24 11:26:06 PDT 1997, Module: cdms, User: drach
+-------------------
+- Cache netCDF unlimited dimensions
+- Consistent with GrADS src170
+-------------------
+        Version: V1_6_2, Date: Fri Sep 26 14:52:49 PDT 1997, Module: cdms, User: drach
+-------------------
+- Added caching for netCDF unlimited dimension
+- Added cddrs double precision routines getedimD, getcdimD,
+  getrge2D (currently untested)
+- Fixed fouled up cddrs includes
+- Myriad GrADS changes
+-------------------
+        Version: V1_6, Date: Mon Jan  6 10:54:21 PST 1997, Module: cdms, User: drach
+-------------------
+Added HDF driver to cdunif
+-------------------
+        Version: V1_5_2, Date: Thu Oct 31 16:42:56 PST 1996, Module: cdms, User: drach
+-------------------
+- Cleaned up error returns in cw_geterr
+-------------------
+        Version: V1_5, Date: Mon Sep  9 11:33:52 PDT 1996, Module: cdms, User: drach
+-------------------
+- GrADS/GRIB interface works on all platforms, supports
+-    platform-independent gribmap
+- Recursive make
+- Added autoconfiguration, removed old Makefiles
+-------------------
+        Version: V1_4_2, Date: Wed Apr 10 12:24:35 PDT 1996, Module: cdms, User: drach
+-------------------
+- cleaned up Sun Makefiles
+-------------------
+        Version: V1_4_2, Date: Thu Apr  4 10:39:37 PST 1996, Module: cdms, User: drach
+-------------------
+- Added FORTRAN interface for time functions
+- Added CDMS API open, lookup, inquiry, and internal functions
+-------------------
+        Version: V1_4, Date: Wed Mar  6 10:05:23 PST 1996, Module: cdms, User: drach
+-------------------
+- Restructured cdms.h in preparation for CDML, API development
+- Moved portions of cdms.h to cdmsint.h
+- Ported cdunif, cddrs to IBM, DEC Alpha, Cray
+- Rewrote time routines: cdTimeConv.c overlays timeArith.c, timeConv.c
+- Added seconds, Julian time to timeArith.c, timeConv.c
+- Added int datatype
+- Modified grads to return longitude, latitude, level instead of x,y,z
+- Modified grads to return relative time units
+- Translated cdunif sort routine to C (cdsort.c)
+- Miscellaneous bug fixes
+-------------------
+        Version: V1_3_3, Date: Wed Jul 12 18:59:03 PDT 1995, Module: cdms, User: drach
+-------------------
+- Added recursive makes on SGI
+-------------------
+        Version: V1_3_2, Date: Wed Jul 12 17:52:12 PDT 1995, Module: cdms, User: drach
+-------------------
+- Added recursive Makefiles for Solaris version
+-------------------
+        Version: V1_3, Date: Wed Jul 12 15:26:49 PDT 1995, Module: cdms, User: drach
+-------------------
+- Ported to SGI: no long double type on SGI platforms
+- Fixed GrADS cdunif file open errors
+- Added cw_get_fileid function, to get cdunif file ID
+-------------------
+        Version: V1_2, Date: Mon Jun 26 11:04:02 PDT 1995, Module: cdms, User: drach
+-------------------
+Miscellaneous bug fixes.
+-------------------
+        Version: V1_1_4, Date: Mon Jun 12 14:59:03 PDT 1995, Module: cdms, User: drach
+-------------------
+- cddrs: extended string lengths, extended dimension types
+- cdunif: handle null return arguments in netCDF correctly
+-------------------
+        Version: V1_1_3, Date: Thu Mar 30 22:55:43 PST 1995, Module: cdms, User: drach
+-------------------
+Ported to HP
+-------------------
+        Version: V1_1_2, Date: Thu Mar 30 21:34:51 PST 1995, Module: cdms, User: drach
+-------------------
+Installation fixes
+-------------------
+        Version: V1_1, Date: Thu Mar 30 17:03:53 PST 1995, Module: cdms, User: drach
+-------------------
+Initial version for export - netCDF and GrADS modules have not been thoroughly tested.
+-----------
+
