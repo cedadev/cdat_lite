@@ -64,7 +64,7 @@ linkScripts()
 
 #------------------------------------------------------------------------------
     
-setup(name='cdat-lite',
+setup(name='cdat_lite',
       description="Climate Data Analysis tools, core components",
       long_description=long_description,
       version='%s-%s' % (cdat_release, cdat_lite_version),
