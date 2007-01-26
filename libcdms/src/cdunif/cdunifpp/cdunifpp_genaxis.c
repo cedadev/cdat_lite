@@ -203,10 +203,20 @@ PProtmap *pp_genaxis_rotmap(const PPgenaxis *axis)
     getregaxis(axis,raxis);
     rotmap=raxis->rotmap;
     break; /*notreached*/
+  case xsaxis_type:
+    /* encountering cross-section type (e.g. used for irregular latitudes)
+     * is not an error condition, but we'll assume it's non-rotated 
+     */
+    rotmap=NON_ROTATED;
+    break;
   default:
-    rotmap=NULL;
+    /* any unexpected axis type is an error condition; report error 
+     * and return NULL */
+    ERR;
   }
   return rotmap;
+
+  ERRBLKP("pp_genaxis_rotmap");
 }
 
 
