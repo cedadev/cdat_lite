@@ -275,8 +275,8 @@ def __laggedcovariance(x,y,lag=1,centered=1,partial=1):
             x=x[lag:]
             y=y[:-lag]
         else:
-            x=x[:-lag]
-            y=y[lag:]
+            x=x[:lag]
+            y=y[-lag:]
         
     
     if centered == 1 :
@@ -313,8 +313,8 @@ def __laggedcorrelation(x,y,lag,centered=1,partial=1,biased=1):
             sx=__std(x[lag:], centered=centered,biased=biased)
             sy=__std(y[:-lag],centered=centered,biased=biased)
         else:
-            sx=__std(x[:-lag], centered=centered,biased=biased)
-            sy=__std(y[lag:],centered=centered,biased=biased)
+            sx=__std(x[:lag], centered=centered,biased=biased)
+            sy=__std(y[-lag:],centered=centered,biased=biased)
             
     else:
         sx=__std(x,centered=centered,biased=biased)

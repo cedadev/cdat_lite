@@ -28,9 +28,9 @@ CDAT_HOME_URL = 'http://www-pcmdi.llnl.gov/software-portal/cdat'
 #  3. The cdunifpp version is stated in long_description not in the version.  Any
 #     change to the cdunifpp version naturally triggers a new <cdat-lite-version>.
 cdat_release = '4.1.2'
-cdat_tag = '-r5752'
-cdunifpp_version = '0.8'
-cdat_lite_version = '0.2.2'
+cdat_tag = '-r5908'
+cdunifpp_version = '0.10'
+cdat_lite_version = '0.2.3'
 
 
 long_description = """

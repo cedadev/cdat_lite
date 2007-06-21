@@ -52,7 +52,8 @@ int pp_process(CuFile *file)
   PPgenaxis *axis;  /*JAK 2005-01-10 */
   int have_hybrid_sigmap;
   PPaxistype axistype;
-
+  int need_n1_dim;
+  
   int rotmapid, rotgridid;
   PPlist *rotgrids, *rotmaps;
   PProtmap *rotmap;
@@ -96,6 +97,7 @@ int pp_process(CuFile *file)
   have_hybrid_sigmap = 0;
   have_time_mean = 0;
   svindex = 0;
+  need_n1_dim = 0;
 
   /* initialisation constants just to avoid compiler warnings
    * (rather than get accustomed to ignoring warnings)
@@ -477,10 +479,16 @@ int pp_process(CuFile *file)
 
   if (have_hybrid_sigmap) {
     /* will need a scalar variable called "p0" with associated dimension "n1" = 1 */
-    ndims++;
-    ncvars++;
+    ncvars++;    
+    need_n1_dim=1;
   }
+  /* also need "n1" if we have rotated_pole variable */
+  if (pp_list_size(rotmaps) > 0)
+    need_n1_dim=1;
 
+  if (need_n1_dim)
+    ndims++;
+  
   CKP(   cudims = CuCreateDims(file,ndims)   );
 
   /* need a grid_mapping variable for every rotation mapping,
@@ -674,8 +682,8 @@ int pp_process(CuFile *file)
     dimid++;
   }
 
-  /* add n1 dimension if we will be adding p0 or rotated_pole variables */
-  if (have_hybrid_sigmap || pp_list_size(rotmaps) > 0) {
+  /* add n1 dimension if needed (see above) */
+  if (need_n1_dim) {
 
     dim=&cudims[dimid];
     strcpy(dim->name,"n1");

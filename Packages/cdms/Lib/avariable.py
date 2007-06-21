@@ -286,6 +286,8 @@ class AbstractVariable(CdmsObj, Slab):
         mv = self.missing_value
         if asarray==0 and type(mv) is Numeric.ArrayType:
             mv = mv[0]
+        if type(mv) is types.StringType and self.typecode()!='c':
+            mv = float(mv)
         return mv
 
     def _setmissing(self, name, value):
@@ -460,7 +462,7 @@ class AbstractVariable(CdmsObj, Slab):
             resultArray  = self.decode(resultArray)
             newmissing = MA.fill_value(resultArray)
         else:
-            newmissing = self.missing_value
+            newmissing = self.getMissing()
 
         if raweasy:
             return resultArray

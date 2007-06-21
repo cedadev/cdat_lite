@@ -146,8 +146,14 @@ int pp_calc_rot_grid(PProtgrid *rotgrid, PPdata **lons_return, PPdata **lats_ret
 
       lon = (dlon_rad/dtor + lonpole);
 
-      /* put in range -180 <= lon < 180 */
-      lon -= lon_modulo * floor(lon / lon_modulo + 0.5);
+      /* put in range 0 <= lon < 360
+       * NOTE: This code previously put in range -180 to 180.
+       *       The actual code was the following:
+       *           lon -= lon_modulo * floor(lon / lon_modulo + 0.5);
+       *       This was changed because the subsetting functions in CDAT
+       *       didn't like the negative longitudes.
+       */
+      lon -= lon_modulo * floor(lon / lon_modulo);
 
       sinlat = cycdx * coslatpole + sinrlat * sinlatpole;
       if (sinlat > 1.)
