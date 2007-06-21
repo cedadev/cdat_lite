@@ -135,7 +135,7 @@ setup(name='cdat_lite',
         'console_scripts': ['cdscan = cdat_lite.scripts:cdscan_main']
         },
 
-      test_suite = 'cdat_lite.test.suite',
+      test_suite = 'nose.collector',
       
       cmdclass = {'build_ext': build_ext}
       )

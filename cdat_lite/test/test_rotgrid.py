@@ -1,0 +1,29 @@
+"""
+Tests on rotated grids.
+
+"""
+
+from unittest import TestCase
+import pkg_resources
+import cdms
+
+# These two files are identical except one defines it's true longitude in
+# the domain -180 to 180 and the other 0 to 360.
+rotgrid180 = pkg_resources.resource_filename('cdat_lite.test', 'rg180.nc')
+rotgrid360 = pkg_resources.resource_filename('cdat_lite.test', 'rg360.nc')
+
+class TestRotGrid(TestCase):
+    def _doSubset(self, cdms_file):
+        return cdms_file('temp_1', lon=(-7,2), lat=(50,55))
+    
+    def test180(self):
+        f = cdms.open(rotgrid180)
+        v = self._doSubset(f)
+        assert v[15,15].mask() == False
+        assert v[15,15] > 270.
+
+    def test360(self):
+        f = cdms.open(rotgrid360)
+        v = self._doSubset(f)
+        assert v[15,15].mask() == False
+        assert v[15,15] > 270.
