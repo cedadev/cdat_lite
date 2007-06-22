@@ -515,6 +515,27 @@ netcdf_type_from_code(code)
 }
 
 
+/* DEBUG: dump the type of an array, recursively looking at each sub-object */
+void print_array_type(char *name, PyArrayObject *array) {
+  PyObject *atype;
+  PyObject *zero = Py_BuildValue("i", 0);
+
+  printf("== Dumping type of array object %s\n", name);
+  do {
+    atype = PyObject_Type(array);
+    PyObject_Print(atype, stdout, 0);
+    printf("\n");
+    array = PyObject_GetItem(array, zero);
+    /* New reference returned so release straight away */
+    Py_DECREF(array);
+  }
+  while (PyArray_Check(array));
+
+  printf("== Dump end for %s\n", name);
+
+  Py_DECREF(zero);
+}
+
 static void
 collect_attributes(file, varid, attributes, nattrs)
      PyCdunifFileObject *file;
@@ -552,7 +573,15 @@ collect_attributes(file, varid, attributes, nattrs)
       PyObject *array = PyArray_FromDims(1, &length, py_type);
       if (array != NULL) {
 	cdattget(file, varid, name, ((PyArrayObject *)array)->data);
+
+	/* DEBUG */
+	print_array_type(name, array);
+
 	array = PyArray_Return((PyArrayObject *)array);
+
+	/* DEBUG */
+	print_array_type(name, array);
+
 	if (array != NULL) {
 #ifdef PCMDI_NUMERICS
 	  generate_pcmdi_dims(&array,"AttributeArray");
