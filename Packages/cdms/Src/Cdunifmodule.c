@@ -70,9 +70,6 @@ Cdunif_seterror()
   }
 }
 
-
-
-
 					     /* cdunif/netCDF wrappers */
 
 static void cdmapdatatype_cu(CuType cutype,nc_type *datatype){
@@ -553,11 +550,9 @@ collect_attributes(file, varid, attributes, nattrs)
     }
     else {
       PyObject *array = PyArray_FromDims(1, &length, py_type);
-
       if (array != NULL) {
 	cdattget(file, varid, name, ((PyArrayObject *)array)->data);
 	array = PyArray_Return((PyArrayObject *)array);
-
 	if (array != NULL) {
 #ifdef PCMDI_NUMERICS
 	  generate_pcmdi_dims(&array,"AttributeArray");
