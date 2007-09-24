@@ -1994,13 +1994,6 @@ PyCdunifVariableObject_subscript(self, index)
      PyCdunifVariableObject *self;
      PyObject *index;
 {
-
-  /* On Python2.5 64-bit Py_ssize_t is 8 bytes long but int is 4 bytes.
-     Use these variables to convert. */
-  Py_ssize_t start, stop, stride;
-  int r;
-
-
   PyCdunifIndex *indices;
   if (PyInt_Check(index)) {
     int i = PyInt_AsLong(index);
@@ -2013,20 +2006,8 @@ PyCdunifVariableObject_subscript(self, index)
   indices = PyCdunifVariable_Indices(self);
   if (indices != NULL) {
     if (PySlice_Check(index)) {
-      r = PySlice_GetIndices((PySliceObject *)index, self->dimensions[0],
-			     &start, &stop, &stride);
-      
-      indices->start = (int)start;
-      indices->stop = (int)stop;
-      indices->stride = (int)stride;
-
-      /* PySlice_GetIndices() may fail without setting the exception flag */
-      if (r == -1) {
-	if (PyErr_Occurred() == NULL) {
-	  PyErr_SetString(PyExc_RuntimeError, "Error occured without seting exception");
-	}
-	return NULL;
-      }
+      PySlice_GetIndices((PySliceObject *)index, self->dimensions[0],
+			 &indices->start, &indices->stop, &indices->stride);
       return PyArray_Return(PyCdunifVariable_ReadAsArray(self, indices));
     }
     if (PyTuple_Check(index)) {
@@ -2044,20 +2025,9 @@ PyCdunifVariableObject_subscript(self, index)
 	    d++;
 	  }
 	  else if (PySlice_Check(subscript)) {
-	    r = PySlice_GetIndices((PySliceObject *)subscript, self->dimensions[d],
-				   &start, &stop, &stride);
-      
-	    indices->start = (int)start;
-	    indices->stop = (int)stop;
-	    indices->stride = (int)stride;
-
-	    /* PySlice_GetIndices() may fail without setting the exception flag */
-	    if (r == -1) {
-	      if (PyErr_Occurred() == NULL) {
-		PyErr_SetString(PyExc_RuntimeError, "Error occured without seting exception");
-	      }
-	      return NULL;
-	    }
+	    PySlice_GetIndices((PySliceObject *)subscript, self->dimensions[d],
+			       &indices[d].start, &indices[d].stop,
+			       &indices[d].stride);
 	    d++;
 	  }
 	  else if (subscript == Py_Ellipsis) {
