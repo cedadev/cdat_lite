@@ -539,7 +539,8 @@ int pp_zaxis_set(PPgenaxis *axis, const PPhdr *hdr) {
 PPlevtype pp_level_type(const PPhdr *hdr) {
   Fint lbvc;
 
-  if (hdr->LBUSER5 != 0)
+  if (hdr->LBUSER5 != 0 
+      && hdr->LBUSER5 != int_missing_data)
     return pseudo_lev_type;
   
   switch (hdr->LBVC){

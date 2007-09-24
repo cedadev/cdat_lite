@@ -430,7 +430,7 @@ char *pp_t_units(const PPtaxis *taxis, PPlist *heaplist)
 
   CKP(   units=pp_malloc(string_length+1,heaplist)    );
 
-  snprintf(units,string_length,fmt,
+  snprintf(units,string_length+1,fmt,
 	   orig->year, orig->month, orig->day,
 	   orig->hour, orig->minute, orig->second);
 

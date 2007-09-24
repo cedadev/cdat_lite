@@ -367,8 +367,10 @@ int pp_process(CuFile *file)
 	qsort(ppfile->recs + fvar->startrec, nvrec, sizeof(PPrec*), pp_compare_records);  
 
 	/* free the stuff assoc with the var we won't be using */
-	CKI(  pp_genaxis_free(xaxis,heaplist)  );
-	CKI(  pp_genaxis_free(yaxis,heaplist)  );
+	if (!dont_free_horiz_axes) {
+	  CKI(  pp_genaxis_free(xaxis,heaplist)  );
+	  CKI(  pp_genaxis_free(yaxis,heaplist)  );
+	}
 	CKI(  pp_genaxis_free(zaxis,heaplist)  );
 	CKI(  pp_genaxis_free(taxis,heaplist)  );
 	CKI(  pp_free(fvar,heaplist)  );
