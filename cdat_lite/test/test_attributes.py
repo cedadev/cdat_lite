@@ -16,6 +16,3 @@ def test_attributeType():
     assert type(f.input_word_length) == type(Numeric.zeros(1))
     assert type(f.input_word_length[0]) == type(1)
 
-def test_arange():
-    a = Numeric.arange(10)
-    assert list(a[1:]) == [1,2,3,4,5,6,7,8,9]

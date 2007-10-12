@@ -85,7 +85,7 @@ setup(name='cdat_lite',
         
 
       dependency_links = [NDG_EGG_REPOSITORY],
-      setup_requires = ['Numeric'],
+      setup_requires = ['Numeric=23.1'],
       install_requires = ['setuptools>=0.6c1', 'Numeric>=24.2'],
       zip_safe = False,
       
