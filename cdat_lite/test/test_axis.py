@@ -37,3 +37,6 @@ def test_intTypecode():
 
     # Raises exception on 64-bit
     x[1:3] = y[1:3]
+
+    # Check the array is right
+    assert list(x) == [0,1,1,0,0,0,0,0,0,0]
