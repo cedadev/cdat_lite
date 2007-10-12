@@ -6,29 +6,16 @@ This test is deactivated for now because I've worked around the problem in cdsca
 
 """
 
-import unittest, pkg_resources, cdms, sys
+import pkg_resources, cdms, sys
 import Numeric
 
+def test_attributeType():
+    fn = pkg_resources.resource_filename('cdat_lite.test', 'testpp.pp')
+    f = cdms.open(fn)
+    assert f.input_word_length == [4,]
+    assert type(f.input_word_length) == type(Numeric.zeros(1))
+    assert type(f.input_word_length[0]) == type(1)
 
-class _AttribTest(unittest.TestCase):
-    def setUp(self):
-        f = pkg_resources.resource_filename('cdat_lite.test', self.testfile)
-        d = cdms.open(f)
-        self.value = d.attributes[self.attrib]
-        
-    def testAttribType(self):
-        # This should be true in both 64-bit and 32-bit versions
-        assert type(self.value) == Numeric.ArrayType
-
-    def testAttribNesting(self):
-        # This is only true in 32-bit versions
-        assert type(self.value[0]) == int
-    
-#class PPAtribTest(_AttribTest):
-#    testfile = 'testpp.pp'
-#    attrib = 'input_word_length'
-
-#class NCAttribTest(_AttribTest):
-#    testfile = 'foo.nc'
-#    attrib = 'bar'
-
+def test_arange():
+    a = Numeric.arange(10)
+    assert list(a[1:]) == [1,2,3,4,5,6,7,8,9]
