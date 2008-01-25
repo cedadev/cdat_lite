@@ -188,10 +188,11 @@ Please enter NetCDF installation prefix:''',
         except ImportError:
             raise ConfigError, "Numeric is not installed."
 
-        if Numeric.__version__ != '23.1':
+        #if Numeric.__version__ != '23.1':
             #!TODO only do this test on 64bit
-            raise ConfigError("CDAT requires Numeric 23.1, version %s found" %
-                              Numeric.__version__)
+            #raise ConfigError("CDAT requires Numeric 23.1, version %s found" %
+            #                  Numeric.__version__)
+            
 
         if 'NUMERIC_INCLUDE' in os.environ:
             inc = os.environ['NUMERIC_INCLUDE']

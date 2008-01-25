@@ -1,13 +1,13 @@
 /*
  * Objects representing cdunif files and variables.
  *
- * Adapted from code Written by Konrad Hinsen
- * (last revision: 2001-1-8)
- *
- * Note: Compile with -DPCMDI_NUMERICS if the PCMDI
- * Numerics module is used.
+ * Adapted from code written by Konrad Hinsen
+ * last revision: 2004-11-18
  */
 
+#ifdef _WIN32
+#define DLL_NETCDF
+#endif
 
 #include "Python.h"
 #include "Numeric/arrayobject.h"
@@ -16,9 +16,11 @@
 #define _CDUNIF_MODULE
 #include "Cdunifmodule.h"
 
-
-staticforward int Cdunif_file_init();
-staticforward PyCdunifVariableObject *Cdunif_variable_new();
+staticforward int
+Cdunif_file_init(PyCdunifFileObject *self);
+staticforward PyCdunifVariableObject *
+Cdunif_variable_new(PyCdunifFileObject *file, char *name, int id, int type,
+		    int ndims, int *dimids, int nattrs);
 staticforward PyObject *PyCdunifVariableObject_subscript();
 staticforward PyObject *PyCdunifVariableObject_slice();
 staticforward int PyCdunifVariableObject_ass_subscript();
@@ -26,49 +28,145 @@ staticforward int PyCdunifVariableObject_ass_slice();
 staticforward int nc_get_att_any(int ncid, int varid, const char *name,
 			  nc_type xtype, void *data);
 
-/* Error object and error messages for netcdf-specific errors */
+/* Lock granting access to Cdunif routines (Cdunif isn't thread-safe) */
+
+#ifdef WITH_THREAD
+
+#include "pythread.h"
+PyThread_type_lock Cdunif_lock;
+#define acquire_Cdunif_lock() { PyThread_acquire_lock(Cdunif_lock, 1); }
+#define release_Cdunif_lock() { PyThread_release_lock(Cdunif_lock); }
+
+#else
+
+#define acquire_Cdunif_lock() {}
+#define release_Cdunif_lock() {}
+
+#endif
 
 static PyObject *CdunifError;
 
-static char *netcdf_errors[] = {
-  "No Error",
-  "Not a netcdf id",
-  "Too many netcdfs open",
-  "netcdf file exists && NC_NOCLOBBER",
-  "Invalid Argument",
-  "Write to read only",
-  "Operation not allowed in data mode",
-  "Operation not allowed in define mode",
-  "Coordinates out of Domain",
-  "MAX_NC_DIMS exceeded",
-  "String match to name in use",
-  "Attribute not found",
-  "MAX_NC_ATTRS exceeded",
-  "Not a netcdf data type",
-  "Invalid dimension id",
-  "NC_UNLIMITED in the wrong index",
-  "MAX_NC_VARS exceeded",
-  "Variable not found",
-  "Action prohibited on NC_GLOBAL varid",
-  "Not a netcdf file",
-  "In Fortran, string too short",
-  "MAX_NC_NAME exceeded",
-  "NC_UNLIMITED size already in use", /* 22 */
-  "", "", "", "", "", "", "", "", "",
-  "XDR error" /* 32 */
-};
-
 /* Set error string */
 static void
-Cdunif_seterror()
+Cdunif_seterror(void)
 {
-  if (ncerr != 0) {
-    char *error = "Unknown error";
-    if (ncerr > 0 && ncerr <= 32)
-      error = netcdf_errors[ncerr];
-    PyErr_SetString(CdunifError, error);
+  char *error;
+  switch (ncerr) {
+  case NC_NOERR:
+    error = "No error";
+    break;
+  case NC_EBADID:
+    error = "Not a Cdunif id";
+    break;
+  case NC_ENFILE:
+    error = "Too many Cdunif files open";
+    break;
+  case NC_EEXIST:
+    error = "Cdunif file exists && NC_NOCLOBBER";
+    break;
+  case NC_EINVAL:
+    error = "Invalid argument";
+    break;
+  case NC_EPERM:
+    error = "Write to read only";
+    break;
+  case NC_ENOTINDEFINE:
+    error = "Operation not allowed in data mode";
+    break;
+  case NC_EINDEFINE:
+    error = "Operation not allowed in define mode";
+    break;
+  case NC_EINVALCOORDS:
+    error = "Index exceeds dimension bound";
+    break;
+  case NC_EMAXDIMS:
+    error = "NC_MAX_DIMS exceeded";
+    break;
+  case NC_ENAMEINUSE:
+    error = "String match to name in use";
+    break;
+  case NC_ENOTATT:
+    error = "Attribute not found";
+    break;
+  case NC_EMAXATTS:
+    error = "NC_MAX_ATTRS exceeded";
+    break;
+  case NC_EBADTYPE:
+    error = "Not a Cdunif data type or _FillValue type mismatch";
+    break;
+  case NC_EBADDIM:
+    error = "Invalid dimension id or name";
+    break;
+  case NC_EUNLIMPOS:
+    error = "NC_UNLIMITED in the wrong index";
+    break;
+  case NC_EMAXVARS:
+    error = "NC_MAX_VARS exceeded";
+    break;
+  case NC_ENOTVAR:
+    error = "Variable not found";
+    break;
+  case NC_EGLOBAL:
+    error = "Action prohibited on NC_GLOBAL varid";
+    break;
+  case NC_ENOTNC:
+    error = "Not a Cdunif file";
+    break;
+  case NC_ESTS:
+    error = "In Fortran, string too short";
+    break;
+  case NC_EMAXNAME:
+    error = "NC_MAX_NAME exceeded";
+    break;
+  case NC_EUNLIMIT:
+    error = "NC_UNLIMITED size already in use";
+    break;
+  case NC_ENORECVARS:
+    error = "nc_rec op when there are no record vars";
+    break;
+  case NC_ECHAR:
+    error = "Attempt to convert between text & numbers";
+    break;
+  case NC_EEDGE:
+    error = "Edge+start exceeds dimension bound";
+    break;
+  case NC_ESTRIDE:
+    error = "Illegal stride";
+    break;
+  case NC_EBADNAME:
+    error = "Attribute or variable name contains illegal characters";
+    break;
+  case NC_ERANGE:
+    error = "Numeric conversion not representable";
+    break;
+  case NC_ENOMEM:
+    error = "Memory allocation (malloc) failure";
+    break;
+  case NC_EXDR:
+    error = "XDR error";
+    break;
+  default:
+    error = "Unknown error";
+    break;
   }
+  PyErr_SetString(PyExc_IOError, error);
 }
+
+static void
+cdunif_signalerror(int code)
+{
+  static char buffer[200];
+  if (code != NC_NOERR) {
+    Py_BEGIN_ALLOW_THREADS;
+    acquire_Cdunif_lock();
+    sprintf(buffer, "cdunif: %s", nc_strerror(code));
+    release_Cdunif_lock();
+    Py_END_ALLOW_THREADS;
+    fprintf(stderr, buffer); printf("\n");
+    PyErr_SetString(PyExc_IOError, buffer);
+ }
+}
+
 
 					     /* cdunif/netCDF wrappers */
 
@@ -383,14 +481,14 @@ static int cdvarinq(PyCdunifFileObject *file, int varid, char* name, nc_type* da
 }
 
 /*
- * Python equivalents to netCDF data types
+ * Python equivalents to Cdunif data types
  *
- * Attention: the following specification may not be fully portable.
- * The comments indicate the correct netCDF specification. The assignment
+ * Caution: the following specification may not be fully portable.
+ * The comments indicate the correct Cdunif specification. The assignment
  * of Python types assumes that 'short' is 16-bit and 'int' is 32-bit.
  */
 
-int PyCdunif_data_types[] = {-1,  /* not used */
+int data_types[] = {-1,  /* not used */
 		    PyArray_SBYTE,  /* signed 8-bit int */
 		    PyArray_CHAR,   /* 8-bit character */
 		    PyArray_SHORT,  /* 16-bit signed int */
@@ -401,7 +499,107 @@ int PyCdunif_data_types[] = {-1,  /* not used */
 
 static char *dimension_types[] = {"error", "global", "local"};
 
-/* Generic data type functions, similar to those in the Cdunif/netCDF2 interface. */
+/* Generic data type functions, similar to those in the Cdunif 2 interface. */
+
+static int
+nc_put_att_any(int ncid, int varid, const char *name,
+	       nc_type xtype, size_t len, const void *data)
+{
+  switch (xtype) {
+  case NC_BYTE:
+    return nc_put_att_uchar(ncid, varid, name, xtype, len,
+			    (unsigned char *)data);
+    break;
+  case NC_CHAR:
+    return nc_put_att_text(ncid, varid, name, len,
+			   (char *)data);
+    break;
+  case NC_SHORT:
+    return nc_put_att_short(ncid, varid, name, xtype, len,
+			    (short *)data);
+    break;
+  case NC_INT:
+    return nc_put_att_int(ncid, varid, name, xtype, len,
+			   (int *)data);
+    break;
+  case NC_FLOAT:
+    return nc_put_att_float(ncid, varid, name, xtype, len,
+			    (float *)data);
+    break;
+  case NC_DOUBLE:
+    return nc_put_att_double(ncid, varid, name, xtype, len,
+			     (double *)data);
+    break;
+  default:
+    return NC_EINVAL;
+  }
+}
+
+static int
+nc_put_var1_any(int ncid, int varid, nc_type xtype, const size_t *indexp,
+		const void *data)
+{
+  switch (xtype) {
+  case NC_BYTE:
+    return nc_put_var1_uchar(ncid, varid, indexp, (unsigned char *)data);
+    break;
+  case NC_CHAR:
+    return nc_put_var1_text(ncid, varid, indexp, (char *)data);
+    break;
+  case NC_SHORT:
+    return nc_put_var1_short(ncid, varid, indexp, (short *)data);
+    break;
+  case NC_INT:
+    return nc_put_var1_int(ncid, varid, indexp, (int *)data);
+    break;
+  case NC_FLOAT:
+    return nc_put_var1_float(ncid, varid, indexp, (float *)data);
+    break;
+  case NC_DOUBLE:
+    return nc_put_var1_double(ncid, varid, indexp, (double *)data);
+    break;
+  default:
+    return NC_EINVAL;
+  }
+}
+
+static int
+nc_put_vars_any(int ncid, int varid, nc_type xtype, const size_t start[],
+		const size_t count[], const ptrdiff_t stride[],
+		const void *data)
+{
+  switch (xtype) {
+  case NC_BYTE:
+    return nc_put_vars_uchar(ncid, varid, start, count, stride,
+			     (unsigned char *)data);
+    break;
+  case NC_CHAR:
+    return nc_put_vars_text(ncid, varid, start, count, stride,
+			     (char *)data);
+    break;
+  case NC_SHORT:
+    return nc_put_vars_short(ncid, varid, start, count, stride,
+			     (short *)data);
+    break;
+    break;
+  case NC_INT:
+    return nc_put_vars_int(ncid, varid, start, count, stride,
+			   (int *)data);
+    break;
+    break;
+  case NC_FLOAT:
+    return nc_put_vars_float(ncid, varid, start, count, stride,
+			     (float *)data);
+    break;
+    break;
+  case NC_DOUBLE:
+    return nc_put_vars_double(ncid, varid, start, count, stride,
+			      (double *)data);
+    break;
+  default:
+    return NC_EINVAL;
+  }
+}
 
 static int
 nc_get_att_any(int ncid, int varid, const char *name,
@@ -434,22 +632,23 @@ nc_get_att_any(int ncid, int varid, const char *name,
 /* Utility functions */
 
 static void
-define_mode(file, define_flag)
-     PyCdunifFileObject *file;
-     int define_flag;
+define_mode(PyCdunifFileObject *file, int define_flag)
 {
   if (file->define != define_flag) {
+    Py_BEGIN_ALLOW_THREADS;
+    acquire_Cdunif_lock();
     if (file->define)
       cdendef(file);
     else
       cdredef(file);
+    release_Cdunif_lock();
     file->define = define_flag;
+    Py_END_ALLOW_THREADS;
   }
 }
 
 static char
-typecode(type)
-     int type;
+typecode(int type)
 {
   char t;
   switch(type) {
@@ -482,9 +681,8 @@ typecode(type)
   return t;
 }
 
-static int
-netcdf_type_from_code(code)
-     char code;
+static nc_type
+cdunif_type_from_code(char code)
 {
   int type;
   switch(code) {
@@ -500,7 +698,7 @@ netcdf_type_from_code(code)
     break;
   case 'i':
   case 'l':
-    type = NC_LONG;
+    type = NC_INT;
     break;
   case 'f':
     type = NC_FLOAT;
@@ -514,13 +712,40 @@ netcdf_type_from_code(code)
   return type;
 }
 
+static int
+cdunif_type_from_type(char array_type)
+{
+  int type;
+  switch(array_type) {
+  case PyArray_CHAR:
+    type = NC_CHAR;
+    break;
+  case PyArray_UBYTE:
+  case PyArray_SBYTE:
+    type = NC_BYTE;
+    break;
+  case PyArray_SHORT:
+    type = NC_SHORT;
+    break;
+  case PyArray_INT:
+  case PyArray_LONG:
+    type = NC_INT;
+    break;
+  case PyArray_FLOAT:
+    type = NC_FLOAT;
+    break;
+  case PyArray_DOUBLE:
+    type = NC_DOUBLE;
+    break;
+  default:
+    type = 0;
+  }
+  return type;
+}
+
 
 static void
-collect_attributes(file, varid, attributes, nattrs)
-     PyCdunifFileObject *file;
-     int varid;
-     PyObject *attributes;
-     int nattrs;
+collect_attributes(PyCdunifFileObject *file, int varid, PyObject *attributes, int nattrs)
 {
   char name[MAX_NC_NAME];
   nc_type type;
@@ -531,32 +756,41 @@ collect_attributes(file, varid, attributes, nattrs)
 
   fileid = file->id;
   for (i = 0; i < nattrs; i++) {
+    Py_BEGIN_ALLOW_THREADS;
+    acquire_Cdunif_lock();
     cdattname(file, varid, i, name);
     cdattinq(file, varid, name, &type, &length);
-    py_type = PyCdunif_data_types[type];
+    release_Cdunif_lock();
+    Py_END_ALLOW_THREADS;
+    py_type = data_types[type];
     if (py_type == PyArray_CHAR) {
       char *s = (char *)malloc((length+1)*sizeof(char));
       if (s != NULL) {
 	PyObject *string;
+	Py_BEGIN_ALLOW_THREADS;
+	acquire_Cdunif_lock();
 	cdattget(file, varid, name, s);
+	release_Cdunif_lock();
+	Py_END_ALLOW_THREADS;
 	s[length] = '\0';
 	string = PyString_FromString(s);
+	free(s);
 	if (string != NULL) {
 	  PyDict_SetItemString(attributes, name, string);
 	  Py_DECREF(string);
 	}
-	free(s);
       }
     }
     else {
       PyObject *array = PyArray_FromDims(1, &length, py_type);
       if (array != NULL) {
+	Py_BEGIN_ALLOW_THREADS;
+	acquire_Cdunif_lock();
 	cdattget(file, varid, name, ((PyArrayObject *)array)->data);
+	release_Cdunif_lock();
+	Py_END_ALLOW_THREADS;
 	array = PyArray_Return((PyArrayObject *)array);
 	if (array != NULL) {
-#ifdef PCMDI_NUMERICS
-	  generate_pcmdi_dims(&array,"AttributeArray");
-#endif		
 	  PyDict_SetItemString(attributes, name, array);
 	  Py_DECREF(array);
 	}
@@ -566,27 +800,20 @@ collect_attributes(file, varid, attributes, nattrs)
 }
 
 static int
-set_attribute(fileid, varid, attributes, name, value)
-     int fileid;
-     int varid;
-     PyObject *attributes;
-     char *name;
-     PyObject *value;
+set_attribute(int fileid, int varid, PyObject *attributes,
+	      char *name, PyObject *value)
 {
-					     /* A value of NULL means del var.attr */
-					     /* was called. */
-  if (value == NULL){
-    if (ncattdel(fileid, varid, name) == -1){
-      Cdunif_seterror();
-      return -1;
-    }
-    PyDict_DelItemString(attributes, name);
-    return 0;
-  }
-  else if (PyString_Check(value)) {
-    if (ncattput(fileid, varid, name, NC_CHAR, PyString_Size(value),
-		 PyString_AsString(value)) == -1) {
-      Cdunif_seterror();
+  if (PyString_Check(value)) {
+    int len = PyString_Size(value);
+    char *string = PyString_AsString(value);
+    int ret;
+    Py_BEGIN_ALLOW_THREADS;
+    acquire_Cdunif_lock();
+    ret = nc_put_att_text(fileid, varid, name, len, string);
+    release_Cdunif_lock();
+    Py_END_ALLOW_THREADS;
+    if (ret != NC_NOERR) {
+      cdunif_signalerror(ret);
       return -1;
     }
     PyDict_SetItemString(attributes, name, value);
@@ -595,22 +822,25 @@ set_attribute(fileid, varid, attributes, name, value)
   else {
     int ret;
     PyArrayObject *array =
-     (PyArrayObject *)PyArray_ContiguousFromObject(value, PyArray_NOTYPE, 0, 1);
+    (PyArrayObject *)PyArray_ContiguousFromObject(value, PyArray_NOTYPE, 0, 1);
     if (array != NULL) {
       int len = (array->nd == 0) ? 1 : array->dimensions[0];
-      int type = netcdf_type_from_code(array->descr->type);
-      if (PyCdunif_data_types[type] != array->descr->type_num) {
+      int type = cdunif_type_from_code(array->descr->type);
+      if (data_types[type] != array->descr->type_num) {
 	PyArrayObject *array2 = (PyArrayObject *)
-	  PyArray_ContiguousFromObject((PyObject *)array,
-				       PyCdunif_data_types[type], 0, 1);
+	  PyArray_Cast(array, data_types[type]);
 	Py_DECREF(array);
 	array = array2;
 	if (array == NULL)
 	  return -1;
       }
-      ret = ncattput(fileid, varid, name, type, len, array->data);
-      if (ret == -1) {
-	Cdunif_seterror();
+      Py_BEGIN_ALLOW_THREADS;
+      acquire_Cdunif_lock();
+      ret = nc_put_att_any(fileid, varid, name, type, len, array->data);
+      release_Cdunif_lock();
+      Py_END_ALLOW_THREADS;
+      if (ret != NC_NOERR) {
+	cdunif_signalerror(ret);
 	return -1;
       }
       PyDict_SetItemString(attributes, name, (PyObject *)array);
@@ -622,36 +852,33 @@ set_attribute(fileid, varid, attributes, name, value)
 }
 
 static int
-check_if_open(file, mode)
-     PyCdunifFileObject *file;
-     int mode;
+check_if_open(PyCdunifFileObject *file, int mode)
 {
   /* mode: -1 read, 1 write, 0 other */
-  if (file->open) {
+  if (file == NULL || !file->open) {
+    PyErr_SetString(PyExc_IOError, "cdunif: file has been closed");
+    return 0;
+  }
+  else {
     if (mode != 1 || file->write) {
       return 1;
     }
     else {
-      PyErr_SetString(CdunifError, "write access to read-only file");
+      PyErr_SetString(PyExc_IOError, "cdunif: write access to read-only file");
       return 0;
     }
-  }
-  else {
-    PyErr_SetString(CdunifError, "file has been closed");
-    return 0;
   }
 }
 
 /*
  * CdunifFile object
- * (type declaration in Cdunifmodule.h)
+ * (type declaration in cdunifmodule.h)
  */
 
 /* Destroy file object */
 
 static void
-PyCdunifFileObject_dealloc(self)
-     PyCdunifFileObject *self;
+PyCdunifFileObject_dealloc(PyCdunifFileObject *self)
 {
   if (self->open)
     PyCdunifFile_Close(self);
@@ -666,10 +893,8 @@ PyCdunifFileObject_dealloc(self)
 
 /* Create file object */
 
-PyCdunifFileObject *
-PyCdunifFile_Open(filename, mode)
-     char *filename;
-     char *mode;
+static PyCdunifFileObject *
+PyCdunifFile_Open(char *filename, char *mode)
 {
   PyCdunifFileObject *self;
   int rw;
@@ -692,7 +917,11 @@ PyCdunifFile_Open(filename, mode)
   rw = (strlen(mode) == 2);
   self->open = 0;
   if (mode[0] == 'w') {
+    Py_BEGIN_ALLOW_THREADS;
+    acquire_Cdunif_lock();
     self->id = nccreate(filename, NC_CLOBBER);
+    release_Cdunif_lock();
+    Py_END_ALLOW_THREADS;
     self->define = 1;
     self->write = 1;
     self->filetype = CuNetcdf;
@@ -702,6 +931,8 @@ PyCdunifFile_Open(filename, mode)
     }
   }
   else if (mode[0] == 'a') {
+    Py_BEGIN_ALLOW_THREADS;
+    acquire_Cdunif_lock();
     self->id = cdopen(filename, NC_WRITE, &self->filetype);
     self->define = 0;
     if (self->id == -1) {
@@ -709,6 +940,8 @@ PyCdunifFile_Open(filename, mode)
       self->filetype = CuNetcdf;
       self->define = 1;
     }
+    release_Cdunif_lock();
+    Py_END_ALLOW_THREADS;
     self->write = 1;
     if (self->id != -1) {
       self->open = 1;
@@ -716,7 +949,11 @@ PyCdunifFile_Open(filename, mode)
     }
   }
   else if (mode[0] == 'r') {
+    Py_BEGIN_ALLOW_THREADS;
+    acquire_Cdunif_lock();
     self->id = cdopen(filename, rw ? NC_WRITE : NC_NOWRITE, &self->filetype);
+    release_Cdunif_lock();
+    Py_END_ALLOW_THREADS;
     self->define = 0;
     self->write = rw;
     if (self->id != -1) {
@@ -746,8 +983,7 @@ PyCdunifFile_Open(filename, mode)
 /* Create variables from file */
 
 static int
-Cdunif_file_init(self)
-     PyCdunifFileObject *self;
+Cdunif_file_init(PyCdunifFileObject *self)
 {
   int ndims, nvars, ngattrs, recdim;
   int i;
@@ -760,7 +996,11 @@ Cdunif_file_init(self)
   self->variables = PyDict_New();
   self->attributes = PyDict_New();
   self->diminfo = PyDict_New();
+  Py_BEGIN_ALLOW_THREADS;
+  acquire_Cdunif_lock();
   cdinquire(self, &ndims, &nvars, &ngattrs, &recdim);
+  release_Cdunif_lock();
+  Py_END_ALLOW_THREADS;
   self->recdim = recdim;
   for (i = 0; i < ndims; i++) {
     char name[MAX_NC_NAME];
@@ -769,8 +1009,12 @@ Cdunif_file_init(self)
     char vname[CU_MAX_NAME+1];
     long size;
     PyObject *size_ob;
+    Py_BEGIN_ALLOW_THREADS;
+    acquire_Cdunif_lock();
     cddiminq(self, i, name, dimunits, &nctype, &dimtype, vname, &size);
-    tcode = typecode(PyCdunif_data_types[nctype]);
+    release_Cdunif_lock();
+    Py_END_ALLOW_THREADS;
+    tcode = typecode(data_types[nctype]);
     tuple = Py_BuildValue("(scsssi)",dimunits,tcode,name,vname,dimension_types[dimtype],i);
     if (dimtype==CuGlobalDim){
 	    PyDict_SetItemString(self->diminfo, name, tuple);
@@ -803,18 +1047,26 @@ Cdunif_file_init(self)
     int ndimensions, nattrs;
     int *dimids;
     PyCdunifVariableObject *variable;
+    Py_BEGIN_ALLOW_THREADS;
+    acquire_Cdunif_lock();
     cdvarinq(self, i, name, &datatype, &ndimensions, NULL, &nattrs);
+    release_Cdunif_lock();
+    Py_END_ALLOW_THREADS;
     if (ndimensions > 0) {
       dimids = (int *)malloc(ndimensions*sizeof(int));
       if (dimids == NULL) {
 	PyErr_NoMemory();
 	return 0;
       }
+      Py_BEGIN_ALLOW_THREADS;
+      acquire_Cdunif_lock();
       cdvarinq(self, i, NULL, NULL, NULL, dimids, NULL);
+      release_Cdunif_lock();
+      Py_END_ALLOW_THREADS;
     }
     else
       dimids = NULL;
-    variable = Cdunif_variable_new(self, name, i, PyCdunif_data_types[datatype],
+    variable = Cdunif_variable_new(self, name, i, data_types[datatype],
 				   ndimensions, dimids, nattrs);
     if (variable != NULL) {
       PyDict_SetItemString(self->variables, name, (PyObject *)variable);
@@ -829,21 +1081,23 @@ Cdunif_file_init(self)
 
 /* Create dimension */
 
-int
-PyCdunifFile_CreateDimension(file, name, size)
-     PyCdunifFileObject *file;
-     char *name;
-     long size;
+static int
+PyCdunifFile_CreateDimension(PyCdunifFileObject *file, char *name, long size)
 {
   PyObject *size_ob;
   int id;
   if (check_if_open(file, 1)) {
     if (size == 0 && file->recdim != -1) {
-      PyErr_SetString(CdunifError, "there is already an unlimited dimension");
+      PyErr_SetString(PyExc_IOError,
+		      "cdunif: there is already an unlimited dimension");
       return -1;
     }
     define_mode(file, 1);
+    Py_BEGIN_ALLOW_THREADS;
+    acquire_Cdunif_lock();
     id = ncdimdef(file->id, name, (size == 0) ? NC_UNLIMITED : size);
+    release_Cdunif_lock();
+    Py_END_ALLOW_THREADS;
     if (id == -1) {
       Cdunif_seterror();
       return -1;
@@ -866,9 +1120,7 @@ PyCdunifFile_CreateDimension(file, name, size)
 }
 
 static PyObject *
-PyCdunifFileObject_new_dimension(self, args)
-     PyCdunifFileObject *self;
-     PyObject *args;
+PyCdunifFileObject_new_dimension(PyCdunifFileObject *self, PyObject *args)
 {
   char *name;
   PyObject *size_ob;
@@ -890,21 +1142,17 @@ PyCdunifFileObject_new_dimension(self, args)
   else
     return NULL;
 }
+static char createDimension_doc[] = "";
 
 /* Create variable */
 
-PyCdunifVariableObject *
-PyCdunifFile_CreateVariable(file, name, typecode, dimension_names, ndim)
-     PyCdunifFileObject *file;
-     char *name;
-     int typecode;
-     char **dimension_names;
-     int ndim;
+static PyCdunifVariableObject *
+PyCdunifFile_CreateVariable(PyCdunifFileObject *file, char *name, int typecode,
+			    char **dimension_names, int ndim)
 {
   int *dimids;
   PyCdunifVariableObject *variable;
-  int ntype;
-  int i;
+  int ntype, i, ret;
   if (check_if_open(file, 1)) {
     define_mode(file, 1);
     if (ndim == 0)
@@ -915,39 +1163,52 @@ PyCdunifFile_CreateVariable(file, name, typecode, dimension_names, ndim)
 	return (PyCdunifVariableObject *)PyErr_NoMemory();
     }
     for (i = 0; i < ndim; i++) {
+      Py_BEGIN_ALLOW_THREADS;
+      acquire_Cdunif_lock();
       dimids[i] = cddimid(file, dimension_names[i]);
+      release_Cdunif_lock();
+      Py_END_ALLOW_THREADS;
       if (dimids[i] == -1) {
 	Cdunif_seterror();
 	free(dimids);
 	return NULL;
       }
       if (dimids[i] == file->recdim && i > 0) {
-	PyErr_SetString(CdunifError, "unlimited dimension must be first");
+	PyErr_SetString(PyExc_IOError,
+			"cdunif: unlimited dimension must be first");
 	free(dimids);
 	return NULL;
       }
     }
-    ntype = netcdf_type_from_code(typecode);
-    i = ncvardef(file->id, name, ntype, ndim, dimids);
-    if (i == -1) {
-      Cdunif_seterror();
+    ntype = cdunif_type_from_code((char)typecode);
+    Py_BEGIN_ALLOW_THREADS;
+    acquire_Cdunif_lock();
+    ret = nc_def_var(file->id, name, ntype, ndim, dimids, &i);
+    release_Cdunif_lock();
+    Py_END_ALLOW_THREADS;
+    if (ret != NC_NOERR) {
+      cdunif_signalerror(ret);
       if (dimids != NULL)
 	free(dimids);
       return NULL;
     }
-    variable = Cdunif_variable_new(file, name, i, PyCdunif_data_types[ntype],
+    variable = Cdunif_variable_new(file, name, i, data_types[ntype],
 				   ndim, dimids, 0);
-    PyDict_SetItemString(file->variables, name, (PyObject *)variable);
-    return variable;
+    if (variable != NULL) {
+      PyDict_SetItemString(file->variables, name, (PyObject *)variable);
+      return variable;
+    }
+    else {
+      free(dimids);
+      return NULL;
+    }
   }
   else
     return NULL;
 }
 
 static PyObject *
-PyCdunifFileObject_new_variable(self, args)
-     PyCdunifFileObject *self;
-     PyObject *args;
+PyCdunifFileObject_new_variable(PyCdunifFileObject *self, PyObject *args)
 {
   PyCdunifVariableObject *var;
   char **dimension_names;
@@ -982,26 +1243,30 @@ PyCdunifFileObject_new_variable(self, args)
   free(dimension_names);
   return (PyObject *)var;
 }
+static char createVariable_doc[] = "";
 
 /* Return a variable object referring to an existing variable */
 
-PyCdunifVariableObject *
-PyCdunifFile_GetVariable(file, name)
-     PyCdunifFileObject *file;
-     char *name;
+static PyCdunifVariableObject *
+PyCdunifFile_GetVariable(PyCdunifFileObject *file, char *name)
 {
   return (PyCdunifVariableObject *)PyDict_GetItemString(file->variables, name);
 }
 
 /* Synchronize output */
 
-int
-PyCdunifFile_Sync(file)
-     PyCdunifFileObject *file;
+static int
+PyCdunifFile_Sync(PyCdunifFileObject *file)
 {
+  int ret;
   if (check_if_open(file, 0)) {
     define_mode(file, 0);
-    if (cdsync(file) == -1) {
+    Py_BEGIN_ALLOW_THREADS;
+    acquire_Cdunif_lock();
+    ret = cdsync(file);
+    release_Cdunif_lock();
+    Py_END_ALLOW_THREADS;
+    if (ret == -1) {
       Cdunif_seterror();
       return -1;
     }
@@ -1013,58 +1278,11 @@ PyCdunifFile_Sync(file)
 }
 
 static PyObject *
-PyCdunifFileObject_sync(self, args)
-     PyCdunifFileObject *self;
-     PyObject *args;
+PyCdunifFileObject_sync(PyCdunifFileObject *self, PyObject *args)
 {
   if (!PyArg_ParseTuple(args, ""))
     return NULL;
   if (PyCdunifFile_Sync(self) == 0) {
-    Py_INCREF(Py_None);
-    return Py_None;
-  }
-  else
-    return NULL;
-}
-
-/* Close file */
-
-int
-PyCdunifFile_Close(PyCdunifFileObject *file)
-{
-  PyObject *name;
-  PyCdunifVariableObject *variable;
-  int pos, ret;
-
-  if (!check_if_open(file, 0))
-    return -1;
-  ret = cdclose(file);
-  if (ret != NC_NOERR) {
-    Cdunif_seterror();
-    ret = -1;
-  }
-  else
-    ret = 0;
-  file->open = 0;
-  pos = 0;
-  while (PyDict_Next(file->variables, &pos, &name, (PyObject **)&variable)) {
-    Py_DECREF(variable->file);
-    variable->file = NULL;
-  }
-  return ret;
-}
-
-static PyObject *
-PyCdunifFileObject_close(self, args)
-     PyCdunifFileObject *self;
-     PyObject *args;
-{
-  char *history = NULL;
-  if (!PyArg_ParseTuple(args, "|s", &history))
-    return NULL;
-  if (history != NULL)
-    PyCdunifFile_AddHistoryLine(self, history);
-  if (PyCdunifFile_Close(self) == 0) {
     Py_INCREF(Py_None);
     return Py_None;
   }
@@ -1112,7 +1330,7 @@ PyCdunifFileObject_read_dimension(PyCdunifFileObject *self, PyObject *args){
 
 					     /* Get the array */
 	dimlen = length;
-	array = (PyArrayObject *)PyArray_FromDims(1,&dimlen,PyCdunif_data_types[nctype]);
+	array = (PyArrayObject *)PyArray_FromDims(1,&dimlen,data_types[nctype]);
 	if (array != NULL){
 		if (cddimget(self, dimid, array->data)==-1){
 			ncerr = cdgeterr(self);
@@ -1131,23 +1349,79 @@ PyCdunifFileObject_read_dimension(PyCdunifFileObject *self, PyObject *args){
 	}
 }
 
+static char read_dimension_doc[] = "read the dimension array";
+static char sync_doc[] = "";
+static char flush_doc[] =
+"ensures that all modified data is written to the file";
+
+/* Close file */
+
+static int
+PyCdunifFile_Close(PyCdunifFileObject *file)
+{
+  PyObject *name;
+  PyCdunifVariableObject *variable;
+  int ret;
+  Py_ssize_t pos;
+
+  if (!check_if_open(file, 0))
+    return -1;
+  Py_BEGIN_ALLOW_THREADS;
+  acquire_Cdunif_lock();
+  ret = cdclose(file);
+  release_Cdunif_lock();
+  Py_END_ALLOW_THREADS;
+  if (ret != NC_NOERR) {
+    cdunif_signalerror(ret);
+    ret = -1;
+  }
+  else
+    ret = 0;
+  file->open = 0;
+  pos = 0;
+  while (PyDict_Next(file->variables, &pos, &name, (PyObject **)&variable)) {
+    Py_DECREF(variable->file);
+    variable->file = NULL;
+  }
+  return ret;
+}
+
+static PyObject *
+PyCdunifFileObject_close(PyCdunifFileObject *self, PyObject *args)
+{
+  char *history = NULL;
+  if (!PyArg_ParseTuple(args, "|s", &history))
+    return NULL;
+  if (history != NULL)
+    PyCdunifFile_AddHistoryLine(self, history);
+  if (PyCdunifFile_Close(self) == 0) {
+    Py_INCREF(Py_None);
+    return Py_None;
+  }
+  else
+    return NULL;
+}
+static char close_doc[] = "";
+
 /* Method table */
 
 static PyMethodDef PyCdunifFileObject_methods[] = {
-  {"close", (PyCFunction)PyCdunifFileObject_close, 1},
-  {"createDimension", (PyCFunction)PyCdunifFileObject_new_dimension, 1},
-  {"createVariable", (PyCFunction)PyCdunifFileObject_new_variable, 1},
-  {"readDimension",(PyCFunction)PyCdunifFileObject_read_dimension, 1},
-  {"sync", (PyCFunction)PyCdunifFileObject_sync, 1},
+  {"close", (PyCFunction)PyCdunifFileObject_close, 1, close_doc},
+  {"createDimension", (PyCFunction)PyCdunifFileObject_new_dimension, 1,
+                      createDimension_doc},
+  {"createVariable", (PyCFunction)PyCdunifFileObject_new_variable, 1,
+                      createVariable_doc},
+  {"readDimension",(PyCFunction)PyCdunifFileObject_read_dimension, 1,
+                      read_dimension_doc},
+  {"sync", (PyCFunction)PyCdunifFileObject_sync, 1, sync_doc},
+  {"flush", (PyCFunction)PyCdunifFileObject_sync, 1, flush_doc},
   {NULL, NULL}		/* sentinel */
 };
 
 /* Attribute access */
 
-PyObject *
-PyCdunifFile_GetAttribute(self, name)
-     PyCdunifFileObject *self;
-     char *name;
+static PyObject *
+PyCdunifFile_GetAttribute(PyCdunifFileObject *self, char *name)
 {
   PyObject *value;
   if (check_if_open(self, -1)) {
@@ -1181,11 +1455,9 @@ PyCdunifFile_GetAttribute(self, name)
     return NULL;
 }
 
-int
-PyCdunifFile_SetAttribute(self, name, value)
-     PyCdunifFileObject *self;
-     char *name;
-     PyObject *value;
+static int
+PyCdunifFile_SetAttribute(PyCdunifFileObject *self, char *name,
+			  PyObject *value)
 {
   if (check_if_open(self, 1)) {
     if (strcmp(name, "dimensions") == 0 ||
@@ -1202,11 +1474,9 @@ PyCdunifFile_SetAttribute(self, name, value)
     return -1;
 }
 
-int
-PyCdunifFile_SetAttributeString(self, name, value)
-     PyCdunifFileObject *self;
-     char *name;
-     char *value;
+static int
+PyCdunifFile_SetAttributeString(PyCdunifFileObject *self,
+				char *name, char *value)
 {
   PyObject *string = PyString_FromString(value);
   if (string != NULL)
@@ -1215,10 +1485,8 @@ PyCdunifFile_SetAttributeString(self, name, value)
     return -1;
 }
 
-int
-PyCdunifFile_AddHistoryLine(self, text)
-     PyCdunifFileObject *self;
-     char *text;
+static int
+PyCdunifFile_AddHistoryLine(PyCdunifFileObject *self, char *text)
 {
   static char *history = "history";
   int alloc, old, new, new_alloc;
@@ -1260,8 +1528,7 @@ PyCdunifFile_AddHistoryLine(self, text)
 
 /* Printed representation */
 static PyObject *
-PyCdunifFileObject_repr(file)
-     PyCdunifFileObject *file;
+PyCdunifFileObject_repr(PyCdunifFileObject *file)
 {
   char buf[300];
   sprintf(buf, "<%s Cdunif file '%.256s', mode '%.10s' at %lx>",
@@ -1295,14 +1562,13 @@ statichere PyTypeObject PyCdunifFile_Type = {
 
 /*
  * CdunifVariable object
- * (type declaration in Cdunifmodule.h)
+ * (type declaration in cdunifmodule.h)
  */
 
 /* Destroy variable object */
 
 static void
-PyCdunifVariableObject_dealloc(self)
-     PyCdunifVariableObject *self;
+PyCdunifVariableObject_dealloc(PyCdunifVariableObject *self)
 {
   if (self->dimids != NULL)
     free(self->dimids);
@@ -1317,15 +1583,9 @@ PyCdunifVariableObject_dealloc(self)
 
 /* Create variable object */
 
-statichere PyCdunifVariableObject *
-Cdunif_variable_new(file, name, id, type, ndims, dimids, nattrs)
-     PyCdunifFileObject *file;
-     char *name;
-     int id;
-     int type;
-     int ndims;
-     int *dimids;
-     int nattrs;
+static PyCdunifVariableObject *
+Cdunif_variable_new(PyCdunifFileObject *file, char *name, int id, int type,
+		    int ndims, int *dimids, int nattrs)
 {
   PyCdunifVariableObject *self;
   int recdim;
@@ -1341,15 +1601,21 @@ Cdunif_variable_new(file, name, id, type, ndims, dimids, nattrs)
     self->nd = ndims;
     self->dimids = dimids;
     self->unlimited = 0;
+    Py_BEGIN_ALLOW_THREADS;
+    acquire_Cdunif_lock();
     cdinquire(file, NULL, NULL, NULL, &recdim);
-    self->dimensions = (long *)malloc(ndims*sizeof(long));
+    self->dimensions = (size_t *)malloc(ndims*sizeof(size_t));
     if (self->dimensions != NULL) {
-      for (i = 0; i < ndims; i++) {
-	      cddiminq(file, dimids[i], NULL, NULL, NULL, NULL, NULL, &self->dimensions[i]);
-      }
-      if (ndims > 0 && self->dimids[0] == self->file->recdim)
-	self->unlimited = 1;
+	for (i = 0; i < ndims; i++) {
+	    long lng;
+	    cddiminq(file, dimids[i], NULL, NULL, NULL, NULL, NULL, &lng);
+	    self->dimensions[i] = lng;
+	}
+	if (ndims > 0 && self->dimids[0] == self->file->recdim)
+	    self->unlimited = 1;
     }
+    release_Cdunif_lock();
+    Py_END_ALLOW_THREADS;
     self->name = (char *)malloc(strlen(name)+1);
     if (self->name != NULL)
       strcpy(self->name, name);
@@ -1363,7 +1629,7 @@ Cdunif_variable_new(file, name, id, type, ndims, dimids, nattrs)
 
 /* Return value */
 
-PyObject *
+static PyObject *
 PyCdunifVariableObject_value(PyCdunifVariableObject *self, PyObject *args)
 {
   PyCdunifIndex *indices;
@@ -1378,7 +1644,7 @@ PyCdunifVariableObject_value(PyCdunifVariableObject *self, PyObject *args)
 
 /* Assign value */
 
-PyObject *
+static PyObject *
 PyCdunifVariableObject_assign(PyCdunifVariableObject *self, PyObject *args)
 {
   PyObject *value;
@@ -1396,8 +1662,9 @@ PyCdunifVariableObject_assign(PyCdunifVariableObject *self, PyObject *args)
 
 /* Return typecode */
 
-PyObject *
-PyCdunifVariableObject_typecode(PyCdunifVariableObject *self, PyObject *args) {
+static PyObject *
+PyCdunifVariableObject_typecode(PyCdunifVariableObject *self, PyObject *args)
+{
   char t;
   if (!PyArg_ParseTuple(args, ""))
     return NULL;
@@ -1468,31 +1735,34 @@ static PyMethodDef PyCdunifVariableObject_methods[] = {
 
 /* Attribute access */
 
-int
-PyCdunifVariable_GetRank(var)
-     PyCdunifVariableObject *var;
+static int
+PyCdunifVariable_GetRank(PyCdunifVariableObject *var)
 {
   return var->nd;
 }
 
-long *
-PyCdunifVariable_GetShape(var)
-     PyCdunifVariableObject *var;
+static size_t *
+PyCdunifVariable_GetShape(PyCdunifVariableObject *var)
 {
   int i;
   if (check_if_open(var->file, -1)) {
-    for (i = 0; i < var->nd; i++)
-	    cddiminq(var->file, var->dimids[i], NULL, NULL, NULL, NULL, NULL, &var->dimensions[i]);
+    Py_BEGIN_ALLOW_THREADS;
+    acquire_Cdunif_lock();
+    for (i = 0; i < var->nd; i++){
+	long lng;
+	cddiminq(var->file, var->dimids[i], NULL, NULL, NULL, NULL, NULL, &lng);
+	var->dimensions[i] = lng;
+    }
+    release_Cdunif_lock();
+    Py_END_ALLOW_THREADS;
     return var->dimensions;
   }
   else
     return NULL;
 }
 
-PyObject *
-PyCdunifVariable_GetAttribute(self, name)
-     PyCdunifVariableObject *self;
-     char *name;
+static PyObject *
+PyCdunifVariable_GetAttribute(PyCdunifVariableObject *self, char *name)
 {
   PyObject *value;
   if (strcmp(name, "shape") == 0) {
@@ -1510,23 +1780,28 @@ PyCdunifVariable_GetAttribute(self, name)
   }
   if (strcmp(name, "dimensions") == 0) {
     PyObject *tuple;
+    char name[MAX_NC_NAME];
     int i;
     if (check_if_open(self->file, -1)) {
       tuple = PyTuple_New(self->nd);
       for (i = 0; i < self->nd; i++) {
-	      CuDimType dimtype;
-	      char name[MAX_NC_NAME];
-	      char pseudoname[2*CU_MAX_NAME+1];
-	      char vname[CU_MAX_NAME+1];
-	      cddiminq(self->file, self->dimids[i], name, NULL, NULL, &dimtype, vname, NULL);
-
-	      if (dimtype==CuGlobalDim){
-		      PyTuple_SetItem(tuple, i, PyString_FromString(name));
-	      }
-	      else {
-		      sprintf(pseudoname,"%s_%s",name,vname);
-		      PyTuple_SetItem(tuple, i, PyString_FromString(pseudoname));
-	      }
+	  CuDimType dimtype;
+	  char name[MAX_NC_NAME];
+	  char pseudoname[2*CU_MAX_NAME+1];
+	  char vname[CU_MAX_NAME+1];
+	  Py_BEGIN_ALLOW_THREADS;
+	  acquire_Cdunif_lock();
+	  cddiminq(self->file, self->dimids[i], name, NULL, NULL, &dimtype, vname, NULL);
+	  release_Cdunif_lock();
+	  Py_END_ALLOW_THREADS;
+	  
+	  if (dimtype==CuGlobalDim){
+	      PyTuple_SetItem(tuple, i, PyString_FromString(name));
+	  }
+	  else {
+	      sprintf(pseudoname,"%s_%s",name,vname);
+	      PyTuple_SetItem(tuple, i, PyString_FromString(pseudoname));
+	  }
       }
       return tuple;
     }
@@ -1544,15 +1819,13 @@ PyCdunifVariable_GetAttribute(self, name)
   }
   else {
     PyErr_Clear();
-    return Py_FindMethod(PyCdunifVariableObject_methods, (PyObject *)self, name);
+    return Py_FindMethod(PyCdunifVariableObject_methods, (PyObject *)self,name);
   }
 }
 
-int
-PyCdunifVariable_SetAttribute(self, name, value)
-     PyCdunifVariableObject *self;
-     char *name;
-     PyObject *value;
+static int
+PyCdunifVariable_SetAttribute(PyCdunifVariableObject *self,
+			      char *name, PyObject *value)
 {
   if (check_if_open(self->file, 1)) {
     if (strcmp(name, "shape") == 0 ||
@@ -1569,11 +1842,9 @@ PyCdunifVariable_SetAttribute(self, name, value)
     return -1;
 }
 
-int
-PyCdunifVariable_SetAttributeString(self, name, value)
-     PyCdunifVariableObject *self;
-     char *name;
-     char *value;
+static int
+PyCdunifVariable_SetAttributeString(PyCdunifVariableObject *self,
+				    char *name, char *value)
 {
   PyObject *string = PyString_FromString(value);
   if (string != NULL)
@@ -1584,19 +1855,17 @@ PyCdunifVariable_SetAttributeString(self, name, value)
 
 /* Subscripting */
 
-static int
-PyCdunifVariableObject_length(self)
-     PyCdunifVariableObject *self;
+static Py_ssize_t
+PyCdunifVariableObject_length(PyCdunifVariableObject *self)
 {
   if (self->nd > 0)
-    return self->dimensions[0];
+    return (Py_ssize_t)self->dimensions[0];
   else
     return 0;
 }
 
-PyCdunifIndex *
-PyCdunifVariable_Indices(var)
-     PyCdunifVariableObject *var;
+static PyCdunifIndex *
+PyCdunifVariable_Indices(PyCdunifVariableObject *var)
 {
   PyCdunifIndex *indices = 
     (PyCdunifIndex *)malloc(var->nd*sizeof(PyCdunifIndex));
@@ -1613,10 +1882,9 @@ PyCdunifVariable_Indices(var)
   return indices;
 }
 
-PyArrayObject *
-PyCdunifVariable_ReadAsArray(self, indices)
-     PyCdunifVariableObject *self;
-     PyCdunifIndex *indices;
+static PyArrayObject *
+PyCdunifVariable_ReadAsArray(PyCdunifVariableObject *self,
+			     PyCdunifIndex *indices)
 {
   int *dims;
   PyArrayObject *array;
@@ -1675,7 +1943,13 @@ PyCdunifVariable_ReadAsArray(self, indices)
   if (array != NULL && nitems > 0) {
     if (self->nd == 0) {
       long zero = 0;
-      if (cdvarget1(self->file, self->id, &zero, array->data) == -1) {
+      int ret;
+      Py_BEGIN_ALLOW_THREADS;
+      acquire_Cdunif_lock();
+      ret = cdvarget1(self->file, self->id, &zero, array->data);
+      release_Cdunif_lock();
+      Py_END_ALLOW_THREADS;
+      if (ret == -1) {
 	Cdunif_seterror();
 	Py_DECREF(array);
 	array = NULL;
@@ -1689,19 +1963,22 @@ PyCdunifVariable_ReadAsArray(self, indices)
       count = (long *)malloc(self->nd*sizeof(long));
       stride = (long *)malloc(self->nd*sizeof(long));
       if (start != NULL && count != NULL && stride != NULL) {
+	int ret;
 	for (i = 0; i < self->nd; i++) {
 	  start[i] = indices[i].start;
 	  stride[i] = indices[i].stride;
 	  count[i] = (indices[i].stop-indices[i].start-1)/indices[i].stride+1;
 	}
-	if (cdvargets(self->file, self->id, start, count, stride, array->data) == -1) {
+	Py_BEGIN_ALLOW_THREADS;
+	acquire_Cdunif_lock();
+	ret = cdvargets(self->file, self->id, start, count, stride, array->data);
+	release_Cdunif_lock();
+	Py_END_ALLOW_THREADS;
+	if (ret == -1) {
 	  Cdunif_seterror();
 	  Py_DECREF(array);
 	  array = NULL;
 	}
-#ifdef PCMDI_NUMERICS
-	generate_pcmdi_dims(&array,"DataArray");
-#endif
       }
       if (start != NULL)
 	free(start);
@@ -1716,25 +1993,35 @@ PyCdunifVariable_ReadAsArray(self, indices)
   return array;
 }
 
-PyStringObject *
-PyCdunifVariable_ReadAsString(self)
-     PyCdunifVariableObject *self;
+static PyStringObject *
+PyCdunifVariable_ReadAsString(PyCdunifVariableObject *self)
 {
   if (self->type != PyArray_CHAR || self->nd != 1) {
-    PyErr_SetString(CdunifError, "not a string variable");
+    PyErr_SetString(PyExc_IOError, "cdunif: not a string variable");
     return NULL;
   }
   if (check_if_open(self->file, -1)) {
-    long zero = 0;
+    long zero;
+    int ret;
     char *temp;
     PyObject *string;
+    long count[CU_MAX_VAR_DIMS];
+    int i;
+
     define_mode(self->file, 0);
     temp = (char *)malloc((self->dimensions[0]+1)*sizeof(char));
     if (temp == NULL)
       return (PyStringObject *)PyErr_NoMemory();
-    if (cdvarget(self->file, self->id, &zero,
-		 self->dimensions, temp) == -1) {
-      Cdunif_seterror();
+    Py_BEGIN_ALLOW_THREADS;
+    acquire_Cdunif_lock();
+    for (i=0; i<self->nd; i++)
+	count[i] = self->dimensions[i];
+    ret = cdvarget(self->file, self->id, &zero,
+		   count, temp);
+    release_Cdunif_lock();
+    Py_END_ALLOW_THREADS;
+    if (ret == -1) {
+      cdunif_signalerror(ret);
       string = NULL;
     }
     else {
@@ -1748,11 +2035,12 @@ PyCdunifVariable_ReadAsString(self)
     return NULL;
 }
 
-int
-PyCdunifVariable_WriteArray(self, indices, value)
-     PyCdunifVariableObject *self;
-     PyCdunifIndex *indices;
-     PyObject *value;
+#include "time.h"
+
+
+static int
+PyCdunifVariable_WriteArray(PyCdunifVariableObject *self,
+			    PyCdunifIndex *indices, PyObject *value)
 {
   int *dims;
   PyArrayObject *array;
@@ -1813,29 +2101,35 @@ PyCdunifVariable_WriteArray(self, indices, value)
 							0, d);
   if (array != NULL) {
     if (self->nd == 0) {
-      long zero = 0;
-      if (ncvarput1(self->file->id, self->id, &zero, array->data) == -1) {
-	Cdunif_seterror();
+      size_t zero = 0;
+      Py_BEGIN_ALLOW_THREADS;
+      acquire_Cdunif_lock();
+      error = nc_put_var1_any(self->file->id, self->id,
+			      cdunif_type_from_type(self->type), &zero,
+			      array->data);
+      release_Cdunif_lock();
+      Py_END_ALLOW_THREADS;
+      if (error != NC_NOERR) {
+	cdunif_signalerror(ret);
 	ret = -1;
       }
     }
     else {
-      long *start;
-      long *count, *count1;
-      long *stride;
-      long *current;
+      size_t *start;
+      size_t *count, *count1;
+      ptrdiff_t *stride;
+      size_t *current;
       char *loop;
       long repeat = 1;
-      int elim, lastloop;
-      start = (long *)malloc(self->nd*sizeof(long));
-      count = (long *)malloc(self->nd*sizeof(long));
-      count1 = (long *)malloc(self->nd*sizeof(long));
-      stride = (long *)malloc(self->nd*sizeof(long));
-      current = (long *)malloc(self->nd*sizeof(long));
+      int lastloop;
+      start = (size_t *)malloc(self->nd*sizeof(size_t));
+      count = (size_t *)malloc(self->nd*sizeof(size_t));
+      count1 = (size_t *)malloc(self->nd*sizeof(size_t));
+      stride = (ptrdiff_t *)malloc(self->nd*sizeof(ptrdiff_t));
+      current = (size_t *)malloc(self->nd*sizeof(size_t));
       loop = (char *)malloc(self->nd*sizeof(char));
       if (start != NULL && count != NULL && count1 != NULL
 	  && stride != NULL && current != NULL && loop != NULL) {
-	elim = 0;
 	for (i = 0; i < self->nd; i++) {
 	  start[i] = indices[i].start;
 	  stride[i] = indices[i].stride;
@@ -1843,8 +2137,6 @@ PyCdunifVariable_WriteArray(self, indices, value)
 	  count1[i] = count[i];
 	  current[i] = 0;
 	  loop[i] = 0;
-	  if (indices[i].item)
-	    elim++;
 	}
 	for (i = array->nd-1, j = self->nd-1; i >= 0 && j >= 0; i--, j--) {
 	  while (j >= 0 && indices[j].item)
@@ -1873,12 +2165,15 @@ PyCdunifVariable_WriteArray(self, indices, value)
 	  ret = -1;
 	if (ret == -1)
 	  PyErr_SetString(PyExc_ValueError, "shapes are not aligned");
-	while (repeat-- && ret == 0) {
-	  if (ncvarputg(self->file->id, self->id, start, count1, stride, NULL,
-			array->data) == -1) {
-	    Cdunif_seterror();
-	    ret = -1;
-	  }
+	Py_BEGIN_ALLOW_THREADS;
+	acquire_Cdunif_lock();
+	error = NC_NOERR;
+	while (repeat--) {
+	  error = nc_put_vars_any(self->file->id, self->id,
+				  cdunif_type_from_type(self->type),
+				  start, count1, stride, array->data);
+	  if (error != NC_NOERR)
+	    break;
 	  if (lastloop >= 0) {
 	    for (i = lastloop; i >= 0; i--) {
 	      while (!loop[i] && i >= 0)
@@ -1893,10 +2188,18 @@ PyCdunifVariable_WriteArray(self, indices, value)
 	    }
 	  }
 	}
-	if (self->unlimited)
-	  cddiminq(self->file, self->dimids[0], NULL, NULL, NULL, NULL, NULL, &self->dimensions[0]);
+	if (self->unlimited){
+	    long lng;
+	    cddiminq(self->file, self->dimids[0], NULL, NULL, NULL, NULL, NULL, &lng);
+	    self->dimensions[0] = lng;
+	}
+	release_Cdunif_lock();
+	Py_END_ALLOW_THREADS;
+	if (error == -1) {
+	  cdunif_signalerror(error);
+	  ret = -1;
+	}
       }
-      Py_DECREF(array);
       if (start != NULL)
 	free(start);
       if (count != NULL)
@@ -1910,23 +2213,25 @@ PyCdunifVariable_WriteArray(self, indices, value)
       if (loop != NULL)
 	free(loop);
     }
+    Py_DECREF(array);
     free(dims);
     free(indices);
     return ret;
   }
-  else
+  else {
+    free(dims);
+    free(indices);
     return -1;
+  }
 }
 
-int
-PyCdunifVariable_WriteString(self, value)
-     PyCdunifVariableObject *self;
-     PyStringObject *value;
+static int
+PyCdunifVariable_WriteString(PyCdunifVariableObject *self,
+			     PyStringObject *value)
 {
-  long zero = 0;
   long len;
   if (self->type != PyArray_CHAR || self->nd != 1) {
-    PyErr_SetString(CdunifError, "not a string variable");
+    PyErr_SetString(PyExc_IOError, "cdunif: not a string variable");
     return -1;
   }
   len = PyString_Size((PyObject *)value);
@@ -1937,10 +2242,16 @@ PyCdunifVariable_WriteString(self, value)
   if (self->dimensions[0] > len)
     len++;
   if (check_if_open(self->file, 1)) {
+    int ret;
     define_mode(self->file, 0);
-    if (ncvarput(self->file->id, self->id, &zero, &len,
-		 PyString_AsString((PyObject *)value)) == -1) {
-      Cdunif_seterror();
+    Py_BEGIN_ALLOW_THREADS;
+    acquire_Cdunif_lock();
+    ret = nc_put_var_text(self->file->id, self->id,
+			  PyString_AsString((PyObject *)value));
+    release_Cdunif_lock();
+    Py_END_ALLOW_THREADS;
+    if (ret != NC_NOERR) {
+      cdunif_signalerror(ret);
       return -1;
     }
     return 0;
@@ -1950,9 +2261,7 @@ PyCdunifVariable_WriteString(self, value)
 }
 
 static PyObject *
-PyCdunifVariableObject_item(self, i)
-     PyCdunifVariableObject *self;
-     int i;
+PyCdunifVariableObject_item(PyCdunifVariableObject *self, Py_ssize_t i)
 {
   PyCdunifIndex *indices;
   if (self->nd == 0) {
@@ -1970,10 +2279,7 @@ PyCdunifVariableObject_item(self, i)
 }
 
 static PyObject *
-PyCdunifVariableObject_slice(self, low, high)
-     PyCdunifVariableObject *self;
-     int low;
-     int high;
+PyCdunifVariableObject_slice(PyCdunifVariableObject *self, Py_ssize_t low, Py_ssize_t high)
 {
   PyCdunifIndex *indices;
   if (self->nd == 0) {
@@ -1990,9 +2296,7 @@ PyCdunifVariableObject_slice(self, low, high)
 }
 
 static PyObject *
-PyCdunifVariableObject_subscript(self, index)
-     PyCdunifVariableObject *self;
-     PyObject *index;
+PyCdunifVariableObject_subscript(PyCdunifVariableObject *self, PyObject *index)
 {
   PyCdunifIndex *indices;
   if (PyInt_Check(index)) {
@@ -2006,8 +2310,9 @@ PyCdunifVariableObject_subscript(self, index)
   indices = PyCdunifVariable_Indices(self);
   if (indices != NULL) {
     if (PySlice_Check(index)) {
-      PySlice_GetIndices((PySliceObject *)index, self->dimensions[0],
-			 &indices->start, &indices->stop, &indices->stride);
+	Py_ssize_t slicelen;
+      PySlice_GetIndicesEx((PySliceObject *)index, self->dimensions[0],
+			 &indices->start, &indices->stop, &indices->stride, &slicelen);
       return PyArray_Return(PyCdunifVariable_ReadAsArray(self, indices));
     }
     if (PyTuple_Check(index)) {
@@ -2025,9 +2330,10 @@ PyCdunifVariableObject_subscript(self, index)
 	    d++;
 	  }
 	  else if (PySlice_Check(subscript)) {
-	    PySlice_GetIndices((PySliceObject *)subscript, self->dimensions[d],
+	      Py_ssize_t slicelen;
+	    PySlice_GetIndicesEx((PySliceObject *)subscript, self->dimensions[d],
 			       &indices[d].start, &indices[d].stop,
-			       &indices[d].stride);
+			       &indices[d].stride, &slicelen);
 	    d++;
 	  }
 	  else if (subscript == Py_Ellipsis) {
@@ -2054,10 +2360,8 @@ PyCdunifVariableObject_subscript(self, index)
 }
 
 static int
-PyCdunifVariableObject_ass_item(self, i, value)
-     PyCdunifVariableObject *self;
-     int i;
-     PyObject *value;
+PyCdunifVariableObject_ass_item(PyCdunifVariableObject *self,
+				Py_ssize_t i, PyObject *value)
 {
   PyCdunifIndex *indices;
   if (value == NULL) {
@@ -2079,11 +2383,8 @@ PyCdunifVariableObject_ass_item(self, i, value)
 }
 
 static int
-PyCdunifVariableObject_ass_slice(self, low, high, value)
-     PyCdunifVariableObject *self;
-     int low;
-     int high;
-     PyObject *value;
+PyCdunifVariableObject_ass_slice(PyCdunifVariableObject *self,
+				 Py_ssize_t low, Py_ssize_t high, PyObject *value)
 {
   PyCdunifIndex *indices;
   if (value == NULL) {
@@ -2094,6 +2395,18 @@ PyCdunifVariableObject_ass_slice(self, low, high, value)
     PyErr_SetString(PyExc_TypeError, "Not a sequence");
     return -1;
   }
+  if (low < -(long)self->dimensions[0])
+    low = -self->dimensions[0];
+  if (low < 0)
+    low += self->dimensions[0];
+  if (high < low)
+    high = low;
+  /* This breaks assignments to the unlimited dimension
+if (self->unlimited && self->dimids[0] == self->file->recdim) {
+    if (high > self->dimensions[0])
+      high = self->dimensions[0];
+  }
+  */
   indices = PyCdunifVariable_Indices(self);
   if (indices != NULL) {
     indices[0].start = low;
@@ -2104,10 +2417,8 @@ PyCdunifVariableObject_ass_slice(self, low, high, value)
 }
 
 static int
-PyCdunifVariableObject_ass_subscript(self, index, value)
-     PyCdunifVariableObject *self;
-     PyObject *index;
-     PyObject *value;
+PyCdunifVariableObject_ass_subscript(PyCdunifVariableObject *self,
+				     PyObject *index, PyObject *value)
 {
   PyCdunifIndex *indices;
   if (PyInt_Check(index)) {
@@ -2125,8 +2436,9 @@ PyCdunifVariableObject_ass_subscript(self, index, value)
   indices = PyCdunifVariable_Indices(self);
   if (indices != NULL) {
     if (PySlice_Check(index)) {
-      PySlice_GetIndices((PySliceObject *)index, self->dimensions[0],
-			 &indices->start, &indices->stop, &indices->stride);
+	Py_ssize_t slicelen;
+      PySlice_GetIndicesEx((PySliceObject *)index, self->dimensions[0],
+			 &indices->start, &indices->stop, &indices->stride, &slicelen);
       return PyCdunifVariable_WriteArray(self, indices, value);
     }
     if (PyTuple_Check(index)) {
@@ -2144,9 +2456,10 @@ PyCdunifVariableObject_ass_subscript(self, index, value)
 	    d++;
 	  }
 	  else if (PySlice_Check(subscript)) {
-	    PySlice_GetIndices((PySliceObject *)subscript, self->dimensions[d],
+	      Py_ssize_t slicelen;
+	    PySlice_GetIndicesEx((PySliceObject *)subscript, self->dimensions[d],
 			       &indices[d].start, &indices[d].stop,
-			       &indices[d].stride);
+			       &indices[d].stride, &slicelen);
 	    d++;
 	  }
 	  else if (subscript == Py_Ellipsis) {
@@ -2175,18 +2488,15 @@ PyCdunifVariableObject_ass_subscript(self, index, value)
 /* Type definition */
 
 static PyObject *
-PyCdunifVariableObject_error1(self, other)
-     PyCdunifVariableObject *self;
-     PyCdunifVariableObject *other;
+PyCdunifVariableObject_error1(PyCdunifVariableObject *self,
+			      PyCdunifVariableObject *other)
 {
   PyErr_SetString(PyExc_TypeError, "can't add Cdunif variables");
   return NULL;
 }
 
 static PyObject *
-PyCdunifVariableObject_error2(self, n)
-     PyCdunifVariableObject *self;
-     int n;
+PyCdunifVariableObject_error2(PyCdunifVariableObject *self, Py_ssize_t n)
 {
   PyErr_SetString(PyExc_TypeError, "can't multiply Cdunif variables");
   return NULL;
@@ -2194,17 +2504,17 @@ PyCdunifVariableObject_error2(self, n)
 
 
 static PySequenceMethods PyCdunifVariableObject_as_sequence = {
-  (inquiry)PyCdunifVariableObject_length,		/*sq_length*/
+  (lenfunc)PyCdunifVariableObject_length,		/*sq_length*/
   (binaryfunc)PyCdunifVariableObject_error1,       /*nb_add*/
-  (intargfunc)PyCdunifVariableObject_error2,       /*nb_multiply*/
-  (intargfunc)PyCdunifVariableObject_item,		/*sq_item*/
-  (intintargfunc)PyCdunifVariableObject_slice,	/*sq_slice*/
-  (intobjargproc)PyCdunifVariableObject_ass_item,	/*sq_ass_item*/
-  (intintobjargproc)PyCdunifVariableObject_ass_slice,   /*sq_ass_slice*/
+  (ssizeargfunc)PyCdunifVariableObject_error2,       /*nb_multiply*/
+  (ssizeargfunc)PyCdunifVariableObject_item,		/*sq_item*/
+  (ssizessizeargfunc)PyCdunifVariableObject_slice,	/*sq_slice*/
+  (ssizeobjargproc)PyCdunifVariableObject_ass_item,	/*sq_ass_item*/
+  (ssizessizeobjargproc)PyCdunifVariableObject_ass_slice,   /*sq_ass_slice*/
 };
 
 static PyMappingMethods PyCdunifVariableObject_as_mapping = {
-  (inquiry)PyCdunifVariableObject_length,		/*mp_length*/
+  (lenfunc)PyCdunifVariableObject_length,		/*mp_length*/
   (binaryfunc)PyCdunifVariableObject_subscript,	      /*mp_subscript*/
   (objobjargproc)PyCdunifVariableObject_ass_subscript,   /*mp_ass_subscript*/
 };
@@ -2232,9 +2542,7 @@ statichere PyTypeObject PyCdunifVariable_Type = {
 /* Creator for CdunifFile objects */
 
 static PyObject *
-CdunifFile(self, args)
-     PyObject *self; /* Not used */
-     PyObject *args;
+CdunifFile(PyObject *self, PyObject *args)
 {
   char *filename;
   char *mode = NULL;
@@ -2254,23 +2562,25 @@ CdunifFile(self, args)
     PyCdunifFile_AddHistoryLine(file, history);
   return (PyObject *)file;
 }
+static char cdunif_doc[] =
+"CdunifFile(filename, mode, history_line)\n\nopens a Cdunif file";
 
 /* Table of functions defined in the module */
 
-static PyMethodDef Cdunif_methods[] = {
-  {"CdunifFile",	CdunifFile, 1},
+static PyMethodDef cdunif_methods[] = {
+  {"CdunifFile",	CdunifFile, 1, cdunif_doc},
   {NULL,		NULL}		/* sentinel */
 };
 
 /* Module initialization */
 
-void
-initCdunif()
+DL_EXPORT(void)
+initCdunif(void)
 {
   PyObject *m, *d;
   static void *PyCdunif_API[PyCdunif_API_pointers];
 
-  /* Initialize netcdf and cdunif variables */
+  /* Initialize cdunif variables */
   ncopts = 0;
   cuseterropts(CU_VERBOSE);
 
@@ -2278,18 +2588,18 @@ initCdunif()
   PyCdunifFile_Type.ob_type = &PyType_Type;
   PyCdunifVariable_Type.ob_type = &PyType_Type;
 
+  /* Create Cdunif lock */
+#ifdef WITH_THREAD
+  Cdunif_lock = PyThread_allocate_lock();
+#endif
+
   /* Create the module and add the functions */
-  m = Py_InitModule("Cdunif", Cdunif_methods);
+  m = Py_InitModule("Cdunif", cdunif_methods);
 
   /* Import the array module */
 #ifdef import_array
   import_array();
 #endif
-
-  /* Add error object the module */
-  d = PyModule_GetDict(m);
-  CdunifError = PyString_FromString("CdunifError");
-  PyDict_SetItemString(d, "CdunifError", CdunifError);
 
   /* Initialize C API pointer array and store in module */
   PyCdunif_API[PyCdunifFile_Type_NUM] = (void *)&PyCdunifFile_Type;
@@ -2331,6 +2641,9 @@ initCdunif()
     (void *)&PyCdunifVariable_SetAttributeString;
   PyCdunif_API[PyCdunifFile_AddHistoryLine_NUM] =
     (void *)&PyCdunifFile_AddHistoryLine;
+  d = PyModule_GetDict(m);
+  CdunifError = PyString_FromString("CdunifError");
+  PyDict_SetItemString(d, "CdunifError", CdunifError);
   PyDict_SetItemString(d, "_C_API",
 		       PyCObject_FromVoidPtr((void *)PyCdunif_API, NULL));
 

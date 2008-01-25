@@ -1,6 +1,14 @@
 from distutils.core import setup, Extension
 import os,sys,string
 
+target_prefix = sys.prefix
+for i in range(len(sys.argv)):
+    a = sys.argv[i]
+    if a=='--prefix':
+        target_prefix=sys.argv[i+1]
+    sp = a.split("--prefix=")
+    if len(sp)==2:
+        target_prefix=sp[1]
 
 setup (name = "udunits",
        version='1.0',
@@ -24,7 +32,7 @@ setup (name = "udunits",
 f=open('Src/udunits.dat')
 version=sys.version.split()[0].split('.')
 version=string.join(version[:2],'.')
-f2=open(sys.prefix+'/lib/python'+version+'/site-packages/unidata/udunits.dat','w')
+f2=open(target_prefix+'/lib/python'+version+'/site-packages/unidata/udunits.dat','w')
 for l in f.xreadlines():
     f2.write(l)
 f2.close()

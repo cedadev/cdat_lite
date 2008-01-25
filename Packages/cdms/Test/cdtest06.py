@@ -11,6 +11,7 @@ v = f.variables['v']
 vp = x[1,1:,4:12,8:25]
 vp2 = vp[1,1:-1,1:]
 tv = v.subRegion((366.,731.,'ccn'),(-42.,42.,'ccn'),(90.,270.))
+tvv = v[0:2,0:10,30:40]
 try:
     xx = tv[1,7,15]
 except ValueError:

@@ -15,7 +15,7 @@ class PickComponent(SelectorComponent):
         self.kargs=kargs
         self.match=kargs.get('match',1)
         if not self.match in [0,1,-1]:
-            raise 'Error match must be 1 (strict matching), 0 (missing value) or -1 (skip inexistant values)'
+            raise Exception,'Error match must be 1 (strict matching), 0 (missing value) or -1 (skip inexistant values)'
         
 
     def __str__(self):
@@ -46,7 +46,7 @@ class PickComponent(SelectorComponent):
                 confined_by[i]=self # for cdms I want to confine this dimension
                 self.aux[i]=specs=list(self.args[i]) # How do we want to confine this dim ?
                 if not (isinstance(specs,list) or isinstance(specs,tuple)):
-                    raise "Error in Selector, you must specify a list or a tuple, you passed:"+str(specs)
+                    raise Exception,"Error in Selector, you must specify a list or a tuple, you passed:"+str(specs)
                 elif type(specs[0])==type(cdtime.comptime(1999)) or type(specs[0])==type(cdtime.reltime(0,'days since 1999')) or type(specs[0])==type(''):
                     list2=[]
                     for l in specs:
@@ -79,7 +79,7 @@ class PickComponent(SelectorComponent):
                     for i in range(len(axes)):
                         if axes[i].isLatitude() : axis=i
                 elif not kw in ['match']: # keyword not a recognised keyword or dimension name
-                    raise 'Error, keyword: '+kw+' not recognized'
+                    raise Exception,'Error, keyword: '+kw+' not recognized'
             # At this point, if axis is None:
             # we are dealing with a keyword for the selector
             # so we'll skip it
@@ -132,7 +132,7 @@ class PickComponent(SelectorComponent):
 			     bounds=None
                     except Exception,err:
                         if self.match==1:
-                            raise 'Error axis value :'+str(l)+' was requested but is not present in slab\n(more missing might exists)'
+                            raise Exception,'Error axis value :'+str(l)+' was requested but is not present in slab\n(more missing might exists)'
                         elif self.match==0:
                             tmp=MV.ones(sh,typecode=MV.Float)
                             tmp=MV.masked_equal(tmp,1)

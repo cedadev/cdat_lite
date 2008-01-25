@@ -8,20 +8,20 @@ Finally, everything is put on the 10x10 grid and masked for land.
 Also a 'selector' for Northern Hemisphere is applied (see cdutil.region documentation)
 """
 
-import cdutil, MV, vcs
+import cdutil, MV, os,sys
 # First let's create the mask (it is the same for NCEP and ECMWF since they are on the same grid)
-refmsk='/pcmdi/obs/etc/sftl.25deg.ctl'
-M=cdutil.WeightsMaker(refmsk, var='sftl', values=[1.])
+refmsk = os.path.join(sys.prefix,'sample_data','sftlf_dnm.nc')
+M=cdutil.WeightsMaker(refmsk, var='sftlf_dnm', values=[1.])
 
 # Reference
-ref='/pcmdi/obs/mo/tas/rnl_ecm/tas.rnl_ecm.sfc.ctl'
+ref = os.path.join(sys.prefix,'sample_data','tas_dnm-95a.xml')
 Ref=cdutil.VariableConditioner(ref, weightsMaker=M)
 Ref.var='tas'
 Ref.id='ECMWF'
-Ref.cdmsKeywords={'time':('1981','1982','co')}
+Ref.cdmsKeywords={'time':('1979','1980','co')}
 
 # Ok now the final grid for this variable is a T63, masked where temperatures are not between 280K and 300K
-ECMWFGrid=cdutil.WeightedGridMaker(source='/pcmdi/staff/longterm/doutriau/ldseamsk/amipII/pcmdi_sftlf_T63.nc',var='sftlf')
+ECMWFGrid=cdutil.WeightedGridMaker(source=refmsk,var='sftlf_dnm')
 ECMWFinalMask=cdutil.WeightsMaker()
 ECMWFinalMask.values=[('input',280.),('input',300.)]
 ECMWFinalMask.actions=[MV.less, MV.greater]
@@ -32,7 +32,9 @@ ECMWFGrid.weightsMaker=ECMWFinalMask
 Ref.weightedGridMaker=ECMWFGrid
 
 # Test
-tst='/pcmdi/obs/mo/tas/rnl_ncep/tas.rnl_ncep.ctl'
+tstmsk = os.path.join(sys.prefix,'sample_data','sftlf_ccsr.nc')
+M=cdutil.WeightsMaker(tstmsk, var='sftlf_ccsr', values=[1.])
+tst = os.path.join(sys.prefix,'sample_data','tas_ccsr-95a.xml')
 Tst=cdutil.VariableConditioner(tst, weightsMaker=M)
 Tst.var='tas'
 Tst.id='NCEP'
@@ -57,16 +59,16 @@ NCEPGrid.weightsMaker.actions=[myMakeMask]
 Tst.weightedGridMaker=NCEPGrid
 
 # External Variable
-ext='/pcmdi/obs/mo/tas/jones_amip/tas.jones_amip.ctl'
-extmask='/pcmdi/amip/fixed_tmp/sftlf/sftlf_gla-98a.nc'
-EMask=cdutil.WeightsMaker(source=extmask, var='sftlf')
+ext = ref
+extmask = refmsk
+EMask=cdutil.WeightsMaker(source=extmask, var='sftlf_dnm')
 ED=cdutil.VariableConditioner(ext, weightsMaker=EMask)
 ED.var='tas'
 ED.id='JONES'
 
 # Final Grid
 # We need a mask for the final grid
-fgmask='/pcmdi/staff/longterm/doutriau/ldseamsk/amipII/pcmdi_sftlf_10x10.nc'
+fgmask=os.path.join(sys.prefix,'sample_data','sftlf_10x10.nc')
 M2=cdutil.WeightsMaker(source=fgmask, var='sftlf', values=[100.])
 FG=cdutil.WeightedGridMaker(weightsMaker=M2)
 FG.longitude.n=36
@@ -79,15 +81,8 @@ FG.latitude.delta=10.
 # Now creates the compare object
 c=cdutil.VariablesMatcher(Ref, Tst, weightedGridMaker=FG, externalVariableConditioner=ED)
 c.cdmsArguments=[cdutil.region.NH]
-print c
+#print c
 # And gets it
 (ref, reffrc), (test, tfrc) = c()
 print 'Shapes:', test.shape, ref.shape
-
-# Plots the difference
-x=vcs.init()
-x.plot(test-ref)
-
-# Wait for user to press return
-raw_input("Press enter")
 

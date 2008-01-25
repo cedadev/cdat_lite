@@ -3,30 +3,32 @@
 """In this example we now retrieve NCEP and ECMWF for the year 1981, mask the land on their grid and apply an external data mask (the JONES variable). Finally the variables are once again put on the 10x10 grid where we apply a mask. Try not apply the mask on the final grid and note the difference (tip: to do so, simply change the definition of FG to: FG=cdutil.MaskedGridMaker() )
 """
 
-import cdutil, vcs
+import cdutil,os,sys
 # First let's creates the mask (it is the same for NCEP and ECMWF since they are on the same grid).
-refmsk='/pcmdi/obs/etc/sftl.25deg.ctl'
-M=cdutil.WeightsMaker(refmsk, var='sftl', values=[1.])
+refmsk = os.path.join(sys.prefix,'sample_data','sftlf_dnm.nc')
+M=cdutil.WeightsMaker(refmsk, var='sftlf_dnm', values=[1.])
 # Reference
-ref='/pcmdi/obs/mo/tas/rnl_ecm/tas.rnl_ecm.sfc.ctl'
+ref = os.path.join(sys.prefix,'sample_data','tas_dnm-95a.xml')
 Ref=cdutil.VariableConditioner(ref, weightsMaker=M)
 Ref.var='tas'
-Ref.id='ECMWF'
-Ref.cdmsKeywords={'time':('1981','1982','co')}
+Ref.id='D1'
+Ref.cdmsKeywords={'time':('1979','1980','co')}
 # Test
-tst='/pcmdi/obs/mo/tas/rnl_ncep/tas.rnl_ncep.ctl'
+tstmsk = os.path.join(sys.prefix,'sample_data','sftlf_ccsr.nc')
+M=cdutil.WeightsMaker(tstmsk, var='sftlf_ccsr', values=[1.])
+tst = os.path.join(sys.prefix,'sample_data','tas_ccsr-95a.xml')
 Tst=cdutil.VariableConditioner(tst, weightsMaker=M)
 Tst.var='tas'
-Tst.id='NCEP'
+Tst.id='D2'
 # External Variable (for the mask)
-ext='/pcmdi/obs/mo/tas/jones_amip/tas.jones_amip.ctl'
+ext = ref
 EV=cdutil.VariableConditioner(ext)
 EV.var='tas'
-EV.id='JONES'
+EV.id='OUT'
 # Final Grid
 # We need a mask for the final grid
-fgmask='/pcmdi/staff/longterm/doutriau/ldseamsk/amipII/pcmdi_sftlf_10x10.nc'
-M2=cdutil.WeightsMaker(source=fgmask, var='sftlf', values=[100.])
+fgmask=ext
+M2=cdutil.WeightsMaker(source=refmsk, var='sftlf_dnm', values=[["input",100.]])
 FG=cdutil.WeightedGridMaker(weightsMaker=M2)
 FG.longitude.n=36
 FG.longitude.first=0.
@@ -39,8 +41,3 @@ c=cdutil.VariablesMatcher(Ref, Tst, weightedGridMaker=FG, externalVariableCondit
 # And gets it
 (ref, reffrc), (test, tfrc) = c()
 print 'Shapes:', test.shape, ref.shape
-# Plots the difference
-x=vcs.init()
-x.plot(test-ref)
-# Wait for user to press return
-raw_input("Press enter")

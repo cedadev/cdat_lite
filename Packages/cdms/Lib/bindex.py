@@ -10,7 +10,7 @@ def bindexHorizontalGrid(latlin, lonlin):
     Returns the index.
     """
 
-    head = Numeric.zeros(180*90)
+    head = Numeric.zeros(720*360)       # This should match NBINI, NBINJ in bindex.c
     next = Numeric.zeros(len(latlin))
     _bindex.bindex(latlin, lonlin, head, next)
     

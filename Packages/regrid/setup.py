@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 from distutils.core import setup, Extension
 import os, sys
+unm = os.uname()[-1]
+if unm.find('64')>-1:
+  print 'regrid will not build on 64bit system, instead use cdms2, regrid2, MV2, numpy in CDAT 5.0'
+  sys.exit()
+
 setup (name = "regrid",
        version='3.3',
        description = "Remap Package",

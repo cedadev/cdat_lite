@@ -77,11 +77,12 @@ except:
 
 f.close()
 
+
 try:
     badslice = u[:,4:12,8:24]
     badu = u.getValue()
 except cdms.CDMSError, e:
-    i = string.find(e.args,"Cannot read from closed")
+    i = string.find(str(e),"Cannot read from closed")
     if i!=0: markError("Handling read from closed file")
 else:
     markError("Handling read from closed file")
@@ -89,7 +90,7 @@ else:
 try:
     badu = u.getValue()
 except cdms.CDMSError, e:
-    i = string.find(e.args,"Cannot read from closed")
+    i = string.find(str(e),"Cannot read from closed")
     if i!=0: markError("Handling read from closed file")
 else:
     markError("Handling read from closed file")
@@ -97,7 +98,7 @@ else:
 try:
     badslice = u[0:1]
 except cdms.CDMSError, e:
-    i = string.find(e.args,"Cannot read from closed")
+    i = string.find(str(e),"Cannot read from closed")
     if i!=0: markError("Handling read from closed file")
 else:
     markError("Handling read from closed file")
@@ -105,21 +106,21 @@ else:
 try:
     u[0,0,0]=-99.9
 except cdms.CDMSError, e:
-    if e.args!=WriteNotImplemented: markError("Handling write to dataset")
+    if str(e)!=WriteNotImplemented: markError("Handling write to dataset")
 else:
     markError("Handling write to dataset")
     
 try:
     u[0:1]=-99.9
 except cdms.CDMSError, e:
-    if e.args!=WriteNotImplemented: markError("Handling write to dataset")
+    if str(e)!=WriteNotImplemented: markError("Handling write to dataset")
 else:
     markError("Handling write to dataset")
     
 try:
     u.assignValue(fullu)
 except cdms.CDMSError, e:
-    i = string.find(e.args,NotImplemented)
+    i = string.find(str(e),NotImplemented)
     if i!=0: markError("Handling write to dataset")
 else:
     markError("Handling write to dataset")

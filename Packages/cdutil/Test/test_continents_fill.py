@@ -1,5 +1,6 @@
 import cdms,vcs,cdutil.continent_fill,sys,os
-
+import vcs.test.support
+bg= vcs.test.support
 f = cdms.open(os.path.join(sys.prefix,'sample_data','clt.nc'))
 s=f('clt')
 x=vcs.init()
@@ -14,7 +15,16 @@ b.datawc_x2=-70
 b.datawc_y1=20
 b.datawc_y2=70
 b.projection='lambert'
-x.plot(s,b,t,continents=0)
+x.plot(s,b,t,continents=0,bg=bg)
+vcs.test.support.check_plot(x)
+ 
+
+if '--extended' not in sys.argv:
+     print '\n************* PARTIAL TEST *****************'
+     print 'FOR COMPLETE TEST OF THIS MODULE USE '
+     print '   -F (--full) or -E (--extended) option'
+     print '************* PARTIAL TEST *****************\n'
+     sys.exit()
 
 
 gc=cdutil.continent_fill.Gcf()
@@ -25,6 +35,6 @@ gc.datawc_y2=b.datawc_y2
 gc.projection=b.projection
 gc.fill='y'
 gc.line='y'
-gc.plot(x=x,template=t)
+gc.plot(x=x,template=t,bg=bg)
+vcs.test.support.check_plot(x)
 
-raw_input()

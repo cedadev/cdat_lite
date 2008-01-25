@@ -447,6 +447,8 @@ class VariableConditioner(object):
         # and you specified Nino3 region for example.
         v   = v  (*args,**kw)
         frc = frc(*args,**kw) .filled(0.)
+        if v.missing_value is None:
+            v.missing_value=1.e20
         v=MV.masked_where(MV.equal(frc,0.),v)
         # Now applies the slope and offset if necessary
         if self.slope!=1.:

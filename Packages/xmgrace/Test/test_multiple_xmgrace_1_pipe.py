@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 
-import xmgrace,gc
+import xmgrace,gc,sys
+
+print 'Test disabled'
+sys.exit()
 
 #x=xmgrace.xmgrace.init()
 #x=xmgrace.xmgrace.init(pipe_file='tmp.txt',new_pipe=True,clean_on_exit=False)

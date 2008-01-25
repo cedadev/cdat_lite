@@ -1585,11 +1585,11 @@ def rank(x,axis=0):
     x,dum,weights,axis,ax=__checker(x,None,None,axis)
 
     # First figures out indices to sort
-    a0=MA.array(MA.argsort(x.filled(1.E20),axis=0))
+    a0=MA.array(MA.argsort(x.filled(1.E20),axis=0),'i')
     n=a0.shape[0]
 
     # initialize output array
-    b=MA.zeros(a0.shape,MA.Float)
+    b=MA.zeros(a0.shape,'f')
 
     # Get the indices
 ##     print 'Indices are:',a0,x

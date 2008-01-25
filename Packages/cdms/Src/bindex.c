@@ -2,8 +2,9 @@
    with data on non-rectilinear grids.
  */
 #include <math.h>
-#define NBINI 180			     /* number of bins in the i (longitude) direction */
-#define NBINJ 90			     /* number of bins in the j (latitude) direction */
+/* NBINI, NBINJ should match definition in bindex.bindexHorizontalGrid */
+#define NBINI 720			     /* number of bins in the i (longitude) direction */
+#define NBINJ 360			     /* number of bins in the j (latitude) direction */
 #define BINLEN NBINI*NBINJ
 #define MAX(a,b) (a)>(b)?(a):(b)
 #define MIN(a,b) (a)<(b)?(a):(b)

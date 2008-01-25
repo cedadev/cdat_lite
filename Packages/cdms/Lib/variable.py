@@ -74,7 +74,7 @@ class DatasetVariable(AbstractVariable):
 
     def __getitem__(self, key):
         if self.parent is None:
-            raise CDMSError, FileClosed+self.id
+            raise CDMSError, FileClosed+str(self.id)
         return AbstractVariable.__getitem__(self, key)
         
     def getValue(self, squeeze=1):
@@ -478,9 +478,11 @@ class DatasetVariable(AbstractVariable):
             filename, dumlist = partitionSlices
 
             f = self.parent.openFile(filename,'r')
-            var = f.variables[self.name_in_file]
-            result = var.getValue()
-            f.close()
+            try:
+                var = f.variables[self.name_in_file]
+                result = var.getValue()
+            finally:
+                f.close()
             return result
 
         # If no partitioned axes, just read the data
@@ -488,9 +490,11 @@ class DatasetVariable(AbstractVariable):
             filename, slicelist = partitionSlices
 
             f = self.parent.openFile(filename,'r')
-            var = f.variables[self.name_in_file]
-            result = self._returnArray(apply(var.getitem,tuple(slicelist)),0)
-            f.close()
+            try:
+                var = f.variables[self.name_in_file]
+                result = self._returnArray(apply(var.getitem,tuple(slicelist)),0)
+            finally:
+                f.close()
             sh = result.shape
             if 0 in sh:
                 raise CDMSError, IndexError + 'Coordinates out of Domain'
@@ -511,9 +515,11 @@ class DatasetVariable(AbstractVariable):
                 # else read the data and close the file
                 else:
                     f = self.parent.openFile(filename,'r')
-                    var = f.variables[self.name_in_file]
-                    chunk = apply(var.getitem,tuple(slicelist))
-                    f.close()
+                    try:
+                        var = f.variables[self.name_in_file]
+                        chunk = apply(var.getitem,tuple(slicelist))
+                    finally:
+                        f.close()
                     sh = chunk.shape
                     if 0 in sh:
                         raise CDMSError, 'Coordinates out of Domain'
@@ -547,9 +553,11 @@ class DatasetVariable(AbstractVariable):
                     # else read the data and close the file
                     else:
                         f = self.parent.openFile(filename,'r')
-                        var = f.variables[self.name_in_file]
-                        chunk = apply(var.getitem,tuple(slicelist))
-                        f.close()
+                        try:
+                            var = f.variables[self.name_in_file]
+                            chunk = apply(var.getitem,tuple(slicelist))
+                        finally:
+                            f.close()
                         sh = chunk.shape
                         if 0 in sh:
                             raise CDMSError, 'Coordinates out of Domain'

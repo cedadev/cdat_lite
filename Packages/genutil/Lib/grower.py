@@ -40,6 +40,7 @@ def grower(x, y, singleton=0):
                 txt=''
         else:
             forder.append(o)
+
     prev=0
     txt=''
     xorder=forder[:]
@@ -52,7 +53,7 @@ def grower(x, y, singleton=0):
                txt=txt+o
             else:
                 nyorder.append('(%s)' % txt)
-                if not txt in forder:
+                if not '(%s)' % txt in forder:
                     forder.append('(%s)' % txt)
                 prev=0
                 txt=''
@@ -62,6 +63,7 @@ def grower(x, y, singleton=0):
                 forder.append(o)
     yorder=nyorder
     # Now grow x
+    #print forder,xorder,yorder,nyorder
     for o in forder:
         if not o in xorder:
             for i in range(len(yorder)):
@@ -93,10 +95,11 @@ def grower(x, y, singleton=0):
 
 
     # Now grow y
+    #print forder,yorder
     for o in forder:
         if not o in yorder:
             for i in range(len(xorder)):
-                if xorder[i]==o :
+                if o in ['(%s)' % xorder[i], xorder[i] ] :
                     newaxes=y.getAxisList()
                     ax=xaxes[i]
                     if len(ax)>1 and singleton==1:
@@ -109,4 +112,5 @@ def grower(x, y, singleton=0):
                     newaxes.insert(0,ax)
                     y.setAxisList(newaxes)
     # Figure out the string to reorder x and y
+    #print x.shape,y.shape
     return x(order=forder),y(order=forder)

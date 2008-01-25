@@ -5,10 +5,10 @@ extern "C" {
 #endif
 
 /*
- * Include file for Cdunif files and variables.
+ * Include file for cdunif files and variables.
  *
  * Adapted from code written by Konrad Hinsen
- * (last revision: 1997-5-7)
+ * last revision: 2001-5-4
  */
 
 
@@ -42,7 +42,7 @@ typedef struct {
   PyObject *attributes;   /* dictionary */
   char *name;
   int *dimids;
-  long *dimensions;
+  size_t *dimensions;
   int type;               /* same as array types */
   int nd;
   int id;
@@ -53,10 +53,10 @@ typedef struct {
 /* Variable index structure */
 
 typedef struct {
-  int start;
-  int stop;
-  int stride;
-  int item;
+  Py_ssize_t start;
+  Py_ssize_t stop;
+  Py_ssize_t stride;
+  Py_ssize_t item;
 } PyCdunifIndex;
 
 /*
@@ -108,7 +108,7 @@ typedef struct {
 #define PyCdunifVariable_GetRank_NUM 8
 
 /* Get variable shape */
-#define PyCdunifVariable_GetShape_RET long *
+#define PyCdunifVariable_GetShape_RET size_t *
 #define PyCdunifVariable_GetShape_PROTO Py_PROTO((PyCdunifVariableObject *var))
 #define PyCdunifVariable_GetShape_NUM 9
 
@@ -205,43 +205,43 @@ staticforward PyTypeObject PyCdunifVariable_Type;
 #define PyCdunifVariable_Check(op) ((op)->ob_type == &PyCdunifVariable_Type)
 
 /* C API function declarations */
-extern PyCdunifFile_Open_RET PyCdunifFile_Open PyCdunifFile_Open_PROTO;
-extern PyCdunifFile_Close_RET PyCdunifFile_Close PyCdunifFile_Close_PROTO;
-extern PyCdunifFile_Sync_RET PyCdunifFile_Sync PyCdunifFile_Sync_PROTO;
-extern PyCdunifFile_CreateDimension_RET PyCdunifFile_CreateDimension \
+static PyCdunifFile_Open_RET PyCdunifFile_Open PyCdunifFile_Open_PROTO;
+static PyCdunifFile_Close_RET PyCdunifFile_Close PyCdunifFile_Close_PROTO;
+static PyCdunifFile_Sync_RET PyCdunifFile_Sync PyCdunifFile_Sync_PROTO;
+static PyCdunifFile_CreateDimension_RET PyCdunifFile_CreateDimension \
   PyCdunifFile_CreateDimension_PROTO;
-extern PyCdunifFile_CreateVariable_RET PyCdunifFile_CreateVariable \
+static PyCdunifFile_CreateVariable_RET PyCdunifFile_CreateVariable \
   PyCdunifFile_CreateVariable_PROTO;
-extern PyCdunifFile_GetVariable_RET PyCdunifFile_GetVariable \
+static PyCdunifFile_GetVariable_RET PyCdunifFile_GetVariable \
   PyCdunifFile_GetVariable_PROTO;
-extern PyCdunifVariable_GetRank_RET PyCdunifVariable_GetRank \
+static PyCdunifVariable_GetRank_RET PyCdunifVariable_GetRank \
   PyCdunifVariable_GetRank_PROTO;
-extern PyCdunifVariable_GetShape_RET PyCdunifVariable_GetShape \
+static PyCdunifVariable_GetShape_RET PyCdunifVariable_GetShape \
   PyCdunifVariable_GetShape_PROTO;
-extern PyCdunifVariable_Indices_RET PyCdunifVariable_Indices \
+static PyCdunifVariable_Indices_RET PyCdunifVariable_Indices \
   PyCdunifVariable_Indices_PROTO;
-extern PyCdunifVariable_ReadAsArray_RET PyCdunifVariable_ReadAsArray \
+static PyCdunifVariable_ReadAsArray_RET PyCdunifVariable_ReadAsArray \
   PyCdunifVariable_ReadAsArray_PROTO;
-extern PyCdunifVariable_ReadAsString_RET PyCdunifVariable_ReadAsString \
+static PyCdunifVariable_ReadAsString_RET PyCdunifVariable_ReadAsString \
   PyCdunifVariable_ReadAsString_PROTO;
-extern PyCdunifVariable_WriteArray_RET PyCdunifVariable_WriteArray \
+static PyCdunifVariable_WriteArray_RET PyCdunifVariable_WriteArray \
   PyCdunifVariable_WriteArray_PROTO;
-extern PyCdunifVariable_WriteString_RET PyCdunifVariable_WriteString \
+static PyCdunifVariable_WriteString_RET PyCdunifVariable_WriteString \
   PyCdunifVariable_WriteString_PROTO;
-extern PyCdunifFile_GetAttribute_RET PyCdunifFile_GetAttribute \
+static PyCdunifFile_GetAttribute_RET PyCdunifFile_GetAttribute \
   PyCdunifFile_GetAttribute_PROTO;
-extern PyCdunifFile_SetAttribute_RET PyCdunifFile_SetAttribute \
+static PyCdunifFile_SetAttribute_RET PyCdunifFile_SetAttribute \
   PyCdunifFile_SetAttribute_PROTO;
-extern PyCdunifFile_SetAttributeString_RET PyCdunifFile_SetAttributeString \
+static PyCdunifFile_SetAttributeString_RET PyCdunifFile_SetAttributeString \
   PyCdunifFile_SetAttributeString_PROTO;
-extern PyCdunifVariable_GetAttribute_RET PyCdunifVariable_GetAttribute \
+static PyCdunifVariable_GetAttribute_RET PyCdunifVariable_GetAttribute \
   PyCdunifVariable_GetAttribute_PROTO;
-extern PyCdunifVariable_SetAttribute_RET PyCdunifVariable_SetAttribute \
+static PyCdunifVariable_SetAttribute_RET PyCdunifVariable_SetAttribute \
   PyCdunifVariable_SetAttribute_PROTO;
-extern PyCdunifVariable_SetAttributeString_RET \
+static PyCdunifVariable_SetAttributeString_RET \
   PyCdunifVariable_SetAttributeString \
   PyCdunifVariable_SetAttributeString_PROTO;
-extern PyCdunifFile_AddHistoryLine_RET PyCdunifFile_AddHistoryLine \
+static PyCdunifFile_AddHistoryLine_RET PyCdunifFile_AddHistoryLine \
   PyCdunifFile_AddHistoryLine_PROTO;
 
 #else
@@ -320,7 +320,7 @@ static void **PyCdunif_API;
      (*)PyCdunifFile_AddHistoryLine_PROTO) \
    PyCdunif_API[PyCdunifFile_AddHistoryLine_NUM])
 
-#define import_Cdunif() \
+#define import_cdunif() \
 { \
   PyObject *module = PyImport_ImportModule("Cdunif"); \
   if (module != NULL) { \

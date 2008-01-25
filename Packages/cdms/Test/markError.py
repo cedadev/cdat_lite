@@ -24,4 +24,5 @@ def reportError():
     if errors==[]:
         print 'OK'
     else:
-        print 'Failed: ',errors
+        print 'Failed'
+        raise Exception,errors

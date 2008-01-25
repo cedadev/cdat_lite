@@ -60,7 +60,7 @@ try:
     badslice = u[0:1]
     badu = u.getValue()
 except cdms.CDMSError, e:
-    i = string.find(e.args,"Cannot read from closed")
+    i = string.find(str(e),"Cannot read from closed")
     if i!=0: markError("Handling read from closed file")
 else:
     markError("Handling read from closed file")
@@ -68,7 +68,7 @@ else:
 try:
     badslice = u[0:1]
 except cdms.CDMSError, e:
-    i = string.find(e.args,"Cannot read from closed")
+    i = string.find(str(e),"Cannot read from closed")
     if i!=0: markError("Handling read from closed file")
 else:
     markError("Handling read from closed file")
@@ -76,7 +76,7 @@ else:
 try:
     badu = u.getValue()
 except cdms.CDMSError, e:
-    i = string.find(e.args,"Cannot read from closed")
+    i = string.find(str(e),"Cannot read from closed")
     if i!=0: markError("Handling read from closed file")
 else:
     markError("Handling read from closed file")
@@ -86,7 +86,7 @@ try:
     u[0:1]=-99.9
     u.setValue(fullu)
 except cdms.CDMSError, e:
-    i = string.find(e.args,"Cannot write to a closed")
+    i = string.find(str(e),"Cannot write to a closed")
     if i!=0: markError("Handling write to a closed file")
 else:
     markError("Handling write to closed file")

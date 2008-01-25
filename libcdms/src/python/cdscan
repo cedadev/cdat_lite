@@ -1260,7 +1260,13 @@ def main(argv):
                     for varids, ranges in varindex:
                         if reprVar in varids:
                             varids.append(boundsname)
-                    boundsdomain = (axisobj, boundsinfo[0][1])
+                    tmpdom = boundsinfo[0]
+                    if type(tmpdom[1])==types.StringType:
+                        bndsobj = tmpdom[0]
+                        boundsdomain = (bndsobj, axisobj)
+                    else:
+                        bndsobj = tmpdom[1]
+                        boundsdomain = (axisobj, bndsobj)
                     vardict[boundsname] = (boundsdomain, boundsinfo[1], boundsinfo[2])
                     assignedBounds[boundsname] = 1
 
@@ -1412,7 +1418,10 @@ def main(argv):
                 length = axis.length
             else:
                 length = len(axis)
-            elemnode = cdmsNode.DomElemNode(axis.id, 0, length)
+            try:
+                elemnode = cdmsNode.DomElemNode(axis.id, 0, length)
+            except AttributeError:
+                print 'Axis %s for variable %s does not have attribute "id"'%(`axis`, key)
             if hasattr(axis, 'partition_length'):
                 elemnode.setExternalAttr('partition_length',axis.partition_length)
             domainNode.add(elemnode)

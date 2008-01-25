@@ -436,7 +436,8 @@ class AbstractVariable(CdmsObj, Slab):
                        continue
                    elif numericSqueeze and i in singles:
                        continue
-                   axis = self.getAxis(i).subaxis(slice.start, slice.stop, slice.step)
+                   # Don't wrap square-bracket slices
+                   axis = self.getAxis(i).subaxis(slice.start, slice.stop, slice.step, wrap=(numericSqueeze==0))
                    axes.append(axis)
                    allaxes[i] = axis
             else:

@@ -591,7 +591,7 @@ set(self,args)
     return NULL;
   array_array=(PyArrayObject *)
     PyArray_ContiguousFromObject(array,PyArray_NOTYPE,1,0);
-  if (array==NULL) return NULL;
+  if (array_array==NULL) return NULL;
   indices_array=(PyArrayObject *)
     PyArray_ContiguousFromObject(indices,PyArray_INT,0,0);
   if (indices_array==NULL) {
@@ -725,7 +725,7 @@ rank(self,args)
     return NULL;
   array_array=(PyArrayObject *)
     PyArray_ContiguousFromObject(array,PyArray_FLOAT,1,0);
-  if (array==NULL) return NULL;
+  if (array_array==NULL) return NULL;
   indices_array=(PyArrayObject *)
     PyArray_ContiguousFromObject(indices,PyArray_INT,0,0);
   if (indices_array==NULL) {

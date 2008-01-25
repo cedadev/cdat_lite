@@ -1,6 +1,11 @@
 #!/usr/bin/env python
+import cdms, MA, os, sys
 print 'Test 9: cu emulation...',
-import cu, cdms, MA, os, sys
+try:
+    import cu
+except:
+    print 'cu not build, test skipped....'
+    sys.exit()
 from markError import clearError,markError,reportError
 clearError()
 f = cu.open(os.path.join(sys.prefix,'sample_data','test.xml'))

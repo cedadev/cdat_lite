@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 
-import cdutil
+import cdutil,os,sys
+ref = os.path.join(sys.prefix,'sample_data','tas_dnm-95a.xml')
 # Reference
-ref='/pcmdi/obs/mo/tas/jones_amip/tas.jones_amip.ctl'
 Ref=cdutil.VariableConditioner(ref)
 Ref.var='tas'
 Ref.id='JONES'# optional
 # Test
-tst='/pcmdi/obs/mo/tas/rnl_ncep/tas.rnl_ncep.ctl'
+tst = os.path.join(sys.prefix,'sample_data','tas_ccsr-95a.xml')
 Tst=cdutil.VariableConditioner(tst)
 Tst.var='tas'
 Tst.id='NCEP' #optional
@@ -24,4 +24,6 @@ c=cdutil.VariablesMatcher(Ref, Tst, weightedGridMaker=FG)
 # And get it (3 different ways).
 (ref, ref_frac), (test, test_frac) = c.get()
 ref, test = c.get(returnTuple=0)
+print ref,test
 ref, test = c(returnTuple=0)
+print ref,test

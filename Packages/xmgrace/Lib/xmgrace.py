@@ -2308,7 +2308,8 @@ class init(object):
 	cmd = ('dummy',) + cmd
         if self.new_pipe:
             if self.pipe_file is not None:
-                self.pipe=open('tmp.txt','w',1)
+                print 'Opening file pipe:',self.pipe_file
+                self.pipe=open(self.pipe_file,'w',1)
             self.pid = os.fork()
             if self.pid == 0:
                 try:
@@ -2340,12 +2341,13 @@ class init(object):
 
             # We are the parent -> keep only the writeable side of the pipe
             os.close(fd_r)
-
+            
         # turn the writeable side into a buffered file object:
         if self.pipe_file is None:
             self.pipe = os.fdopen(fd_w, 'w', 0)
         else:
-            self.pipe=open('tmp.txt','w+',1)
+            print 'Opening file pipe 2:',self.pipe_file
+            self.pipe=open(self.pipe_file,'w+',1)
 
         self.ininit=0
         return
@@ -2738,7 +2740,11 @@ class init(object):
 		ln.append('     '+nm+'axis  bar linewidth '+str(ax.bar.linewidth)+'\n')
 		ln.append('     '+nm+'axis  label "'+ax.label+'"\n')
 		ln.append('     '+nm+'axis  label layout '+ax.lbl.layout+'\n')
-		ln.append('     '+nm+'axis  label place '+str(ax.lbl.place.loc)+'\n')
+                if isinstance(ax.lbl.place.loc,str):
+                    ln.append('     '+nm+'axis  label place %s\n' % (ax.lbl.place.loc))
+                else:
+                    ln.append('     '+nm+'axis  label place spec\n')
+                    ln.append('     '+nm+'axis  label place %s, %s\n' % (ax.lbl.place.loc[0],ax.lbl.place.loc[1]))
 		ln.append('     '+nm+'axis  label char size '+str(ax.lbl.char_size)+'\n')
 		ln.append('     '+nm+'axis  label font '+str(ax.lbl.font)+'\n')
 		ln.append('     '+nm+'axis  label color '+self.col(ax.lbl.color)+'\n')

@@ -2,7 +2,7 @@
 
 var='tas'
 amipmodel='dnm-98a'
-import cdtime,cdms,os,sys
+import cdtime,cdms,os,sys,vcs
 from cdutil import times
 from cdms import MV
 
@@ -37,6 +37,14 @@ try:
     jans=times.JAN(s)
 except:
      raise 'Error computing januarys from 6h'
+
+if '--extended' not in sys.argv:
+     print '\n************* PARTIAL TEST *****************'
+     print 'FOR COMPLETE TEST OF THIS MODULE USE '
+     print '   -F (--full) or -E (--extended) option'
+     print '************* PARTIAL TEST *****************\n'
+     sys.exit()
+
 
 print "Test #3: climatology 6h"
 JFMA=times.Seasons('JFMA')

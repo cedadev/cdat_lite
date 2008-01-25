@@ -92,11 +92,22 @@ def getMonthIndex(my_str):
        return [mon_list.index(my_str)+1]
    # end of if string.upper(my_str) in yr_arr:
    #
-   for mon in mon_list:
-       if string.find(mon,  my_str) != -1:
-           return [mon_list.index(mon)+1]
-       # end of if string.find(mon,  my_str) != -1:
-   # end of for mon in mon_list:
+
+   # Determine if my_str is an abbreviated month, if my_str has
+   # at least 3 characters.
+   # * If my_str has one character, the same result will be found by using
+   #   the 'yrs' string below (ambiguous result because we choose the
+   #   first matching char...)
+   # * If my_str has 2 characters, we assume that we are looking for 2
+   #   consecutive months that will be found with 'yrs'
+   #   i.e. 'JA' -> July AND August  (NOT January!)
+   if len(my_str) >= 3:
+       for mon in mon_list:
+           if string.find(mon,  my_str) != -1:
+               return [mon_list.index(mon)+1]
+           # end of if string.find(mon,  my_str) != -1:
+       # end of for mon in mon_list:
+           
    yr = 'JFMAMJJASOND'
    yrs = yr+yr[:6]
    #

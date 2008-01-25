@@ -919,11 +919,6 @@ class AttrNode(CdmsNode):
 
     def __init__(self, name, value=None):
         CdmsNode.__init__(self,"attr")
-
-        # Work around for 64-bit Numeric bug.
-        if type(value) == Numeric.ArrayType and value.shape == ():
-            value = value[0]
-
         if type(value) not in [IntType,FloatType,StringType,NoneType]:
             raise CDMSError, 'Invalid attribute type: '+`value`
         self.name = name

@@ -315,9 +315,9 @@ class TransientVariable(AbstractVariable, MA.array):
             length = 0
         return length
 
-    def __str__ (self):
-        # return "<TransientVariable %s%s, type = %s, has %d elements>"%(self.id, `self.shape`, self.typecode(), self.size())
-        return MA.array.__str__(self)
+##     def __str__ (self):
+##         # return "<TransientVariable %s%s, type = %s, has %d elements>"%(self.id, `self.shape`, self.typecode(), self.size())
+##         return MA.array.__str__(self)
 
     def __repr__ (self):
         return self.id + '\n' + MA.array.__repr__(self) + '\n'

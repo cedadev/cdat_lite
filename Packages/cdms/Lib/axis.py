@@ -1147,7 +1147,7 @@ class AbstractAxis(CdmsObj):
 
         return retval
 
-    def subaxis(self,i,j,k=1):
+    def subaxis(self,i,j,k=1, wrap=True):
         """Create a transient axis for the index slice [i:j:k]
         The stride k can be positive or negative. Wraparound is
         supported for longitude dimensions or those with a modulus attribute.
@@ -1166,7 +1166,7 @@ class AbstractAxis(CdmsObj):
         # mf 20010328 negative stride i >= vice i > 
         #----------------------------------------------------------------------
         
-        if ((k>0 and j>size) or (k<0 and i >= size)) and self.isCircular():
+        if wrap and ((k>0 and j>size) or (k<0 and i >= size)) and self.isCircular():
             modulo = self.getModuloCycle()
 
         if modulo is not None:
