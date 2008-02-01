@@ -5,9 +5,12 @@ print 'Test 2: CdmsFile I/O ... ',
 import cdms,MA,string,os,sys
 from MA import masked
 from markError import NTIME,NLAT,NLON,x,clearError,markError,reportError
+
+from markError import get_sample_data_dir
+
 clearError()
 
-f = cdms.open(os.path.join(".",'sample_data','readonly.nc'))
+f = cdms.open(os.path.join(get_sample_data_dir(),'readonly.nc'))
 u = f.variables['u']
 umasked = f.variables['umasked']
 

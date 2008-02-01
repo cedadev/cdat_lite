@@ -6,6 +6,9 @@ print 'Test 12: Extended wraparound ... ',
 
 import cdms,os,sys
 from markError import clearError,markError,reportError
+
+from markError import get_sample_data_dir
+
 clearError()
 
 def testwrap(lon,coord,index):
@@ -25,7 +28,7 @@ def testwrap(lon,coord,index):
     if result!=index:
         markError("%s ==> %s, not %s"%(`coord`,`result`,`index`))
 
-f = cdms.open(os.path.join(".",'sample_data','test.xml'))
+f = cdms.open(os.path.join(get_sample_data_dir(),'test.xml'))
 lon = f['longitude']
 lat = f['latitude']
 rlat = cdms.createAxis(lat[::-1], id='latitude')

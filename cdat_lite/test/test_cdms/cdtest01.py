@@ -8,9 +8,10 @@ import cdms,MA,string,os,sys
 from cdms.variable import WriteNotImplemented
 from cdms.avariable import NotImplemented
 from markError import NTIME,NLAT,NLON,x,clearError,markError,reportError
-clearError()
 
 from markError import get_sample_data_dir
+
+clearError()
 
 
 f = cdms.open(os.path.join(get_sample_data_dir(),'test.xml'))

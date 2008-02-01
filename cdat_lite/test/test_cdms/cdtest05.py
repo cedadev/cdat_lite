@@ -3,11 +3,14 @@
 import cdms,MA,cdtime,os,sys
 from cdms import MV
 from markError import NTIME,NLAT,NLON,x,clearError,markError,reportError
+
+from markError import get_sample_data_dir
+
 clearError()
 
 print 'Test 5: get/sub, time functions ...',
 
-f = cdms.open(os.path.join(".",'sample_data','test.xml'))
+f = cdms.open(os.path.join(get_sample_data_dir(),'test.xml'))
 v = f.variables['v']
 vp = x[1,1:,4:12,8:24]
 wp = x[1,2,4:12]
@@ -45,7 +48,7 @@ except IndexError:
      markError('subRegion squeeze option failed')
 
 # mf 20010308 subRegion - extended wrap
-fw = cdms.open(os.path.join(".",'sample_data','ps.wrap.test.0E.nc'))
+fw = cdms.open(os.path.join(get_sample_data_dir(),'ps.wrap.test.0E.nc'))
 ps = fw.getVariable('ps')
 ps1 = ps[:,:,36:]
 ps2 = ps[:,:,:37]
@@ -62,7 +65,7 @@ su = u.subRegion(lon=(90,450,'co'))
 if not MA.allequal(ucat,su): markError('subRegion wrap, test 2')
 
 # negative strides
-fc = cdms.Cdunif.CdunifFile(os.path.join(".",'sample_data','ps.wrap.test.0E.nc'))
+fc = cdms.Cdunif.CdunifFile(os.path.join(get_sample_data_dir(), 'ps.wrap.test.0E.nc'))
 psc = fc.variables['ps']
 psb = psc[:]
 s3c = psb[0,::-1]

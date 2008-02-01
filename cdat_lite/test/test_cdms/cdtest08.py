@@ -3,6 +3,9 @@
 import cdms,MA,regrid,os,sys
 from regrid import Regridder
 from markError import clearError,markError,reportError
+
+from markError import get_sample_data_dir
+
 clearError()
 
 print 'Test 8: Regridding ...',
@@ -12,7 +15,7 @@ print 'Test 8: Regridding ...',
 ## outgrid = cdms.createRectGrid(lat,lon,'yx','gaussian')
 outgrid = cdms.createGaussianGrid(32)
 
-f = cdms.openDataset(os.path.join(".",'sample_data','readonly.nc'))
+f = cdms.openDataset(os.path.join(get_sample_data_dir(),'readonly.nc'))
 u = f.variables['u']
 ingrid = u.getGrid()
 try:
@@ -67,7 +70,7 @@ newar = regridf2(numar)
 if (abs(newar[0][-1]-488.4763488) > 1.e-3): markError('regrid Numeric array with grid input mask',newar[0][-1])
 
 # Dataset
-g = cdms.open(os.path.join(".",'sample_data','test.xml'))
+g = cdms.open(os.path.join(get_sample_data_dir(),'test.xml'))
 u = g.variables['u']
 outgrid = cdms.createGaussianGrid(24)
 regridf3 = Regridder(u.getGrid(), outgrid)

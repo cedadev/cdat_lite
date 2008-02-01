@@ -2,11 +2,14 @@
 
 import cdms, MA, cdtime, copy, os, sys
 from markError import NTIME,NLAT,NLON,x,clearError,markError,reportError
+
+from markError import get_sample_data_dir
+
 clearError()
 
 print 'Test 6: TransientVariables ...',
 
-f = cdms.open(os.path.join(".",'sample_data','test.xml'))
+f = cdms.open(os.path.join(get_sample_data_dir(),'test.xml'))
 v = f.variables['v']
 vp = x[1,1:,4:12,8:25]
 vp2 = vp[1,1:-1,1:]

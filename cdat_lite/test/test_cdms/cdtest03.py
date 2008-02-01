@@ -2,6 +2,9 @@
 
 import cdms,Numeric
 from markError import NTIME,NLAT,NLON,x,clearError,markError,reportError
+
+from markError import get_sample_data_dir
+
 clearError()
 
 print 'Test 3: CdmsFile [Numerics] read/write ...',

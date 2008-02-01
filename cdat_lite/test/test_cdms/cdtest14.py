@@ -6,13 +6,16 @@ print 'Test 14: Generic grids ...',
 
 import cdms, Numeric, MA, os, sys
 from markError import clearError,markError,reportError
+
+from markError import get_sample_data_dir
+
 clearError()
 
 datb = Numeric.array([ 693., 694.,])
 latb = Numeric.array([-26.67690036,-30.99890917,])
 lonb = Numeric.array([92.41822415, 94.4512163 ,])
 
-f = cdms.open(os.path.join(".",'sample_data','sampleGenGrid3.nc'))
+f = cdms.open(os.path.join(get_sample_data_dir(),'sampleGenGrid3.nc'))
 
 # Slice a file variable on a curvilinear grid: by coordinates ...
 samp = f['sample']
@@ -102,7 +105,7 @@ f.close()
 
 #-------------------------------------------------------------
 
-f = cdms.open(os.path.join(".",'sample_data','cdtest14.xml'))
+f = cdms.open(os.path.join(get_sample_data_dir(),'cdtest14.xml'))
 
 # Slice a DATASET variable on a curvilinear grid: by coordinates ...
 samp = f['sample']

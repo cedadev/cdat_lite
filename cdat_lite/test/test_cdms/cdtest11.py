@@ -4,16 +4,19 @@ from cdms.MV import *
 
 print 'Test 11: MV module (transient variable arithmetic) ... ',
 from markError import NTIME,NLAT,NLON,x,clearError,markError,reportError
+
+from markError import get_sample_data_dir
+
 clearError()
 
-d = cdms.open(os.path.join(".",'sample_data','test.xml'))
+d = cdms.open(os.path.join(get_sample_data_dir(),'test.xml'))
 ud = d['u']
 vd = d['v']
 udat = ud[:]
 vdat = vd[:]
 ulat = ud.getLatitude()
 if not isinstance(udat, TV): markError('Slice does not return TV')
-f = cdms.open(os.path.join(".",'sample_data','u_2000.nc'))
+f = cdms.open(os.path.join(get_sample_data_dir(),'u_2000.nc'))
 uf = f['u']
 
 vel = sqrt(ud*ud + vd*vd)

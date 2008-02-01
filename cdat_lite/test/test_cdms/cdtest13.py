@@ -6,6 +6,9 @@ print 'Test 13: Curvilinear grids ...',
 
 import cdms, Numeric, MA, os, sys
 from markError import clearError,markError,reportError
+
+from markError import get_sample_data_dir
+
 clearError()
 
 datb = Numeric.array(
@@ -41,7 +44,7 @@ maskb = Numeric.array(
      [0,0,0,0,0,0,],
      [1,1,1,1,1,0,]], '1')
 
-f = cdms.open(os.path.join(".",'sample_data','sampleCurveGrid4.nc'))
+f = cdms.open(os.path.join(get_sample_data_dir(),'sampleCurveGrid4.nc'))
 
 #-------------------------------------------------------------
 
@@ -139,7 +142,7 @@ f.close()
 #-------------------------------------------------------------
 
 # Slice a DATASET variable on a curvilinear grid: by coordinates ...
-f = cdms.open(os.path.join(".",'sample_data','cdtest13.xml'))
+f = cdms.open(os.path.join(get_sample_data_dir(),'cdtest13.xml'))
 
 samp = f['sample']
 x = samp(lat=(-10,30), lon=(90,150))
@@ -184,7 +187,7 @@ except:
     markError('converting to a generic grid')
 f.close()
 
-g = cdms.open(os.path.join(".",'sample_data','u_2000.nc'))
+g = cdms.open(os.path.join(get_sample_data_dir(),'u_2000.nc'))
 samp = g('u')
 rectGrid = samp.getGrid()
 try:

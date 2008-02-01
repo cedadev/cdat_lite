@@ -2,6 +2,9 @@
 
 import cdms,MA, Numeric, os, sys
 from markError import NTIME,NLAT,NLON,x,clearError,markError,reportError
+
+from markError import get_sample_data_dir
+
 clearError()
 
 print 'Test 4: CdmsFile [MA] read/write ...',
@@ -13,7 +16,7 @@ timestr = ['2000','2001','2002']
 u = x[0]
 
 f = cdms.createDataset('readwrite.nc')
-h = cdms.open(os.path.join(".",'sample_data','readonly.nc'))
+h = cdms.open(os.path.join(get_sample_data_dir(),'readonly.nc'))
 tobj = f.createAxis('time',MA.array([time[1]]))
 tobj.units = 'days since 2000-1-1'
 latobj = f.createAxis('latitude',lat)

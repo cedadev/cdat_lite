@@ -2,6 +2,9 @@
 
 import MA, cdms, os, cdtime, sys
 from markError import clearError,markError,reportError
+
+from markError import get_sample_data_dir
+
 clearError()
 
 print 'Test 10: Dataset (filemap) ...',
@@ -48,6 +51,10 @@ os.unlink('cdtest10_t_2001.nc')
 os.unlink('cdtest10_t_2003.nc')
 os.unlink('cdtest10_uv_2003.nc')
 os.unlink('cdtest10_uv_2005.nc')
+
+# Copy cdtest10.xml to working directory
+shutil.copyfile(os.path.join(get_sample_data_dir(), 'cdtest10.xml'),
+                'cdtest10.xml')
 
 # Test filemap access ...
 try:
