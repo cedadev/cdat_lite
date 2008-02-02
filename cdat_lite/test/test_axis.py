@@ -30,7 +30,8 @@ def test_createAxis():
         os.remove(f)
         
 def test_maskAxis():
-    # This doesn't appear to work
+    # This fails with Numeric-24.2
+    # the same bug is exposed by one of the cdtest modules
 
     ax = cdms.createAxis([1,2,3,4])
     m = MA.masked_array(ax)
