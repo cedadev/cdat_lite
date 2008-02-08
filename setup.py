@@ -63,6 +63,21 @@ def linkScripts(scripts=['cdscan']):
 linkScripts()
 
 #------------------------------------------------------------------------------
+
+# As from CDAT-4.3 we must use Python-2.5.  The C extensions won't compile
+# with Python-2.4 so it's best to warn the user with a sane error message now
+if sys.version_info[:3] < (2,5):
+    raise SystemExit("""
+==========================================================================
+ cdat_lite-4.3+ requires Python2.5.  If you want to use Python-2.4 please
+ install cdat_lite-4.1.2.  This can be done with the following easy_install
+ command:
+
+  $ easy_install 'cdat_lite<4.3'
+  
+==========================================================================
+""")
+
     
 setup(name='cdat_lite',
       description="Climate Data Analysis tools, core components",

@@ -47,9 +47,6 @@ class build_ext(build_ext_orig):
     Add distribution specific search paths and build libcdms first.
     """
 
-    netcdf_version = '3.5.1'
-
-
 
     def finalize_options(self):
         """Append NetCDF and libcdms libraries and includes.
@@ -62,8 +59,6 @@ class build_ext(build_ext_orig):
         self.build_lib = self.distribution.command_obj['build'].build_lib
 
         self.netcdf_incdir, self.netcdf_libdir = self._findNetcdf()
-        #self.netcdf_incdir = os.path.abspath('%s/netcdf-install/include' % self.build_base)
-        #self.netcdf_libdir = os.path.abspath('%s/netcdf-install/lib' % self.build_base)
 
         # Option attributes
         self.include_dirs += [self.findNumericHeaders(), self.netcdf_incdir,
@@ -73,7 +68,6 @@ class build_ext(build_ext_orig):
 
     def run(self):
 
-        #self._buildNetcdf()
         self._buildLibcdms()
 
         build_ext_orig.run(self)
@@ -89,6 +83,8 @@ class build_ext(build_ext_orig):
         lib_dir = None
 
         def isPrefix(prefix):
+            if prefix is None:
+                return False
             print ('Looking for NetCDF installation in %s ...' % prefix),
             if (os.path.exists('%s/lib/libnetcdf.a' % prefix) and 
                 os.path.exists('%s/include/netcdf.h' % prefix)):
@@ -98,7 +94,8 @@ class build_ext(build_ext_orig):
                 print 'no'
                 return False
 
-        prefixes = ['/usr', '/usr/local', os.environ['HOME']]
+        prefixes = ['/usr', '/usr/local',
+                    os.environ.get('HOME'), os.environ.get('NETCDF_HOME')]
 
         # Try finding a common NetCDF prefix
         for p in prefixes:
@@ -116,33 +113,18 @@ class build_ext(build_ext_orig):
 
         if not prefix:
             print '''===================================================
-Please enter NetCDF installation prefix:''',
+NetCDF installation not found.
+
+Please enter the NetCDF installation directory below or set the NETCDF_HOME
+environment variable and re-run setup.py
+
+Enter NetCDF installation prefix:''',
             prefix = raw_input()
             if not isPrefix(prefix):
-                raise ValueError('Cannot find NetCDF libraries')
+                raise SystemExit
 
         return '%s/include' % prefix, '%s/lib' % prefix
 
-    def _buildNetcdf(self):
-        """Build the netcdf libraries."""
-        if not os.path.exists('exsrc/netcdf-%s' % self.netcdf_version):
-            self._system('cd exsrc; tar zxf netcdf.tar.gz')
-        if not os.path.exists('exsrc/netcdf-%s/src/config.log' % self.netcdf_version):
-            self._system('cd exsrc/netcdf-%s/src; CFLAGS=-fPIC ./configure --prefix=%s/netcdf-install' %
-                         (self.netcdf_version, os.path.abspath(self.build_base)))
-        if not os.path.exists('%s/netcdf-install' % self.build_base):
-            os.mkdir('%s/netcdf-install' % self.build_base)
-        self._system('cd exsrc/netcdf-%s/src; make install' % (self.netcdf_version))
-
-        if self.dry_run:
-            return
-
-        # Link the headers and libraries into the cdat.clib package
-        self._linkFiles(glob('%s/netcdf-install/include/*' % self.build_base),
-                        '%s/cdat_lite/clib/include' % self.build_lib)
-        self._linkFiles(glob('%s/netcdf-install/lib/*' % self.build_base),
-                        '%s/cdat_lite/clib/lib' % self.build_lib)
- 
     def _linkFiles(self, files, destDir):
         for file in files:
             dest = os.path.abspath(os.path.join(destDir, os.path.basename(file)))

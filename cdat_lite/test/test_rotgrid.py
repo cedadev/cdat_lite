@@ -15,15 +15,22 @@ rotgrid360 = pkg_resources.resource_filename('cdat_lite.test', 'rg360.nc')
 class TestRotGrid(TestCase):
     def _doSubset(self, cdms_file):
         return cdms_file('temp_1', lon=(-7,2), lat=(50,55))
+
+    def _printSubset(self, v):
+        print 'Shape of v = ', v.shape
+        for ax in v.getAxisList():
+            print ax.id, list(ax.getValue())
     
     def test180(self):
         f = cdms.open(rotgrid180)
         v = self._doSubset(f)
+        self._printSubset(v)
         assert v[15,15].mask() == False
         assert v[15,15] > 270.
 
     def test360(self):
         f = cdms.open(rotgrid360)
         v = self._doSubset(f)
+        self._printSubset(v)
         assert v[15,15].mask() == False
         assert v[15,15] > 270.

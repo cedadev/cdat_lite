@@ -29,10 +29,11 @@ def test_createAxis():
         d.close()
         os.remove(f)
         
-def test_maskAxis():
+def test_castAxis():
     # This fails with Numeric-24.2
     # the same bug is exposed by one of the cdtest modules
+    # This is because cdms objects don't implement the array interface.
 
     ax = cdms.createAxis([1,2,3,4])
-    m = MA.masked_array(ax)
-    assert m.shape == (4,)
+    n = N.array(ax)
+    assert n.shape == ax.shape
