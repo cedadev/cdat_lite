@@ -3,7 +3,7 @@
 """
 
 
-import sys, os
+import sys, os, shutil
 
 from ez_setup import use_setuptools
 use_setuptools()
@@ -11,6 +11,7 @@ use_setuptools()
 from setuptools import setup, Extension
 from setup_util import build_ext, makeExtension
 
+import numpy
 
 NDG_EGG_REPOSITORY = 'http://ndg.nerc.ac.uk/dist/'
 CDAT_LITE_URL = 'http://proj.badc.rl.ac.uk/ndg/wiki/CdatLite'
@@ -27,7 +28,7 @@ CDAT_HOME_URL = 'http://www-pcmdi.llnl.gov/software-portal/cdat'
 #     in <cdat-release>.
 #  3. The cdunifpp version is stated in long_description not in the version.  Any
 #     change to the cdunifpp version naturally triggers a new <cdat-lite-version>.
-cdat_release = '4.3'
+cdat_release = '5.0'
 cdat_tag = ''
 cdunifpp_version = '0.11'
 cdat_lite_version = '0.2.5'
@@ -51,16 +52,16 @@ Full documentation for CDAT is available from the CDAT homepage
 
 #------------------------------------------------------------------------------
 
-def linkScripts(scripts=['cdscan']):
-    """In order to put cdat scripts in their own package they are symbolically
-    linked into the cdat/scripts directory.
+def copyScripts(scripts=['cdscan', 'cddump']):
+    """In order to put cdat scripts in their own package they are copied
+    into the cdat/scripts directory.
+
     """
     for script in scripts:
         src = os.path.abspath(os.path.join('libcdms/src/python', script))
         dest = os.path.abspath(os.path.join('cdat_lite', 'scripts', script+'.py'))
-        if not os.path.exists(dest):
-            os.symlink(src, dest)
-linkScripts()
+        shutil.copy(src, dest)
+copyScripts()
 
 #------------------------------------------------------------------------------
 
@@ -110,6 +111,7 @@ setup(name='cdat_lite',
       package_dir = {'': 'Packages/cdms',
                      'unidata': 'Packages/unidata/Lib',
                      'cdms': 'Packages/cdms/Lib',
+                     'cdms2': 'Packages/cdms2/Lib',
                      'cdutil': 'Packages/cdutil/Lib',
                      'xmgrace': 'Packages/xmgrace/Lib',
                      'genutil': 'Packages/genutil/Lib',
@@ -123,14 +125,18 @@ setup(name='cdat_lite',
       
       ext_modules = [
         makeExtension('cdtime'),
-        makeExtension('unidata.udunits_wrap', 'unidata'),
+        makeExtension('unidata.udunits_wrap', 'unidata',
+                      include_dirs=['Packages/unidata/Include', numpy.get_include()]),
         makeExtension('cdms.Cdunif', 'cdms',
                       ['Packages/cdms/Src/Cdunifmodule.c']),
+        makeExtension('cdms2.Cdunif', 'cdms2',
+                      include_dirs=['Packages/cdms2/Include', numpy.get_include()]),
         Extension('cdms._bindex',
                   ['Packages/cdms/Src/_bindexmodule.c',
                    'Packages/cdms/Src/bindex.c'],
                   ),
-        makeExtension('genutil.array_indexing', 'genutil'),
+        makeExtension('genutil.array_indexing', 'genutil',
+                      include_dirs=['Packages/genutil/Include', numpy.get_include()]),
         Extension('regrid._regrid', ['Packages/regrid/Src/_regridmodule.c'],
                   ),
         Extension('regrid._scrip', ['Packages/regrid/Src/_scripmodule.c',
