@@ -61,6 +61,10 @@ def copyScripts(scripts=['cdscan', 'cddump']):
         src = os.path.abspath(os.path.join('libcdms/src/python', script))
         dest = os.path.abspath(os.path.join('cdat_lite', 'scripts', script+'.py'))
         shutil.copy(src, dest)
+
+    shutil.copy('Packages/cdms2/Script/convertcdms.py',
+                os.path.abspath(os.path.join('cdat_lite', 'scripts')))
+        
 copyScripts()
 
 #------------------------------------------------------------------------------
@@ -165,7 +169,8 @@ setup(name='cdat_lite',
       
       entry_points = {
         'console_scripts': ['cdscan = cdat_lite.scripts:cdscan_main',
-                            'cddump = cdat_lite.scripts:cddump_main']
+                            'cddump = cdat_lite.scripts:cddump_main',
+                            'convertcdms = cdat_lite.scripts:convertcdms_main']
         },
 
       test_suite = 'nose.collector',
