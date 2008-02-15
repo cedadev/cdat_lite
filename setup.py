@@ -11,8 +11,6 @@ use_setuptools()
 from setuptools import setup, Extension
 from setup_util import build_ext, makeExtension
 
-import numpy
-
 NDG_EGG_REPOSITORY = 'http://ndg.nerc.ac.uk/dist/'
 CDAT_LITE_URL = 'http://proj.badc.rl.ac.uk/ndg/wiki/CdatLite'
 CDAT_LICENCE_URL = 'http://www-pcmdi.llnl.gov/software-portal/cdat/docs/cdat-license'
@@ -82,6 +80,34 @@ if sys.version_info[:3] < (2,5):
   
 ==========================================================================
 """)
+
+### This is untested but I think it will be useful when we try installing
+### on suse
+##
+## # Suse 10.0 has a bug that prevents numpy installing properly.  This test
+## # catches the problem and advises a solution
+## try:
+##     import numpy
+## except ImportError, e:
+##     if 'undefined symbol:_gfortran_filename' in str(e):
+##         raise SystemExit("""
+## ==========================================================================
+##  Your numpy installation is broken due to a known problem with libblas on
+##  your system.
+
+##  We recommend you install ATLAS (http://math-atlas.sourceforge.net) and
+##  reinstall numpy with:
+
+##  $ ATLAS=<atlas-home> easy_install -U numpy
+
+##  You may need to remove your current installation of numpy first.
+## ==========================================================================
+## """)
+##     else:
+##         raise e
+import numpy
+
+#------------------------------------------------------------------------------
 
     
 setup(name='cdat_lite',
