@@ -164,7 +164,8 @@ setup(name='cdat_lite',
       data_files = [('unidata', ['Packages/unidata/Src/udunits.dat'])],
       
       entry_points = {
-        'console_scripts': ['cdscan = cdat_lite.scripts:cdscan_main']
+        'console_scripts': ['cdscan = cdat_lite.scripts:cdscan_main',
+                            'cddump = cdat_lite.scripts:cddump_main']
         },
 
       test_suite = 'nose.collector',

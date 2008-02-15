@@ -13,3 +13,9 @@ def cdscan_main():
     """
     cdscan.main(sys.argv)
     
+def cddump_main():
+    """Setuptools compatible entry point to cddump.
+
+    cddump doesn't have a main function.  Just import-and-go.
+    """
+    import cddump
