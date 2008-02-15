@@ -1,11 +1,12 @@
 #!/usr/bin/env python
+# Adapted for numpy/ma/cdms2 by convertcdms.py
 """
 Test reading data with cdms.
 
 @author: Stephen Pascoe
 """
 
-import unittest, pkg_resources, cdms, sys
+import unittest, pkg_resources, cdms2 as cdms, sys
 
 class CdmsTests(unittest.TestCase):
 

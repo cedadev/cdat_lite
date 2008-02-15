@@ -1,10 +1,11 @@
 #!/usr/bin/env python
+# Adapted for numpy/ma/cdms2 by convertcdms.py
 
 # Test curvilinear grids
 
 print 'Test 14: Generic grids ...',
 
-import cdms, Numeric, MA, os, sys
+import cdms2 as cdms, numpy.oldnumeric as Numeric, numpy.oldnumeric.ma as MA, os, sys
 from markError import clearError,markError,reportError
 
 from markError import get_sample_data_dir

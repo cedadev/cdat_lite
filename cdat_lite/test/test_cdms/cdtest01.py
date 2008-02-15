@@ -1,12 +1,13 @@
 #!/usr/bin/env python
+# Adapted for numpy/ma/cdms2 by convertcdms.py
 
 # Test dataset I/O
 
 print 'Test 1: Dataset I/O ... ',
 
-import cdms,MA,string,os,sys
-from cdms.variable import WriteNotImplemented
-from cdms.avariable import NotImplemented
+import cdms2 as cdms,numpy.oldnumeric.ma as MA,string,os,sys
+from cdms2.variable import WriteNotImplemented
+from cdms2.avariable import NotImplemented
 from markError import NTIME,NLAT,NLON,x,clearError,markError,reportError
 
 from markError import get_sample_data_dir

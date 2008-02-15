@@ -1,4 +1,5 @@
-import Numeric as N
+# Adapted for numpy/ma/cdms2 by convertcdms.py
+import numpy.oldnumeric as N
 
 def test_arange():
     # On 64-bit linux this fails with both Numeric-24.2 and Numeric-23.1

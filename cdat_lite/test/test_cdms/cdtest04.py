@@ -1,6 +1,8 @@
 #!/usr/bin/env python
+# Adapted for numpy/ma/cdms2 by convertcdms.py
+import numpy.oldnumeric as Numeric
 
-import cdms,MA, Numeric, os, sys
+import cdms2 as cdms,numpy.oldnumeric.ma as MA, numpy.oldnumeric as Numeric, os, sys
 from markError import NTIME,NLAT,NLON,x,clearError,markError,reportError
 
 from markError import get_sample_data_dir
@@ -23,7 +25,7 @@ latobj = f.createAxis('latitude',lat)
 latobj.units = 'degrees_north'
 lonobj = f.createAxis('longitude',lon)
 lonobj.units = 'degrees_east'
-var = f.createVariable('u',MA.Float,(tobj,latobj,lonobj))
+var = f.createVariable('u',Numeric.Float,(tobj,latobj,lonobj))
 var.units = 'm/s'
 try:
     var[:]=u[0]
@@ -58,7 +60,7 @@ if latobj.standard_name!='Latitude': markError("Cache axis attribute")
 if (not latattrs.has_key('standard_name')) or latattrs['standard_name']!='Latitude': markError("Updating axis attributes")
 
 
-p0 = f.createVariable('p0',MA.Float,())
+p0 = f.createVariable('p0',Numeric.Float,())
 p0.assignValue(-99.9)
 
 varmasked = f.createVariable('umasked',cdms.CdDouble,(tobj,latobj,lonobj),fill_value=-99.9)

@@ -1,9 +1,10 @@
+# Adapted for numpy/ma/cdms2 by convertcdms.py
 """
 An informal module for noting down things that might need testing.
 
 """
 
-import pkg_resources, cdms
+import pkg_resources, cdms2 as cdms
 
 def test_netcdf():
     """

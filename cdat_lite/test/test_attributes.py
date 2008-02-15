@@ -1,3 +1,4 @@
+# Adapted for numpy/ma/cdms2 by convertcdms.py
 """
 This test exposes a bug in 64-bit Numeric.  Attributes are reported
 as arrays of arrays of scalars.
@@ -6,8 +7,8 @@ This test is deactivated for now because I've worked around the problem in cdsca
 
 """
 
-import pkg_resources, cdms, sys
-import Numeric
+import pkg_resources, cdms2 as cdms, sys
+import numpy.oldnumeric as Numeric
 
 def test_attributeType():
     fn = pkg_resources.resource_filename('cdat_lite.test', 'testpp.pp')

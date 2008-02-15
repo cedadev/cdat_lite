@@ -1,6 +1,7 @@
 #!/usr/bin/env python
+# Adapted for numpy/ma/cdms2 by convertcdms.py
 
-import cdms,Numeric
+import cdms2 as cdms,numpy.oldnumeric as Numeric
 from markError import NTIME,NLAT,NLON,x,clearError,markError,reportError
 
 from markError import get_sample_data_dir

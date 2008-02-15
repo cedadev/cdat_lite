@@ -1,6 +1,8 @@
 #!/usr/bin/env python
+# Adapted for numpy/ma/cdms2 by convertcdms.py
+import numpy.oldnumeric as Numeric
 
-import MA, cdms, os, cdtime, sys
+import numpy.oldnumeric.ma as MA, cdms2 as cdms, os, cdtime, sys
 from markError import clearError,markError,reportError
 
 from markError import get_sample_data_dir
@@ -13,7 +15,7 @@ NYR = 6
 NMO = 12
 NLAT = 16
 NLON = 32
-timear = MA.arange(NYR*NMO, typecode=MA.Float)
+timear = MA.arange(NYR*NMO, dtype=Numeric.Float)
 time = cdms.createAxis(timear, id='time')
 time.units = "months since 2000-1"
 g = cdms.createUniformGrid(-90.0, NLAT, 180./(NLAT-1), 0., NLON, 360./NLON)
@@ -85,7 +87,7 @@ tt = f.getVariable('t')
 t1 = cdtime.comptime(2003,7).torel(t.units).value
 t2 = cdtime.comptime(2005,7).torel(t.units).value
 tar2 = tt.getRegion(time=(t1,t2,'con'))
-tar2p = MA.concatenate((tar[MA.NewAxis,54],tar[60:66]))
+tar2p = MA.concatenate((tar[Numeric.NewAxis,54],tar[60:66]))
 if not MA.allclose(tar2,tar2p): markError('t.getRegion() from 2003-7 to 2005-7 failed',tar2[0,0,0])
 
 os.unlink('cdtest10_t_2000.nc')

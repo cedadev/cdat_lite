@@ -1,7 +1,8 @@
 #!/usr/bin/env python
+# Adapted for numpy/ma/cdms2 by convertcdms.py
 
-import cdms,MA,regrid,os,sys
-from regrid import Regridder
+import cdms2 as cdms,numpy.oldnumeric.ma as MA,regrid2 as regrid,os,sys
+from regrid2 import Regridder
 from markError import clearError,markError,reportError
 
 from markError import get_sample_data_dir
@@ -59,7 +60,7 @@ newar = regridf(numar, missing=-99.9)
 if (abs(newar[0][-1]-488.4763488) > 1.e-3): markError('regrid Numeric array with missing flag',newar[0][-1])
 
 # Set explicit mask
-mask = umasked.subRegion().mask()[0]
+mask = umasked.subRegion().mask[0]
 newar = regridf(numar, mask=mask)
 if (abs(newar[0][-1]-488.4763488) > 1.e-3): markError('regrid Numeric array with mask',newar[0][-1])
 
@@ -89,7 +90,7 @@ latw,lonw = grid2.getWeights()
 
 f.close()
 # Test pressure regridder --------------------------------
-import Numeric
+import numpy.oldnumeric as Numeric
 g = cdms.createGaussianGrid(16)
 levs = Numeric.array([1.0,3.0,5.0])
 lev = cdms.createAxis(levs, id='level')

@@ -1,6 +1,8 @@
-import cdms,os,sys
-from cdms.tvariable import TransientVariable as TV
-from cdms.MV import *
+# Adapted for numpy/ma/cdms2 by convertcdms.py
+import numpy.oldnumeric as Numeric
+import cdms2 as cdms,os,sys
+from cdms2.tvariable import TransientVariable as TV
+from cdms2.MV2 import *
 
 print 'Test 11: MV module (transient variable arithmetic) ... ',
 from markError import NTIME,NLAT,NLON,x,clearError,markError,reportError
@@ -41,7 +43,7 @@ x10=uf**3
 x13 = add.reduce(uf)
 x14 = add.reduce(ud)
 x15 = x9.astype(Float32)
-if not x15.typecode()==Float32: markError('astype error')
+if not x15.dtype.char==Float32: markError('astype error')
 
 ## arrayrange(start, stop=None, step=1, typecode=None, axis=None, attributes=None, id=None) 
 ##   Just like range() except it returns a variable whose type can be specfied
@@ -231,12 +233,12 @@ xtake = take(xmasked, [0,2,4,6,8], 1)
 ## transpose(a, axes=None) 
 ##   transpose(a, axes=None) reorder dimensions per tuple axes
 xtr = transpose(ud)
-xtr = MA.Numeric.arange(24)
+xtr = Numeric.arange(24)
 xtr.shape = (4,6)
 xtr1 = transpose(xtr)
 xtr2 = transpose(TransientVariable(xtr))
 if not xtr2.shape == (6,4): markError('transpose shape')
-xtr3 = MA.Numeric.transpose(xtr)
+xtr3 = Numeric.transpose(xtr)
 if not allclose(xtr1, xtr3): markError('transpose 2')
 if not allclose(xtr2, xtr3): markError('transpose 1')
 

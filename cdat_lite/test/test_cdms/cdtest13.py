@@ -1,10 +1,11 @@
 #!/usr/bin/env python
+# Adapted for numpy/ma/cdms2 by convertcdms.py
 
 # Test curvilinear grids
 
 print 'Test 13: Curvilinear grids ...',
 
-import cdms, Numeric, MA, os, sys
+import cdms2 as cdms, numpy.oldnumeric as Numeric, numpy.oldnumeric.ma as MA, os, sys
 from markError import clearError,markError,reportError
 
 from markError import get_sample_data_dir
@@ -53,7 +54,7 @@ samp = f['sample']
 x = samp(lat=(-10,30), lon=(90,150))
 if not MA.allequal(x.raw_data(), datb):
     markError('slicing a file variable by coordinates')
-if not MA.allequal(x.mask(), maskb):
+if not MA.allequal(x.mask, maskb):
     markError('slicing a file variable by coordinates: invalid mask')
 
 grid = x.getGrid()
@@ -88,7 +89,7 @@ samp = f['sample']
 x = samp(lat=(-10,30), lon=(90,150))
 if not MA.allequal(x.raw_data(), datb):
     markError('slicing a transient variable by coordinates')
-if not MA.allequal(x.mask(), maskb):
+if not MA.allequal(x.mask, maskb):
     markError('slicing a transient variable by coordinates: invalid mask')
 
 grid = x.getGrid()
@@ -148,7 +149,7 @@ samp = f['sample']
 x = samp(lat=(-10,30), lon=(90,150))
 if not MA.allequal(x.raw_data(), datb):
     markError('slicing a dataset variable by coordinates')
-if not MA.allequal(x.mask(), maskb):
+if not MA.allequal(x.mask, maskb):
     markError('slicing a dataset variable by coordinates: invalid mask')
 
 grid = x.getGrid()

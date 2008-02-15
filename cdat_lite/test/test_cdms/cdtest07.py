@@ -1,18 +1,19 @@
 #!/usr/bin/env python
+# Adapted for numpy/ma/cdms2 by convertcdms.py
 
 import sys
 import getopt
-import cdms
-from cdms.grid import lookupArray
-from cdms.cdmsobj import CdFromObject,CdString,CdScalar,CdFloat,CdDouble,CdShort,CdInt,CdLong
-import MA, Numeric
+import cdms2 as cdms
+from cdms2.grid import lookupArray
+from cdms2.cdmsobj import CdFromObject,CdString,CdScalar,CdFloat,CdDouble,CdShort,CdInt,CdLong
+import numpy.oldnumeric.ma as MA, numpy.oldnumeric as Numeric
 import string
 import cdtime
 import os.path
 import pprint
 import copy
 import types
-from cdms import cdmsNode
+from cdms2 import cdmsNode
 import re
 
 usage = """Usage:
@@ -259,7 +260,7 @@ def compareVarDictValues(val1, val2):
 def cleanupAttrs(attrs):
     for attname in attrs.keys():
         attval = attrs[attname]
-        if type(attval) is Numeric.ArrayType:
+        if isinstance(attval, Numeric.ArrayType):
             if len(attval)==1:
                 attrs[attname] = attval[0]
             else:
@@ -592,7 +593,7 @@ def main(argv):
                         id = axis.name_in_file
                     tempdomain.append(id)
             varattrs = copyDict(var.attributes)
-            vardict[var.id] = [tempdomain, varattrs, var.typecode()]
+            vardict[var.id] = [tempdomain, varattrs, var.dtype.char]
 
         extendDset.close()
 
@@ -663,7 +664,7 @@ def main(argv):
             # Create a dictionary entry for the variable if not already there.
             if not vardict.has_key(var.id):
                 varattrs = copyDict(var.attributes)
-                vardict[var.id] = [tempdomain, varattrs, var.typecode()]
+                vardict[var.id] = [tempdomain, varattrs, var.dtype.char]
             else:
                 currentdomain, attrs, tcode = vardict[var.id]
                 if comparedomains(currentdomain, tempdomain):
@@ -671,7 +672,7 @@ def main(argv):
                     var.name_in_file = var.id
                     var.id = sepname
                     varattrs = copyDict(var.attributes)
-                    vardict[sepname] = [tempdomain, varattrs, var.typecode()]
+                    vardict[sepname] = [tempdomain, varattrs, var.dtype.char]
 
             # Create a filemap entry for this variable/file, if split on time
             axisids = map(lambda x: x[0].id, var.getDomain())
@@ -723,10 +724,10 @@ def main(argv):
                     varlev = var.getLevel()
                 if varlev is not None:
                     startlev = varlev[0]
-                    if type(startlev) is Numeric.ArrayType:
+                    if isinstance(startlev, Numeric.ArrayType):
                         startlev = startlev[0]
                     endlev = varlev[-1]
-                    if type(endlev) is Numeric.ArrayType:
+                    if isinstance(endlev, Numeric.ArrayType):
                         endlev = endlev[0]
                     varentry[2] = startlev
                     varentry[3] = endlev
@@ -922,7 +923,7 @@ def main(argv):
     keys.sort()
     for key in keys:
         axis = axisdict[key]
-        cdtype = cdmsNode.NumericToCdType[axis.typecode()]
+        cdtype = cdmsNode.NumericToCdType[axis.dtype.char]
         node = cdmsNode.AxisNode(axis.id, len(axis), cdtype)
         if axis.isTime() and timeIsLinear:
             reference_length = axis.partition[-1]-axis.partition[0]
@@ -992,7 +993,7 @@ def main(argv):
 #--------------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
 
-    from cdms import CDMSError
+    from cdms2 import CDMSError
     print 'Test 7: Database import ...',
     from markError import clearError,markError,reportError
     clearError()

@@ -1,6 +1,8 @@
 #!/usr/bin/env python
+# Adapted for numpy/ma/cdms2 by convertcdms.py
+import numpy.oldnumeric as Numeric
 
-import cdms, MA, cdtime, copy, os, sys
+import cdms2 as cdms, numpy.oldnumeric.ma as MA, cdtime, copy, os, sys
 from markError import NTIME,NLAT,NLON,x,clearError,markError,reportError
 
 from markError import get_sample_data_dir
@@ -85,7 +87,7 @@ if len(axis2)!=17: markError('Axis length')
 
 saxis = axis2.subAxis(1,-1)
 if not MA.allequal(saxis[:],axis2[1:-1]): markError('subAxis',saxis[:])
-if axis1.typecode()!=MA.Float: markError('Axis typecode')
+if axis1.dtype.char!=Numeric.Float: markError('Axis typecode')
 if axis2.shape!=(17,): markError('Axis shape')
 
 # Axis set: bounds, calendar
@@ -160,7 +162,7 @@ if not cdms.isVariable(www): markError("as/is test failed.")
 # Check that createAxis allows an axis as an argument
 lon = f.axes['longitude']
 newlon = cdms.createAxis(lon)
-if newlon.typecode()=='O': markError("createAxis failed: allow axis arg")
+if newlon.dtype.char=='O': markError("createAxis failed: allow axis arg")
 
 # Test take of axis without bounds
 newlat.setBounds(None)

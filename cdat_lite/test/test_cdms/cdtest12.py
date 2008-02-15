@@ -1,10 +1,11 @@
 #!/usr/bin/env python
+# Adapted for numpy/ma/cdms2 by convertcdms.py
 
 # Test extended wraparound
 
 print 'Test 12: Extended wraparound ... ',
 
-import cdms,os,sys
+import cdms2 as cdms,os,sys
 from markError import clearError,markError,reportError
 
 from markError import get_sample_data_dir

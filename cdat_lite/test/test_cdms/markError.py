@@ -1,6 +1,7 @@
 #!/usr/bin/env python
+# Adapted for numpy/ma/cdms2 by convertcdms.py
 
-import MA
+import numpy.oldnumeric.ma as MA
 
 from pkg_resources import resource_filename
 

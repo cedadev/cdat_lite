@@ -1,9 +1,10 @@
 #!/usr/bin/env python
+# Adapted for numpy/ma/cdms2 by convertcdms.py
 
 print 'Test 2: CdmsFile I/O ... ',
 
-import cdms,MA,string,os,sys
-from MA import masked
+import cdms2 as cdms,numpy.oldnumeric.ma as MA,string,os,sys
+from numpy.oldnumeric.ma import masked
 from markError import NTIME,NLAT,NLON,x,clearError,markError,reportError
 
 from markError import get_sample_data_dir
