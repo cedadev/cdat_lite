@@ -14,6 +14,8 @@ def test_createAxis():
     # On 64-bit systems this test fails due to attempted long to int
     # type conversion inside cdms
 
+    # Also fails with cdms2 on 64-bit.
+
     # Create a temporary file
     fd, f = tempfile.mkstemp('.nc')
     os.close(fd)
@@ -34,6 +36,8 @@ def test_castAxis():
     # This fails with Numeric-24.2
     # the same bug is exposed by one of the cdtest modules
     # This is because cdms objects don't implement the array interface.
+
+    # Also fails with cdms2 on 64-bit.  Maybe this shouldn't be expected to work.
 
     ax = cdms.createAxis([1,2,3,4])
     n = N.array(ax)
