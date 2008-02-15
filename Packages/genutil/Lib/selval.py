@@ -1,5 +1,6 @@
-from cdms.selectors import SelectorComponent
-import MV,Numeric,cdtime
+# Adapted for numpy/ma/cdms2 by convertcdms.py
+from cdms2.selectors import SelectorComponent
+import MV2 as MV,numpy.oldnumeric as Numeric,cdtime
 class PickComponent(SelectorComponent):
     '''
     Let the user pick non contiguous values along an axis
@@ -34,7 +35,7 @@ class PickComponent(SelectorComponent):
     def specify(self,slab,axes,specification,confined_by,aux):
         ''' First part: confine the slab within a Domain wide enough to do the exact in post'''
         import string,copy
-        from MA import minimum,maximum
+        from numpy.oldnumeric.ma import minimum,maximum
         # myconfined is for later, we can't confine a dimension twice with an argument plus a keyword or 2 keywords
         myconfined=[None]*len(axes)
         self.aux=copy.copy(specification)
@@ -110,7 +111,7 @@ class PickComponent(SelectorComponent):
         
     def post(self,fetched,slab,axes,specifications,confined_by,aux,axismap):
         ''' Post processing retouches the bounds and later will deal with the mask'''
-        import cdms
+        import cdms2 as cdms
         fetched=cdms.createVariable(fetched,copy=1)
         faxes=fetched.getAxisList()
         a=None
@@ -162,7 +163,7 @@ class PickComponent(SelectorComponent):
                         a.setAxis(i,newax)
                     else:
                         a.setAxis(j,faxes[j])
-                fetched=a.astype(fetched.typecode())
+                fetched=a.astype(fetched.dtype.char)
                 faxes=fetched.getAxisList()
         
         return fetched                       
@@ -193,7 +194,7 @@ def picker(*args, **kargs):
     s=f('ta',genutil.picker(time=['1987-7','1988-3',cdtime.comptime(1989,3)],level=[1000,700,850]))
 
     """
-    import cdms
+    import cdms2 as cdms
     a=cdms.selectors.Selector(PickComponent(*args,**kargs))
     return a
 

@@ -1,5 +1,6 @@
+# Adapted for numpy/ma/cdms2 by convertcdms.py
 """This is a set of tests for averager - which can be used to calculate area weighted averages."""
-import cdms, MV, Numeric, MA, cdtime, os, sys
+import cdms2 as cdms, MV2 as MV, numpy.oldnumeric as Numeric, numpy.oldnumeric.ma as MA, cdtime, os, sys
 from cdutil import area_weights, averager, AveragerError
 cdms.setAutoBounds('on')
 f=cdms.open(os.path.join(sys.prefix,'sample_data','tas_ukmo_con.nc'))

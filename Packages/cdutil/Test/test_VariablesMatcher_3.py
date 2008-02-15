@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# Adapted for numpy/ma/cdms2 by convertcdms.py
 
 """This is a very complicated example that shows MOST of the options and power of VariablesMatcher.
 Once again we retrieve NCEP and ECMWF (for 1981), but this time, they are both masked for land first.
@@ -8,7 +9,7 @@ Finally, everything is put on the 10x10 grid and masked for land.
 Also a 'selector' for Northern Hemisphere is applied (see cdutil.region documentation)
 """
 
-import cdutil, MV, os,sys
+import cdutil, MV2 as MV, os,sys
 # First let's create the mask (it is the same for NCEP and ECMWF since they are on the same grid)
 refmsk = os.path.join(sys.prefix,'sample_data','sftlf_dnm.nc')
 M=cdutil.WeightsMaker(refmsk, var='sftlf_dnm', values=[1.])

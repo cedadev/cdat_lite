@@ -1,4 +1,6 @@
-import Numeric, MA, cdms, types, string, MV, genutil
+# Adapted for numpy/ma/cdms2 by convertcdms.py
+# Adapted for numpy/ma/cdms2 by convertcdms.py
+import numpy.oldnumeric as Numeric, numpy.oldnumeric.ma as MA, cdms2 as cdms, types, string, MV2 as MV, genutil
 
 class AveragerError (Exception):
     def __init__ (self, args=None):
@@ -394,7 +396,7 @@ def _check_MA_weight_options(weightoptions, shx, N_axisopt):
     #
     if __DEBUG__: print 'Entered _check_MA_weight_options:', weightoptions
     #
-    if not weightoptions:
+    if weightoptions is None:
         weightoptions = [None] * N_axisopt
     # 
     if not isinstance(weightoptions, types.ListType):
@@ -486,7 +488,7 @@ def _combine_weights(x, weightoptions):
         #
         if __DEBUG__: print 'wgt.shape = ', wgt.shape
         #
-        if not wt_init:
+        if wt_init is None:
             wt_init = wgt
             if not isinstance(wt_init, Numeric.ArrayType): raise AveragerError, 'Wrong Weight!!!'
         else:
@@ -604,8 +606,8 @@ def sum_engine(x, wts):
     #
     __DEBUG__ = 0
     #
-    if not x: return None
-    if not wts: return None
+    if x is None: return None
+    if wts is None: return None
     #
     shx = MA.shape(x)
     #
@@ -618,7 +620,7 @@ def sum_engine(x, wts):
         #
         if __DEBUG__: print '\t********** Weight is an MV or Numeric array! **********'
         #
-        xavg, return_wts = MV.average(x, weights=wts, returned=1)
+        xavg, return_wts = MV.average(x, weights=wts, returned=1, axis=0)
         y = xavg * return_wts
         return y, return_wts
     elif wts in ['equal','unweighted']:
@@ -626,7 +628,7 @@ def sum_engine(x, wts):
         # Equal weights
         #
         if __DEBUG__: print '\t********** Weight is Equal! **********'
-        xavg, return_wts = MV.average(x, returned=1)
+        xavg, return_wts = MV.average(x, returned=1, axis=0)
         y = xavg * return_wts
         return y, return_wts
         # end of if action == 'sum':
@@ -647,18 +649,18 @@ def average_engine(x, wts):
     #
     __DEBUG__ = 0
     #
-    if not x: return None
-    if not wts: return None
+    if x is None: return None
+    if wts is None: return None
     #
     shx = MA.shape(x)
     if __DEBUG__: print '\tInside average_engine.'
     if __DEBUG__: print '\tIncoming data of shape ', shx
     #
     if MV.isMaskedVariable(wts) or isinstance(wts, Numeric.ArrayType):
-        y, return_wts = MV.average(x, weights=wts, returned=1)
+        y, return_wts = MV.average(x, weights=wts, returned=1, axis=0)
         return y, return_wts
     elif wts in ['equal','unweighted']:
-        y, return_wts = MV.average(x, returned=1)
+        y, return_wts = MV.average(x, returned=1, axis=0)
         return y, return_wts
     else:
         raise AveragerError, 'wts is an unknown type in average_engine'
@@ -969,7 +971,7 @@ Note:
                     # end of if not retwts:
                 # end of if i > len(weights)-1:
                 try:
-                    x, retwts = MA.average(x, weights=weights[i], returned=1)
+                    x, retwts = MA.average(x, weights=weights[i], returned=1, axis=0)
                 except:
                     raise AveragerError, 'Some problem with averaging MA'
                 #
@@ -982,14 +984,14 @@ Note:
                 if __DEBUG__: print 'Summing axis #', i
                 if i > len(weights)-1:
                     try:
-                        x = MA.sum(x, returned=0)
-                        retwts = MA.sum(retwts)
+                        x = MA.sum(x, returned=0, axis=0)
+                        retwts = MA.sum(retwts, axis=0)
                     except:
                         raise AveragerError, 'Some problem with summing MA'
                     # end of try:
                 else:
                     try:
-                        x, retwts = MA.average(x, weights=weights[i], returned=1)
+                        x, retwts = MA.average(x, weights=weights[i], returned=1, axis=0)
                         x = x * retwts
                     except:
                         raise AveragerError, 'Some problem with summing MA'
@@ -1126,7 +1128,7 @@ Note:
             if __DEBUG__: print 'Summing axis #', i
             if i > len(filled_wtoptions)-1:
                 V, dummy_wts = sum_engine(V, 'unweighted')
-                sumwts = MV.sum(sumwts)
+                sumwts = MV.sum(sumwts, axis=0)
             else:
                 V, sumwts = sum_engine(V, filled_wtoptions[i])
             # end of if i > len(filled_wtoptions):            

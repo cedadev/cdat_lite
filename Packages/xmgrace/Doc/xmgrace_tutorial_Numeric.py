@@ -1,17 +1,19 @@
+# Adapted for numpy/ma/cdms2 by convertcdms.py
+import numpy
 # Tutorial for xmgrace module, using Numeric only
 
 # it is recomended to run it usibng parser.py or just read it
 
 print 'it is recomended to run this file using parser.py or just read it'
 
-import MA
+import numpy.oldnumeric.ma as MA
 
 TEMPDIR = './'
 
 # First let's create some data
 npoints=50
-X=MA.arrayrange(npoints,typecode=MA.Float)
-X=X/float(npoints)*2.*MA.pi
+X=numpy.arrayrange(npoints,dtype='d')
+X=X/float(npoints)*2.*numpy.pi
 
 Y1=MA.sin(X)
 Y2=MA.cos(X)
@@ -64,12 +66,12 @@ x.Graph[1].yaxis.tick.minor_ticks=4 # 4 sub in between , 1 every 2.5 units
 # X values are between 0 and 2pi
 # therefore let's set the axis  from -1,1
 x.Graph[0].xaxis.min=0.
-x.Graph[0].xaxis.max=2.*MA.pi
+x.Graph[0].xaxis.max=2.*numpy.pi
 x.Graph[1].xaxis.min=0.
-x.Graph[1].xaxis.max=2.*MA.pi
+x.Graph[1].xaxis.max=2.*numpy.pi
 
 # Set the xaxis ticks 
-dic={0.:'0',MA.pi/2:'PI/2',MA.pi:'PI',3*MA.pi/2:'3PI/2',2*MA.pi:'2PI'}
+dic={0.:'0',numpy.pi/2:'PI/2',numpy.pi:'PI',3*numpy.pi/2:'3PI/2',2*numpy.pi:'2PI'}
 x.Graph[0].xaxis.tick.spec.loc=dic
 # way 2 the "less convential" way
 x.Graph[1].xaxis.tick.spec.loc=dic
@@ -120,7 +122,7 @@ x.add_set(1,'black')
 x.add_string(0.5,0.5,'Sample',color='red',char_size=9,rot=55,just=14)
 
 # And plot these babies:
-x.plot([Y1,Y2,Y3,zero],xs=[X,X,X,[0.,2.*MA.pi]]) # You MUST pass a list of slab, even if only one slab
+x.plot([Y1,Y2,Y3,zero],xs=[X,X,X,[0.,2.*numpy.pi]]) # You MUST pass a list of slab, even if only one slab
 # or you can plot then 1 by 1
 # first let's clear
 x('kill G0.S0')
@@ -134,21 +136,21 @@ Y3=MA.masked_greater(Y3,1.5)
 
 # Also we're going to add error bars 10% of the value
 # dx for the sin
-YY1=MA.zeros((2,npoints),typecode=MA.Float)
+YY1=MA.zeros((2,npoints),dtype='d')
 YY1[0]=Y1
 YY1[1]=Y1*.1
 x.Graph[0].Set[0].type='xydx'
 x.Graph[0].Set[0].errorbar.status='on'
 x.Graph[0].Set[0].errorbar.color='red'
 # dy for the cos
-YY2=MA.zeros((2,npoints),typecode=MA.Float)
+YY2=MA.zeros((2,npoints),dtype='d')
 YY2[0]=Y2
 YY2[1]=Y2*.1
 x.Graph[0].Set[1].type='xydy'
 x.Graph[0].Set[1].errorbar.status='on'
 x.Graph[0].Set[1].errorbar.color=x.Graph[0].Set[1].line.color
 # dy and dx for the tan
-YY3=MA.zeros((3,npoints),typecode=MA.Float)
+YY3=MA.zeros((3,npoints),dtype='d')
 YY3[0]=Y3
 YY3[1]=Y3*.1
 YY3[2]=Y3*.1
@@ -160,7 +162,7 @@ x.plot(YY1,xs=X,G=0,S=0)
 x.plot(YY2,xs=X,G=0,S=1)
 x.plot(YY3,xs=X,G=1,S=0)
 # Now since we are passing lists and not MAs we need to wrap them into a list
-x.plot([zero],xs=[[0.,2.*MA.pi]],G=1,S=1) 
+x.plot([zero],xs=[[0.,2.*numpy.pi]],G=1,S=1) 
 # Finally let's save the result
 x.ps(TEMPDIR+'xmgrace_demo_Numeric') # postscript
 x.ps(TEMPDIR+'xmgrace_demo_Numeric_gray',color='grayscale') # grayscale postscript

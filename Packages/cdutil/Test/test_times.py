@@ -1,10 +1,11 @@
 #!/usr/bin/env python
+# Adapted for numpy/ma/cdms2 by convertcdms.py
 
 var='tas'
 amipmodel='dnm-98a'
-import cdtime,cdms,os,sys,vcs
+import cdtime,cdms2 as cdms,os,sys,vcs
 from cdutil import times
-from cdms import MV
+from cdms2 import MV2 as MV
 
 cdms.setAutoBounds('on')
 

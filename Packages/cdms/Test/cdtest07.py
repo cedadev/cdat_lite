@@ -1004,7 +1004,7 @@ if __name__ == '__main__':
     try:
         main(argv)
     except CDMSError,e:
-        markError(str(e))
+        markError(e.args)
     except:
         markError("Importing dataset")
 

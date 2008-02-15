@@ -2,6 +2,13 @@
 CDMS module-level API
 """
 __all__ = ["cdmsobj", "axis", "coord", "grid", "hgrid", "avariable", "sliceut", "error", "variable", "fvariable", "tvariable", "dataset", "database", "cache", "selectors", "MV", "convention", "bindex", "auxcoord", "gengrid"]
+
+try:
+    dir(regrid)
+except NameError:
+    import warnings
+    warnings.warn("The cdms, MV, and regrid modules are deprecated, please use cdms2, MV2, and regrid2 instead. The convertcdms.py script can convert scripts to numpy, ma, cdms2, and regrid2", DeprecationWarning)
+
 # Errors
 from error import CDMSError
 

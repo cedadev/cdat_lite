@@ -1,5 +1,5 @@
 #include <Python.h>
-#include "Numeric/arrayobject.h"
+#include "numpy/oldnumeric.h"
 #include <udunits.h>
 
 static PyObject *

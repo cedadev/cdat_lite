@@ -1,6 +1,7 @@
 #!/usr/bin/env python
+# Adapted for numpy/ma/cdms2 by convertcdms.py
 
-import cdms,genutil,vcs,cdtime,os,sys
+import cdms2 as cdms,genutil,vcs,cdtime,os,sys
 import vcs.test.support
 bg=vcs.test.support.bg
 cdms.setAutoBounds('on')
@@ -22,7 +23,7 @@ s=f('ta',slice(0,1),genutil.picker(level=levels,match=0))
 
 if s.shape[1]!=3:
     raise "Error did not return 3 levels!"
-if s.getLevel()[:]!=levels:
+if (s.getLevel()[:]!=levels).any():
     raise Exception,"Error did not retrieve the right levels!"
 
 print "folowing plot should show all missing values, since 800 does not exisits!"

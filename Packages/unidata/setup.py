@@ -1,4 +1,4 @@
-from distutils.core import setup, Extension
+from numpy.distutils.core import setup, Extension
 import os,sys,string
 
 target_prefix = sys.prefix

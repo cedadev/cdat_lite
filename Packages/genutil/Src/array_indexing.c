@@ -1,5 +1,5 @@
 #include <Python.h>
-#include "Numeric/arrayobject.h"
+#include "numpy/oldnumeric.h"
 
 
 
@@ -724,10 +724,10 @@ rank(self,args)
   if (!PyArg_ParseTuple(args,"OO",&array,&indices))
     return NULL;
   array_array=(PyArrayObject *)
-    PyArray_ContiguousFromObject(array,PyArray_FLOAT,1,0);
+    PyArray_ContiguousFromObject(array,PyArray_FLOAT32,1,0);
   if (array_array==NULL) return NULL;
   indices_array=(PyArrayObject *)
-    PyArray_ContiguousFromObject(indices,PyArray_INT,0,0);
+    PyArray_ContiguousFromObject(indices,PyArray_INT32,0,0);
   if (indices_array==NULL) {
     Py_DECREF(array_array);
     return NULL;}

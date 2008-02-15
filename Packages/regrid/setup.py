@@ -3,7 +3,7 @@ from distutils.core import setup, Extension
 import os, sys
 unm = os.uname()[-1]
 if unm.find('64')>-1:
-  print 'regrid will not build on 64bit system, instead use cdms2, regrid2, MV2, numpy in CDAT 5.0'
+  print 'regrid will not build on 64bit system, instead use cdms2, regrid2, MV2, numpy'
   sys.exit()
 
 setup (name = "regrid",

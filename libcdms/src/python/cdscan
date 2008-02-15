@@ -2,18 +2,18 @@
 
 import sys
 import getopt
-import cdms
-from cdms.grid import lookupArray
-from cdms.axis import calendarToTag, tagToCalendar
-from cdms.cdmsobj import CdFromObject,CdString,CdScalar,CdFloat,CdDouble,CdShort,CdInt,CdLong
-import MA, Numeric
+import cdms2 as cdms
+from cdms2.grid import lookupArray
+from cdms2.axis import calendarToTag, tagToCalendar
+from cdms2.cdmsobj import CdFromObject,CdString,CdScalar,CdFloat,CdDouble,CdShort,CdInt,CdLong
+import numpy.oldnumeric.ma as MA, numpy.oldnumeric as Numeric
 import string
 import cdtime
 import os.path
 import pprint
 import copy
 import types
-from cdms import cdmsNode
+from cdms2 import cdmsNode
 import re
 
 usage = """Usage:
@@ -509,9 +509,9 @@ def addAttrs(fobj, eattrs):
 def setNodeDict(node, dict):
     for key in dict.keys():
         value = dict[key]
-        if type(value) is types.IntType:
+        if (isinstance(value, Numeric.integer) or isinstance(value, types.IntType)):
             datatype = CdLong
-        elif type(value) is types.FloatType:
+        elif (isinstance(value, Numeric.floating) or isinstance(value, types.FloatType)):
             datatype = CdDouble
         else:
             datatype = CdString

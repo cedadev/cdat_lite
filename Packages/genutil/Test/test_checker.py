@@ -1,4 +1,5 @@
-import cdms,genutil,cdutil,os,sys
+# Adapted for numpy/ma/cdms2 by convertcdms.py
+import cdms2 as cdms,genutil,cdutil,os,sys
 
 #fnm='/pcmdi/obs/mo/tas/rnl_ncep/tas.rnl_ncep.ctl'
 #f=cdms.open(fnm)

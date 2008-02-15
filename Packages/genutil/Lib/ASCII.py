@@ -1,4 +1,5 @@
-import MV,Numeric,cdms,genutil
+# Adapted for numpy/ma/cdms2 by convertcdms.py
+import MV2 as MV,numpy.oldnumeric as Numeric,cdms2 as cdms,genutil
 
 def make_var(lap,id=None,shape=None):
     lap=MV.array(lap)

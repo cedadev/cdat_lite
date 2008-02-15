@@ -1,8 +1,9 @@
+# Adapted for numpy/ma/cdms2 by convertcdms.py
 import string
 import types
-import Numeric
-import MA
-import cdms
+import numpy.oldnumeric as Numeric
+import numpy.oldnumeric.ma as MA
+import cdms2 as cdms
 import os
 import cdutil
 

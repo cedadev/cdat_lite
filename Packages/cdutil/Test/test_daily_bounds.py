@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-import cdms,cdutil,os,sys
+# Adapted for numpy/ma/cdms2 by convertcdms.py
+import cdms2 as cdms,cdutil,os,sys
 
 ## Test 6h data
 f=cdms.open(os.path.join(sys.prefix,'sample_data','psl_6h.nc'))

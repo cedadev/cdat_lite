@@ -1,9 +1,10 @@
 #!/usr/bin/env python
+# Adapted for numpy/ma/cdms2 by convertcdms.py
 
 
 import cdutil
 
-import cdms,vcs,sys,os
+import cdms2 as cdms,vcs,sys,os
 import vcs.test.support
 bg = vcs.test.support.bg
 

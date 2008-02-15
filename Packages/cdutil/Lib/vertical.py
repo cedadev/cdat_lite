@@ -1,6 +1,8 @@
+# Adapted for numpy/ma/cdms2 by convertcdms.py
+import MV2
 import genutil
-import MV
-import cdms
+import MV2 as MV
+import cdms2 as cdms
 def reconstructPressureFromHybrid(ps,A,B,Po):
     """
     Reconstruct the Pressure field on sigma levels, from the surface pressure
@@ -96,10 +98,10 @@ def linearInterpolation(A,I,levels=[100000, 92500, 85000, 70000, 60000, 50000, 4
         val=MV.masked_where(MV.equal(Ibel,-1.),lev) # set to missing value if no data below lev if there is
         
         tl=(val-Ibel)/(Iabv-Ibel)*(Aabv-Abel)+Abel # Interpolation
-        if Ieq.mask() is None:
+        if ((Ieq.mask is None) or (Ieq.mask is MV2.nomask)):
             tl=Ieq
         else:
-            tl=MV.where(1-Ieq.mask(),Ieq,tl)
+            tl=MV.where(1-Ieq.mask,Ieq,tl)
         t[ilev]=tl.astype(MV.Float32)
 
     ax=A.getAxisList()
@@ -184,10 +186,10 @@ def logLinearInterpolation(A,P,levels=[100000, 92500, 85000, 70000, 60000, 50000
         val=MV.masked_where(MV.equal(Pbel,-1.),lev) # set to missing value if no data below lev if there is
         
         tl=MV.log(val/Pbel)/MV.log(Pabv/Pbel)*(Aabv-Abel)+Abel # Interpolation
-        if Peq.mask() is None:
+        if ((Peq.mask is None) or (Peq.mask is MV2.nomask)):
             tl=Peq
         else:
-            tl=MV.where(1-Peq.mask(),Peq,tl)
+            tl=MV.where(1-Peq.mask,Peq,tl)
         t[ilev]=tl.astype(MV.Float32)
         
     ax=A.getAxisList()

@@ -1,3 +1,4 @@
+# Adapted for numpy/ma/cdms2 by convertcdms.py
 def minmax(*data) :
   """
   Function : minmax
@@ -22,7 +23,7 @@ def minmax(*data) :
   if len(data)==1 : data=data[0]
   global myfunction
   def myfunction(d,mx,mn):
-    from MA import maximum,minimum,absolute,greater,count
+    from numpy.oldnumeric.ma import maximum,minimum,absolute,greater,count
     try:
       if count(d)==0 : return mx,mn
       mx=float(maximum(mx,float(maximum(d))))

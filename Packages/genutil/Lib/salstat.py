@@ -1,3 +1,4 @@
+# Adapted for numpy/ma/cdms2 by convertcdms.py
 # stats.py - reworked module for statistical analysis
 """
 This module has been written specifically for the SalStat statistics package. 
@@ -14,9 +15,9 @@ Other parts of this code were taken from stats.py by Gary Strangman of
 Harvard University (c) Not sure what year, Gary Strangman, released under the 
 GNU General Public License."""
 
-import MA,MV,RandomArray,cdms,array_indexing
+import numpy.oldnumeric.ma as MA,MV2 as MV,RandomArray,cdms2 as cdms,array_indexing_emulate as array_indexing
 from statistics import __checker
-
+import numpy
 
 ## Short routines used in the functional constructs to reduce analysis time
 add=MA.add
@@ -24,6 +25,13 @@ multiply=MA.multiply
 sum=MA.sum
 mean=MA.average # Shortcut
 
+def _fixScalar(a):
+    if isinstance(a,(float,int)) or a.shape==():
+        a=MA.array([a,],copy=0)
+        return a
+    else:
+        return a
+    
 ## Diference Squared
 def _diffsquared(a,b): return MA.power(a-b,2)
 def differencesquared(x,y,axis=0):
@@ -111,6 +119,7 @@ def rankdata(x,axis=0):
             (integer value 0...n) over which you want to compute the statistic.
             even: 'xy': to do over 2 dimensions at once
     """
+    x = _fixScalar(x)
     if cdms.isVariable(x) : xatt=x.attributes
     x2,y,weights,axis,ax=__checker(x,None,None,axis)
     rk=_rankdata(x2)
@@ -170,6 +179,7 @@ def tiecorrect(x,axis=0):
             (integer value 0...n) over which you want to compute the statistic.
             even: 'xy': to do over 2 dimensions at once
     """
+    x = _fixScalar(x)
     if cdms.isVariable(x) : xatt=x.attributes
     x,y,weights,axis,ax=__checker(x,None,None,axis)
     T=_tiecorrect(x)
@@ -199,7 +209,7 @@ def _chisqprob(chisq,df,Z_MAX=6.0):
     """
     BIG = 20.0
     def ex(x):
-        mask=x.mask()
+        mask=x.mask
         tmp=MA.masked_less(x,-BIG)
         tmp=MA.exp(tmp).filled(0)
         if mask is not None:
@@ -219,9 +229,9 @@ def _chisqprob(chisq,df,Z_MAX=6.0):
     z=MA.where(even,1.,.5)
     ## Where a > BIG
     c2=MA.greater(a,BIG)
-    e=MA.where(even,0.,MA.log(MA.sqrt(MA.pi)))
+    e=MA.where(even,0.,MA.log(MA.sqrt(numpy.pi)))
     c=MA.log(a)
-    e2=MA.where(even,1.,1.0 / MA.sqrt(MA.pi) / MA.sqrt(a))
+    e2=MA.where(even,1.,1.0 / MA.sqrt(numpy.pi) / MA.sqrt(a))
     cc=MA.zeros(e.shape)
     c3=MA.less_equal(z,chisq)
     c2a=MA.logical_and(c2,cdf2)
@@ -251,6 +261,8 @@ def chisqprob(chisq,df,Z_MAX=6.0):
     Options:
     Z_MAX: Maximum meaningfull value for z probability (default=6.0)
     """
+    chisq = _fixScalar(chisq)
+    df = _fixScalar(df)
     isvar=0
     if cdms.isVariable(chisq) :
         isvar=1
@@ -298,6 +310,8 @@ def inversechi(prob, df):
     attached to the relevant file.
     Usage invchi = inversechi(prob,df,axis=axisoptions)
     """
+    prob = _fixScalar(prob)
+    df = _fixScalar(df)
     isvar=0
     if cdms.isVariable(prob) :
         isvar=1
@@ -339,6 +353,7 @@ def erfcc(x):
         (integer value 0...n) over which you want to compute the statistic.
         you can also pass 'xy' to work on both axes at once
     """
+    x = _fixScalar(x)
     isvar=0
     if cdms.isVariable(x) :
         isvar=1
@@ -402,6 +417,7 @@ def zprob(z,Z_MAX = 6.0):
     
     Usage:   z = zprob(z,Z_MAX=6.0 )
     """
+    z = _fixScalar(z)
     isvar=0
     if cdms.isVariable(z) :
         isvar=1
@@ -456,6 +472,7 @@ def ksprob(x):
 
     Usage:   ks = ksprob(x)
     """
+    x = _fixScalar(x)
     isvar=0
     if cdms.isVariable(x) :
         isvar=1
@@ -486,6 +503,9 @@ def fprob (dfnum, dfden, F):
     
     Usage:   prob = fprob(dfnum, dfden, F)   where usually dfnum=dfbn, dfden=dfwn
     """
+    dfnum = _fixScalar(dfnum)
+    dfden = _fixScalar(dfden)
+    F = _fixScalar(F)
     isvar=0
     if cdms.isVariable(F) :
         isvar=1
@@ -499,12 +519,14 @@ def fprob (dfnum, dfden, F):
     return prob
 
 def _tprob(df, t):
-    return _betai(0.5*df,MA.ones(df.shape)*0.5,df/(df+t*t))
+    return _betai(0.5*df,MA.ones(df.shape)*0.5,df/(1.*df+t*t))
 
 def tprob(df, t):
     """Returns t probabilty given degree of freedom and T statistic
     Usage: prob = tprob(df,t)
     """
+    df = _fixScalar(df)
+    t = _fixScalar(t)
     isvar=0
     if cdms.isVariable(t) :
         isvar=1
@@ -531,7 +553,7 @@ def _inversef(prob, df1, df2):
     c2=MA.greater(MA.absolute(maxf-minf),f_epsilon)
     c2=MA.logical_and(c1,c2).filled(0)
     while not MA.allequal(c2,0.):
-        c1=MA.less(_fprob(fval,df1,df2),prob).filled(0)
+        c1=MA.less(_fprob(df1,df2,fval),prob).filled(0)
         maxf=MA.where(MA.logical_and(c1,c2).filled(0),fval,maxf)
         minf=MA.where(MA.logical_and(MA.logical_not(c1),c2).filled(0),fval,minf)
         fval = MA.where(c2,(maxf + minf) * 0.5,fval)
@@ -551,6 +573,9 @@ def inversef(prob, df1, df2):
         (integer value 0...n) over which you want to compute the statistic.
         you can also pass 'xy' to work on both axes at once
     """
+    prob = _fixScalar(prob)
+    df1 = _fixScalar(df1)
+    df2 = _fixScalar(df2)
     isvar=0
     if cdms.isVariable(prob) :
         isvar=1
@@ -613,6 +638,9 @@ def betacf(a,b,x,ITMAX=200,EPS=3.0E-7):
     ITMAX: Maximum number of iteration
     EPS: Epsilon number
     """
+    a = _fixScalar(a)
+    b = _fixScalar(b)
+    x = _fixScalar(x)
     isvar=0
     if cdms.isVariable(b) :
         isvar=1
@@ -656,6 +684,7 @@ def gamma(x):
 
     Usage:   _gammaln(xx)
     """
+    x = _fixScalar(x)
     isvar=0
     if cdms.isVariable(x) :
         isvar=1
@@ -714,6 +743,9 @@ def betai(a,b,x,ITMAX=200,EPS=3.0E-7):
     ITMAX: Maximum number of iteration for betacf
     EPS: Epsilon number
     """
+    a = _fixScalar(a)
+    b = _fixScalar(b)
+    x = _fixScalar(x)
     isvar=0
     if cdms.isVariable(x) :
         isvar=1
@@ -755,6 +787,7 @@ def sumsquares(x,axis=0):
         (integer value 0...n) over which you want to compute the statistic.
         you can also pass 'xy' to work on both axes at once
     """
+    x = _fixScalar(x)
     if cdms.isVariable(x) : xatt=x.attributes
     x,y,weights,axis,ax=__checker(x,None,None,axis)
     
@@ -784,6 +817,7 @@ def Range(x,axis=0):
         (integer value 0...n) over which you want to compute the statistic.
         you can also pass 'xy' to work on both axes at once
     """
+    x = _fixScalar(x)
     if cdms.isVariable(x) : xatt=x.attributes
     x,y,weights,axis,ax=__checker(x,None,None,axis)
     
@@ -806,6 +840,7 @@ def harmonicmean(x,axis=0):
         (integer value 0...n) over which you want to compute the statistic.
         you can also pass 'xy' to work on both axes at once
     """
+    x = _fixScalar(x)
     if cdms.isVariable(x) : xatt=x.attributes
     x,y,weights,axis,ax=__checker(x,None,None,axis)
     
@@ -849,6 +884,7 @@ def median(x,axis=0):
         (integer value 0...n) over which you want to compute the statistic.
         you can also pass 'xy' to work on both axes at once
     """
+    x = _fixScalar(x)
     if cdms.isVariable(x) : xatt=x.attributes
     x,y,weights,axis,ax=__checker(x,None,None,axis)
     
@@ -878,6 +914,7 @@ def medianranks(x,axis=0):
         (integer value 0...n) over which you want to compute the statistic.
         you can also pass 'xy' to work on both axes at once
     """
+    x = _fixScalar(x)
     if cdms.isVariable(x) : xatt=x.attributes
     x,y,weights,axis,ax=__checker(x,None,None,axis)
     
@@ -907,6 +944,7 @@ def mad(x,axis=0):
         (integer value 0...n) over which you want to compute the statistic.
         you can also pass 'xy' to work on both axes at once
     """
+    x = _fixScalar(x)
     if cdms.isVariable(x) : xatt=x.attributes
     x,y,weights,axis,ax=__checker(x,None,None,axis)
     
@@ -944,6 +982,7 @@ def numberuniques(x,axis=0):
         (integer value 0...n) over which you want to compute the statistic.
         you can also pass 'xy' to work on both axes at once
    """
+    x = _fixScalar(x)
     if cdms.isVariable(x) : xatt=x.attributes
     x,y,weights,axis,ax=__checker(x,None,None,axis)
     
@@ -973,6 +1012,7 @@ def center(x,axis=0):
         (integer value 0...n) over which you want to compute the statistic.
         you can also pass 'xy' to work on both axes at once
     """
+    x = _fixScalar(x)
     if cdms.isVariable(x) : xatt=x.attributes
     x,y,weights,axis,ax=__checker(x,None,None,axis)
     
@@ -1002,6 +1042,7 @@ def ssdevs(x,axis=0):
         (integer value 0...n) over which you want to compute the statistic.
         you can also pass 'xy' to work on both axes at once
     """
+    x = _fixScalar(x)
     if cdms.isVariable(x) : xatt=x.attributes
     x,y,weights,axis,ax=__checker(x,None,None,axis)
     
@@ -1060,6 +1101,7 @@ def unbiasedvariance(x,axis=0):
         (integer value 0...n) over which you want to compute the statistic.
         you can also pass 'xy' to work on both axes at once
     """
+    x = _fixScalar(x)
     if cdms.isVariable(x) : xatt=x.attributes
     x,y,weights,axis,ax=__checker(x,None,None,axis)
     
@@ -1089,6 +1131,7 @@ def variance(x,axis=0):
         (integer value 0...n) over which you want to compute the statistic.
         you can also pass 'xy' to work on both axes at once
     """
+    x = _fixScalar(x)
     if cdms.isVariable(x) : xatt=x.attributes
     x,y,weights,axis,ax=__checker(x,None,None,axis)
     
@@ -1118,6 +1161,7 @@ def standarddeviation(x,axis=0):
         (integer value 0...n) over which you want to compute the statistic.
         you can also pass 'xy' to work on both axes at once
     """
+    x = _fixScalar(x)
     if cdms.isVariable(x) : xatt=x.attributes
     x,y,weights,axis,ax=__checker(x,None,None,axis)
     
@@ -1148,6 +1192,7 @@ def coefficentvariance(x,axis=0):
         (integer value 0...n) over which you want to compute the statistic.
         you can also pass 'xy' to work on both axes at once
     """
+    x = _fixScalar(x)
     if cdms.isVariable(x) : xatt=x.attributes
     x,y,weights,axis,ax=__checker(x,None,None,axis)
     
@@ -1179,6 +1224,7 @@ def skewness(x,axis=0):
         (integer value 0...n) over which you want to compute the statistic.
         you can also pass 'xy' to work on both axes at once
     """
+    x = _fixScalar(x)
     if cdms.isVariable(x) : xatt=x.attributes
     x,y,weights,axis,ax=__checker(x,None,None,axis)
     
@@ -1210,6 +1256,7 @@ def kurtosis(x,axis=0):
         (integer value 0...n) over which you want to compute the statistic.
         you can also pass 'xy' to work on both axes at once
     """
+    x = _fixScalar(x)
     if cdms.isVariable(x) : xatt=x.attributes
     x,y,weights,axis,ax=__checker(x,None,None,axis)
     
@@ -1238,6 +1285,7 @@ def standarderror(x,axis=0):
         (integer value 0...n) over which you want to compute the statistic.
         you can also pass 'xy' to work on both axes at once
     """
+    x = _fixScalar(x)
     if cdms.isVariable(x) : xatt=x.attributes
     x,y,weights,axis,ax=__checker(x,None,None,axis)
     
@@ -1278,6 +1326,7 @@ def mode(x,axis=0):
         (integer value 0...n) over which you want to compute the statistic.
         you can also pass 'xy' to work on both axes at once
     """
+    x = _fixScalar(x)
     if cdms.isVariable(x) : xatt=x.attributes
     x,y,weights,axis,ax=__checker(x,None,None,axis)
     
@@ -1316,6 +1365,8 @@ def OneSampleTTest(x,y,axis=0,df=1):
         df=1 : If set to 1 then the degrees of freedom are returned
         
     """
+    x = _fixScalar(x)
+    y = _fixScalar(y)
     if cdms.isVariable(x) : xatt=x.attributes
     x,y,weights,axis,ax=__checker(x,y,None,axis,smally=1)
     t,d,prob =_OneSampleTTest(x,y)
@@ -1366,6 +1417,8 @@ def OneSampleSignTest(x,y,axis=0):
         (integer value 0...n) over which you want to compute the statistic.
         you can also pass 'xy' to work on both axes at once
     """
+    x = _fixScalar(x)
+    y = _fixScalar(y)
     if cdms.isVariable(x) : xatt=x.attributes
     x,y,weights,axis,ax=__checker(x,y,None,axis,smally=1)
     nplus, nminus, ntotal, z, prob =_OneSampleSignTest(x,y)
@@ -1406,6 +1459,8 @@ def ChiSquareVariance(x,y,axis=0, df=1):
         (integer value 0...n) over which you want to compute the statistic.
         you can also pass 'xy' to work on both axes at once
     """
+    x = _fixScalar(x)
+    y = _fixScalar(y)
     if cdms.isVariable(x) : xatt=x.attributes
     x,y,weights,axis,ax=__checker(x,y,None,axis,smally=1)
     chisquare, Df, prob =_ChiSquareVariance(x,y)
@@ -1458,6 +1513,8 @@ def TTestUnpaired(x,y,axis=0,df=1):
 
         df =0: if set to 1 returns degrees of freedom
     """
+    x = _fixScalar(x)
+    y = _fixScalar(y)
     if cdms.isVariable(x) : xatt=x.attributes
     if cdms.isVariable(y) : yatt=y.attributes
     x,y,weights,axis,ax=__checker(x,y,None,axis)
@@ -1486,11 +1543,11 @@ def _TTestPaired(data1, data2):
     N1s=MA.count(data1,axis=0)
 
     df = N1s - 1
-    cov=MA.sum((_center(data1) * _center(data2)))
+    cov=MA.sum((_center(data1) * _center(data2)), axis=0)
     cov = cov / df
     sd = MA.sqrt((_samplevariance(data1) + _samplevariance(data2) - 2.0 * \
                             cov) / N1s)
-    t = (mean(data1) - mean(data2)) / sd
+    t = (mean(data1, axis=0) - mean(data2, axis=0)) / sd
     prob = _betai(0.5*df,0.5,df/(df+ t**2))
     return t, df, prob
 
@@ -1506,6 +1563,8 @@ def TTestPaired(x,y,axis=0,df=1):
 
         df =0: if set to 1 returns degrees of freedom
     """
+    x = _fixScalar(x)
+    y = _fixScalar(y)
     if cdms.isVariable(x) : xatt=x.attributes
     if cdms.isVariable(y) : yatt=y.attributes
     x,y,weights,axis,ax=__checker(x,y,None,axis)
@@ -1558,6 +1617,8 @@ def PearsonsCorrelation(x,y,axis=0,df=1):
 
         df =0: if set to 1 returns degrees of freedom
     """
+    x = _fixScalar(x)
+    y = _fixScalar(y)
     if cdms.isVariable(x) : xatt=x.attributes
     if cdms.isVariable(y) : yatt=y.attributes
     x,y,weights,axis,ax=__checker(x,y,None,axis)
@@ -1605,6 +1666,8 @@ def FTest(data1, data2, uservar, axis=0, df=1):
 
         df =0: if set to 1 returns degrees of freedom
     """
+    data1 = _fixScalar(data2)
+    data2 = _fixScalar(data2)
     x,y,weights,axis,ax=__checker(data1,data2,None,axis)
     x,z,weights,axis,ax=__checker(data1,uservar,None,axis,smally=1)
     f, df1, df2, prob = _FTest(x,y,z)
@@ -1659,6 +1722,8 @@ def TwoSampleSignTest(x,y,axis=0):
         you can also pass 'xy' to work on both axes at once
 
     """
+    x = _fixScalar(x)
+    y = _fixScalar(y)
     if cdms.isVariable(x) : xatt=x.attributes
     if cdms.isVariable(y) : yatt=y.attributes
     x,y,weights,axis,ax=__checker(x,y,None,axis)
@@ -1724,6 +1789,8 @@ def KendallsTau(x,y,axis=0):
         you can also pass 'xy' to work on both axes at once
 
     """
+    x = _fixScalar(x)
+    y = _fixScalar(y)
     if cdms.isVariable(x) : xatt=x.attributes
     if cdms.isVariable(y) : yatt=y.attributes
     x,y,weights,axis,ax=__checker(x,y,None,axis)
@@ -1794,6 +1861,8 @@ def KolmogorovSmirnov(x,y,axis=0):
         you can also pass 'xy' to work on both axes at once
 
     """
+    x = _fixScalar(x)
+    y = _fixScalar(y)
     if cdms.isVariable(x) : xatt=x.attributes
     if cdms.isVariable(y) : yatt=y.attributes
     x,y,weights,axis,ax=__checker(x,y,None,axis)
@@ -1836,6 +1905,8 @@ def SpearmansCorrelation(x,y,axis=0,df=1):
 
         df=1 : If set to 1 returns the degrees of freedom
     """
+    x = _fixScalar(x)
+    y = _fixScalar(y)
     if cdms.isVariable(x) : xatt=x.attributes
     if cdms.isVariable(y) : yatt=y.attributes
     x,y,weights,axis,ax=__checker(x,y,None,axis)
@@ -1868,7 +1939,7 @@ def _WilcoxonRankSums(data1, data2, Z_MAX = 6.0):
     alldata = MA.concatenate((data1,data2),axis=0)
     ranked = _rankdata(alldata)
     x = ranked[:N]
-    s = MA.sum(x)
+    s = MA.sum(x, axis=0)
     N1=MA.count(data1,axis=0)
     N2=MA.count(data2,axis=0)
     expected = N1*(N1+N2+1) / 2.0
@@ -1889,6 +1960,8 @@ def WilcoxonRankSums(x,y, Z_MAX = 6.0, axis=0):
 
         Z_MAX: Maximum meaningfull value  for z probability (default = 6)
     """
+    x = _fixScalar(x)
+    y = _fixScalar(y)
     if cdms.isVariable(x) : xatt=x.attributes
     if cdms.isVariable(y) : yatt=y.attributes
     x1,y,weights,axis,ax=__checker(x,y,None,axis)
@@ -1945,6 +2018,8 @@ def WilcoxonSignedRanks(x,y, Z_MAX=6., axis=0):
 
         Z_MAX: Maximum meaningfull value  for z probability (default = 6)
     """
+    x = _fixScalar(x)
+    y = _fixScalar(y)
     if cdms.isVariable(x) : xatt=x.attributes
     if cdms.isVariable(y) : yatt=y.attributes
     x1,y,weights,axis,ax=__checker(x,y,None,axis)
@@ -1997,6 +2072,8 @@ def MannWhitneyU(x, y, Z_MAX=6.0, axis=0):
 
         Z_MAX: Maximum meaningfull value  for z probability (default = 6)
     """
+    x = _fixScalar(x)
+    y = _fixScalar(y)
     if cdms.isVariable(x) : xatt=x.attributes
     if cdms.isVariable(y) : yatt=y.attributes
     x1,y,weights,axis,ax=__checker(x,y,None,axis)
@@ -2038,7 +2115,7 @@ def _LinearRegression(x, y):
     t = r*MA.sqrt(df/((1.0-r+TINY)*(1.0+ r+TINY)))
     prob = _betai(0.5*df,0.5,df/(df+t**2))
     slope = r_num / (N1*sq1 - (s1**2))
-    intercept = mean(y) - slope*mean(x)
+    intercept = mean(y, axis=0) - slope*mean(x, axis=0)
     sterrest = MA.sqrt(1-r**2)*MA.sqrt(_variance(y))
     return  r, df, t, prob, slope, intercept, sterrest
 
@@ -2054,6 +2131,8 @@ def LinearRegression(x, y, df=1, axis=0):
 
         df=1: If set to 1 then df is returned
     """
+    x = _fixScalar(x)
+    y = _fixScalar(y)
     x,y,weights,axis,ax=__checker(x,y,None,axis)
     r, d, t, prob, slope, intercept, sterrest = _LinearRegression(x,y)
     if not ax is None:
@@ -2117,6 +2196,8 @@ def PairedPermutation(x, y, nperm=None, axis=0):
         you can also pass 'xy' to work on both axes at once
         nperm is the number of permutation wanted, default len(axis)+1
     """
+    x = _fixScalar(x)
+    y = _fixScalar(y)
     if cdms.isVariable(x) : xatt=x.attributes
     if cdms.isVariable(y) : yatt=y.attributes
     x,y,weights,axis,ax=__checker(x,y,None,axis)
@@ -2177,6 +2258,8 @@ def ChiSquare(x, y, axis=0, df=1):
         you can also pass 'xy' to work on both axes at once
         nperm is the number of permutation wanted, default len(axis)+1
     """
+    x = _fixScalar(x)
+    y = _fixScalar(y)
     if cdms.isVariable(x) : xatt=x.attributes
     if cdms.isVariable(y) : yatt=y.attributes
     x,y,weights,axis,ax=__checker(x,y,None,axis)
@@ -2202,7 +2285,7 @@ def pack(arrays):
     k=len(arrays)
     sh=list(arrays[0].shape)
     sh.insert(0,k)
-    data=MA.zeros(sh,typecode='d')
+    data=MA.zeros(sh,dtype='d')
     for i in range(k):
         data[i]=arrays[i]
     return data
@@ -2240,7 +2323,7 @@ def _anovaWithin( *inlist):
     sh[1]=0
     mean=MA.average(inlist,axis=0)
 
-    SSint=MA.sum((mean-GM)**2)*k
+    SSint=MA.sum((mean-GM)**2, axis=0)*k
     SSres = SSwit - SSint
     dfbet = (k - 1)*MA.ones(GN.shape)
     dfwit = GN - k
@@ -2492,7 +2575,7 @@ def _FriedmanChiSquare( *args):
 
     sumranks = MA.sum(data,axis=0)
     tmp=MA.sum(data,axis=0)            
-    ssbn=MA.sum(tmp**2)
+    ssbn=MA.sum(tmp**2, axis=0)
     sums=tmp/MA.count(data,axis=0)
     chisq = (12.0 / (k*n*(k+1))) * ssbn - 3*n*(k+1)
     df = MA.ones(chisq.shape)*(k-1)

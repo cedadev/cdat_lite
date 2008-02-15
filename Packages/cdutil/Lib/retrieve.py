@@ -1,10 +1,13 @@
+# Adapted for numpy/ma/cdms2 by convertcdms.py
+import numpy.oldnumeric as Numeric
+import MV2
 import types
 import string
-import Numeric
-import MA
-import MV
-import cdms
-import regrid
+import numpy.oldnumeric as Numeric
+import numpy.oldnumeric.ma as MA
+import MV2 as MV
+import cdms2 as cdms
+import regrid2 as regrid
 import cdtime
 import ValidationFunctions
 import exceptions
@@ -64,12 +67,12 @@ class WeightsMaker(object):
     # Representation of Mask object
     def __str__(self):
         s='WeightsMaker Object: '
-        if self.file is None and self.mask is None:
+        if self.file is None and ((self.mask is None) or (self.mask is MV2.nomask)):
             s+='None'
         else:
             if not self.file is None: s+='\nfile:'+str(self.file)+'\nVar:'+str(self.var)
 ##             if not self.data is None: s+='\ndata:'+str(self.data)
-            if not self.mask is None: s+='\nmask:'+str(self.mask)
+            if not ((self.mask is None) or (self.mask is MV2.nomask)): s+='\nmask:'+str(self.mask)
             if not self.values is None:
                 s+='\nvalues: ['
                 for v in self.values:
@@ -319,7 +322,7 @@ class VariableConditioner(object):
         if type(value) in [types.TupleType, types.ListType]:
             value,frc=value
         if isinstance (value,Numeric.ArrayType ) or MA.isMA(value): # Variable defined from array
-            if frc is None: frc=MA.ones(value.shape,typecode=MA.Float32)
+            if frc is None: frc=MA.ones(value.shape,dtype=Numeric.Float32)
             kw={}
             args=[]
             # Add user defined cdmsArguments
@@ -371,8 +374,8 @@ class VariableConditioner(object):
 
         # Create the fractions
         if frc is None:
-            frc=v.mask()
-            if frc is None: #no mask
+            frc=v.mask
+            if frc is MA.nomask: #no mask
                 # Create a bunch of ones (100%)
                 frc=Numeric.ones(v.shape,Numeric.Float32)
             else:
@@ -381,8 +384,8 @@ class VariableConditioner(object):
                 frc=1.-frc
                 frc=frc.astype(MV.Float32) # no need for double precision here !
         else:
-            m=v.mask()
-            if not m is None:
+            m=v.mask
+            if not m is MA.nomask:
                 frc=MV.where(m,0.,frc).filled(0.)
         # Now get the associted weights object
         # Note that we pass v in case some of the values are defined as "input"
@@ -396,13 +399,16 @@ class VariableConditioner(object):
             if m.shape != v.shape:
                 raise VariableConditionerError, 'weights and variable have different shapes: weights is '+str(m.shape)+' and grid is '+str(v.shape)
             # make sure they're on the same grid (in case one starts at 0 and one at -180 for example
-            if not m.getGrid() is v.getGrid() : m.regrid(v.getGrid())
+
+            if not m.getGrid() is v.getGrid() :
+                m = m.regrid(v.getGrid())
+            
             # Mask the dataset where the fraction are 0.
             v   = MV.masked_where(MV.equal(m.filled(0),0.),v)
             # Update the fractions
             frc=m.filled(0.)
-            m=v.mask()
-            if not m is None:
+            m=v.mask
+            if not m is MA.nomask:
                 frc=Numeric.where(m,0.,frc)
 ##             # Filll the mask with ones, i.e. set fraction to 0 when the mask is masked hahah
 ##             frc = Numeric.where(m.filled(1),0.,frc)
@@ -431,12 +437,15 @@ class VariableConditioner(object):
                 if m.shape != v.shape:
                     raise VariableConditionerError, 'weights and variable have different shapes: weights is '+str(m.shape)+' and grid is '+str(v.shape)
                 # make sure they're on the same grid (in case one starts at 0 and one at -180 for example
-                if not m.getGrid() is v.getGrid() : m.regrid(v.getGrid())
+
+                if not m.getGrid() is v.getGrid() :
+                    m = m.regrid(v.getGrid())
+
                 v=MV.masked_where(MV.equal(m.filled(0.),0.),v)
                 # weights the fraction where needed
                 frc=m.filled(0.)
-                m=v.mask()
-                if not m is None:
+                m=v.mask
+                if not m is MA.nomask:
                     frc=Numeric.where(m,0.,frc)
 ##                 frc=Numeric.where(m.filled(1),0.,frc)
         # Now make the fraction an MV and puts the dim from v on it
@@ -456,13 +465,13 @@ class VariableConditioner(object):
         if self.offset!=0.:
             v=v+self.offset
 
-        if not v.mask() is None:
-            if MA.allclose(v.mask(),0.):
-                v._mask=None
+        if not ((v.mask is None) or (v.mask is MV2.nomask)):
+            if MA.allclose(v.mask,0.):
+                v._mask=MA.nomask
         # Returns the variable and the fractions or just the variable
         if returnTuple:
-##             if not frc.mask() is None:
-##                 if MA.allclose(frc.mask(),0.):
+##             if not ((frc.mask is None) or (frc.mask is MV2.nomask)):
+##                 if MA.allclose(frc.mask,0.):
 ##                     frc._mask=None
             return v,frc
         else:
@@ -780,7 +789,7 @@ class VariablesMatcher(object):
                 frc1,m=genutil.grower(frc1,m)
                 frc1=m.filled(0.)
                 d1=MV.masked_where(MV.equal(frc1,0.),d1)
-                m=d1.mask()
+                m=d1.mask
                 if not m is None:
                     frc1=Numeric.where(m,0.,frc1)
             m=self.weightedGridMaker.weightsMaker(d2)
@@ -789,8 +798,8 @@ class VariablesMatcher(object):
                 frc2,m=genutil.grower(frc2,m)
                 frc2=m.filled(0.)
                 d2=MV.masked_where(MV.equal(frc2,0.),d2)
-                m=d2.mask()
-                if not m is None:
+                m=d2.mask
+                if not m is MA.nomask:
                     frc2=Numeric.where(m,0.,frc2)
         elif d1.getGrid()!=d2.getGrid():
             g1=d1.getGrid()
@@ -817,19 +826,19 @@ class VariablesMatcher(object):
 
         d1=MV.masked_where(MV.equal(frc1,0.),d1)
         d2=MV.masked_where(MV.equal(frc2,0.),d2)
-        if not d1.mask() is None:
-            if MA.allclose(d1.mask(),0.):
-                d1._mask=None
-        if not d2.mask() is None:
-            if MA.allclose(d2.mask(),0.):
-                d2._mask=None
+        if not ((d1.mask is None) or (d1.mask is MV2.nomask)):
+            if MA.allclose(d1.mask,0.):
+                d1._mask=MA.nomask
+        if not ((d2.mask is None) or (d2.mask is MV2.nomask)):
+            if MA.allclose(d2.mask,0.):
+                d2._mask=MA.nomask
         if returnTuple:
-            if not frc1.mask() is None:
-                if MA.allclose(frc1.mask(),0.):
-                    frc1._mask=None
-            if not frc2.mask() is None:
-                if MA.allclose(frc2.mask(),0.):
-                    frc2._mask=None
+            if not ((frc1.mask is None) or (frc1.mask is MV2.nomask)):
+                if MA.allclose(frc1.mask,0.):
+                    frc1._mask=MA.nomask
+            if not ((frc2.mask is None) or (frc2.mask is MV2.nomask)):
+                if MA.allclose(frc2.mask,0.):
+                    frc2._mask=MA.nomask
             return (d1,frc1),(d2,frc2)
         else:
             return d1,d2

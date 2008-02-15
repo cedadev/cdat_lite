@@ -1,4 +1,5 @@
-import cdms,cdutil,MA, MV, os, sys
+# Adapted for numpy/ma/cdms2 by convertcdms.py
+import cdms2 as cdms,cdutil,numpy.oldnumeric.ma as MA, MV2 as MV, os, sys
 cdms.setAutoBounds('on')
 
 # centroid test

@@ -1,8 +1,10 @@
-import Numeric
+# Adapted for numpy/ma/cdms2 by convertcdms.py
+# Adapted for numpy/ma/cdms2 by convertcdms.py
+import numpy.oldnumeric as Numeric
 import genutil
-import cdms
-import MA
-import RandomArray
+import cdms2 as cdms
+import numpy.oldnumeric.ma as MA
+import numpy.oldnumeric.random_array as RandomArray
 import os
 import sys
 
@@ -24,7 +26,7 @@ print E
 ## 2D
 A=Numeric.array([[1,2],[3,4,],[5,6],[7,8]],Numeric.Float)
 
-print A.shape,A.typecode()
+print A.shape,A.dtype.char
 print A[0]
 print A[1]
 print A[2]
@@ -33,41 +35,41 @@ print A[3]
 B=Numeric.array([3,2],Numeric.Int)
 
 C=genutil.array_indexing.extract(A,B)
-print C,C.typecode()
+print C,C.dtype.char
 C=genutil.arrayindexing.get(A,B)
-print C,C.typecode()
+print C,C.dtype.char
 
 f=cdms.open(os.path.join(sys.prefix,'sample_data','clt.nc'))
 clt=f('clt')
-## clt=cdms.MV.average(clt,2)
+## clt=cdms.MV2.average(clt,2)
 print clt.shape
 
 M=MA.maximum.reduce(clt,axis=0)
 marg=MA.argmax(clt,axis=0)
 M2=genutil.arrayindexing.get(clt,marg)
 
-print M2.shape,M2.mask(),genutil.minmax(M2-M)
+print M2.shape,M2.mask,genutil.minmax(M2-M)
 
 M=MA.maximum.reduce(clt,axis=1)
 marg=MA.argmax(clt,axis=1)
-marg=cdms.MV.array(marg)
+marg=cdms.MV2.array(marg)
 marg.setAxis(0,clt.getAxis(0))
 marg.setAxis(1,clt.getAxis(2))
-print clt.typecode(),M.shape
+print clt.dtype.char,M.shape
 M2=genutil.arrayindexing.get(clt,marg,axis=1)
 
-print M2.shape,M2.mask(),genutil.minmax(M2-M)
+print M2.shape,M2.mask,genutil.minmax(M2-M)
 
-clt=cdms.MV.masked_greater(clt,80)
+clt=cdms.MV2.masked_greater(clt,80)
 M=MA.maximum.reduce(clt,axis=1)
-print M.mask(),'is the mask'
+print M.mask,'is the mask'
 marg=MA.argmax(clt,axis=1)
-marg=cdms.MV.array(marg)
+marg=cdms.MV2.array(marg)
 marg.setAxis(0,clt.getAxis(0))
 marg.setAxis(1,clt.getAxis(2))
-print clt.typecode(),M.shape
+print clt.dtype.char,M.shape
 M2=genutil.arrayindexing.get(clt,marg,axis=1)
-print M2.shape,M2.mask(),genutil.minmax(M2-M)
+print M2.shape,M2.mask,genutil.minmax(M2-M)
 
 ## 3D
 I=RandomArray.random(clt.shape)*clt.shape[0]
@@ -75,7 +77,7 @@ I=I.astype('i') # integers required
 M2=genutil.arrayindexing.get(clt,I)
 
 #### Set tests
-V=Numeric.array([1345,34],A.typecode())
+V=Numeric.array([1345,34],A.dtype.char)
 B=Numeric.array([-3,2],Numeric.Int)
 A=genutil.arrayindexing.set(A,B,V)
 print A

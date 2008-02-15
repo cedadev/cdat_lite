@@ -1,7 +1,8 @@
+# Adapted for numpy/ma/cdms2 by convertcdms.py
 """writenetcdf
    see also dataset write method
 """
-import cdms
+import cdms2 as cdms
 
 def writenetcdf (slab, filename, mode="a"):
     """writenetcdf(slab, filename, mode="a") writes slab to the file.
@@ -17,7 +18,7 @@ def writenetcdf (slab, filename, mode="a"):
     f.close()
 
 if __name__ == '__main__':
-    from MA import allclose
+    from numpy.oldnumeric.ma import allclose
     import pcmdi
     g = cdms.openDataset('clt.nc','r')
     c = g.variables['clt']

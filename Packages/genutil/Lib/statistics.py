@@ -1,7 +1,11 @@
-import MA,cdms,Numeric,MV
+# Adapted for numpy/ma/cdms2 by convertcdms.py
+import MV2
+import numpy.oldnumeric.ma as MA,cdms2 as cdms
 #import genutil
 from grower import grower
-import arrayindexing,array_indexing
+import numpy
+
+import arrayindexing,array_indexing_emulate as array_indexing
 
 class StatisticsError (Exception):
     def __init__ (self, args=None):
@@ -96,7 +100,7 @@ def __probnd1(x):
     term1 = ((((b1 * t) + (b2 * (t ** 2))) + \
               (b3 * (t ** 3))) + (b4 * (t ** 4))) + \
               (b5 * (t ** 5))
-    z = (1.0 / MA.sqrt(2.0 * MA.pi)) * MA.exp(- ((x * x) / 2.0))
+    z = (1.0 / MA.sqrt(2.0 * numpy.pi)) * MA.exp(- ((x * x) / 2.0))
     return MA.where(MA.greater(x,7.),0.,z * term1)
     
 
@@ -195,23 +199,23 @@ def __covariance(x,y,weights=None,centered=1,biased=1):
         raise StatisticsError,'Error in covariance, you cannot have weights and unbiased together'
     
     if centered == 1:
-        xmean=MA.average(x,weights=weights)
-        ymean=MA.average(y,weights=weights)
+        xmean=MA.average(x,weights=weights, axis=0)
+        ymean=MA.average(y,weights=weights, axis=0)
         x=x-xmean
         y=y-ymean
         del(xmean)
         del(ymean)
     #
     if weights is None:
-        weights=MA.ones(x.shape,typecode=x.typecode())
-    if not x.mask() is None :
-        weights=MA.masked_where(x.mask(),weights)
-##     if not y.mask() is None :
-##         weights=MA.masked_where(y.mask(),weights)
+        weights=MA.ones(x.shape,dtype=x.dtype.char)
+    if not ((x.mask is None) or (x.mask is MV2.nomask)) :
+        weights=MA.masked_where(x.mask,weights)
+##     if not ((y.mask is None) or (y.mask is MV2.nomask)) :
+##         weights=MA.masked_where(y.mask,weights)
     if biased == 1:
         cov = MA.sum(x*y*weights,0)/MA.sum(weights,0)
     else:
-        cov = MA.sum(x*y)/(MA.count(x*y,0)-1)
+        cov = MA.sum(x*y, axis=0)/(MA.count(x*y,0)-1)
 
     return cov
 
@@ -280,8 +284,8 @@ def __laggedcovariance(x,y,lag=1,centered=1,partial=1):
         
     
     if centered == 1 :
-        xmean=MA.average(x)
-        ymean=MA.average(y)
+        xmean=MA.average(x, axis=0)
+        ymean=MA.average(y, axis=0)
     else:
         xmean=0.
         ymean=0.
@@ -297,7 +301,7 @@ def __laggedcovariance(x,y,lag=1,centered=1,partial=1):
             tmp=x[lag:]*y[:-lag]
         else:
             tmp=x[:-lag]*y[lag:]
-    return MA.sum(tmp)/MA.count(x*y,0)
+    return MA.sum(tmp, axis=0)/MA.count(x*y,0)
 
 def __laggedcorrelation(x,y,lag,centered=1,partial=1,biased=1):
     """
@@ -343,12 +347,12 @@ def __autocorrelation(x,lag,centered=1,partial=1):
         documentation of autocorrelation() for details.
     """
     if partial==1 and centered==1 and lag!=0:
-        mean1=MA.average(x[:-lag])
-        mean2=MA.average(x[lag:])
+        mean1=MA.average(x[:-lag], axis=0)
+        mean2=MA.average(x[lag:], axis=0)
         x1=x[:-lag]-mean1
         x2=x[lag:]-mean2
-        num=MA.sum(x1*x2)
-        den=MA.sum(MA.power(x1,2))*MA.sum(MA.power(x2,2))
+        num=MA.sum(x1*x2, axis=0)
+        den=MA.sum(MA.power(x1,2))*MA.sum(MA.power(x2,2), axis=0)
         return num/MA.sqrt(den)
     else:
         return __autocovariance(x,lag,centered=centered,partial=partial)/__autocovariance(x,0,centered=centered,partial=partial)
@@ -362,8 +366,8 @@ def __meanabsdiff(x,y,weights=None,centered=1):
         documentation of meanabsdiff() for details.
     """    
     if centered == 1 :
-        xmean=MA.average(x,weights=weights)
-        ymean=MA.average(y,weights=weights)
+        xmean=MA.average(x,weights=weights, axis=0)
+        ymean=MA.average(y,weights=weights, axis=0)
     else:
         xmean=0.
         ymean=0.
@@ -372,13 +376,13 @@ def __meanabsdiff(x,y,weights=None,centered=1):
     del(xmean)
     del(ymean)
     if weights is None:
-        weights=MA.ones(x.shape,typecode=x.typecode())
-    if not x.mask() is None :
-        weights=MA.masked_where(x.mask(),weights)
-    if not y.mask() is None :
-        weights=MA.masked_where(y.mask(),weights)
+        weights=MA.ones(x.shape,dtype=x.dtype.char)
+    if not ((x.mask is None) or (x.mask is MV2.nomask)) :
+        weights=MA.masked_where(x.mask,weights)
+    if not ((y.mask is None) or (y.mask is MV2.nomask)) :
+        weights=MA.masked_where(y.mask,weights)
         
-    return MA.sum(MA.absolute(x-y)*weights)/MA.sum(weights)
+    return MA.sum(MA.absolute(x-y)*weights)/MA.sum(weights, axis=0)
                              
 
 def __linearregression(y,x,error=None,probability=None,noslope=None,nointercept=None):
@@ -393,12 +397,12 @@ def __linearregression(y,x,error=None,probability=None,noslope=None,nointercept=
     if not error is None:
         if error>3:
             raise StatisticsError,"Error in __linearregression, error must be None (0), 1, ,2 or 3"
-    xmean=MA.average(x)
-    ymean=MA.average(y)
+    xmean=MA.average(x, axis=0)
+    ymean=MA.average(y, axis=0)
     x=x-xmean
     y=y-ymean
-    xy=MA.sum(y*x)
-    xx=MA.sum(x*x)
+    xy=MA.sum(y*x, axis=0)
+    xx=MA.sum(x*x, axis=0)
     slope=xy/xx
     intercept=ymean-slope*xmean
     V=[]
@@ -413,7 +417,7 @@ def __linearregression(y,x,error=None,probability=None,noslope=None,nointercept=
         n1=MA.count(y,0)
         # Unadjusted errors
         res=(y+ymean)-(intercept+(x+xmean)*MA.resize(slope,MA.shape(y))) # x2
-        ssd=MA.sum(res*res)
+        ssd=MA.sum(res*res, axis=0)
         amsd1=ssd/(n1-2.) # amsd1=ssd/idfd1
         if noslope is None or noslope==0:
             E.append(MA.sqrt(amsd1/xx))
@@ -427,7 +431,7 @@ def __linearregression(y,x,error=None,probability=None,noslope=None,nointercept=
             Pt2=[]
             Pf1=[]
             Pf2=[]
-            f=MA.sum(y*y)-ssd # ssr
+            f=MA.sum(y*y, axis=0)-ssd # ssr
             f=f/amsd1
             aa1 = n1 / 2.0
             if noslope is None or noslope==0:
@@ -450,7 +454,7 @@ def __linearregression(y,x,error=None,probability=None,noslope=None,nointercept=
         # Adjusted error from residual
         n1=MA.count(y,0)
         res=(y+ymean)-(intercept+MA.resize(slope,MA.shape(y))*(x+xmean)) # x2
-        ssd=MA.sum(res*res)
+        ssd=MA.sum(res*res, axis=0)
         if error==2:
             ac=__autocorrelation(res,1,centered=1,partial=0)
             rdfd2 = 1.0 + ac
@@ -473,7 +477,7 @@ def __linearregression(y,x,error=None,probability=None,noslope=None,nointercept=
             Pt2=[]
             Pf1=[]
             Pf2=[]
-            f=MA.sum(y*y)-ssd # ssr = amsr
+            f=MA.sum(y*y, axis=0)-ssd # ssr = amsr
             amsd1=ssd/(n1-2.) # amsd1=ssd/idfd1
             f=f/amsd1 # amsr/ssd
             aa1 = n1 / 2.0
@@ -507,7 +511,7 @@ def __makeweights(x,w,axes):
     import cdutil
     tmpaxes=axes
     if type(axes)==type(1): tmpaxes=str(axes)
-    # First make sure x and w have same dims if w is MV
+    # First make sure x and w have same dims if w is MV2
     if cdms.isVariable(w) and cdms.isVariable(x) and x.shape!=w.shape:
         x,w=grower(x,w)
     w=cdutil.__check_weightoptions(x, tmpaxes, w)
@@ -518,14 +522,14 @@ def __makeweights(x,w,axes):
         endax=[]
         for i in range(len(axes)):
             if w[i]=='unweighted':
-                w[i]=MA.ones(len(axs[axes[i]]),typecode=x.typecode())
+                w[i]=MA.ones(len(axs[axes[i]]),dtype=x.dtype.char)
             if i==0:
                 wo=w[i]
                 endax.append(axs[axes[i]])
             else:
-                wo=wo[...,MA.NewAxis]*w[i]
+                wo=wo[...,None]*w[i]
                 endax.append(axs[axes[i]])
-        w=cdms.MV.array(wo)
+        w=cdms.MV2.array(wo)
         w.setAxisList(endax)
 ##     else:
 ##         w.setAxisList(x.getAxisList())
@@ -653,15 +657,15 @@ def __checker(x,y,w,axes,smally=0):
         w=MA.resize(w,fsh)
     # Now mask everything correctly (union of masks)
     if not y is None:
-        m=y.mask()
-        if not m is None:
+        m=y.mask
+        if not m is MA.nomask:
             x=MA.masked_where(m,x)
-        m=x.mask()
-        if not m is None:
+        m=x.mask
+        if not m is MA.nomask:
             y=MA.masked_where(m,y)
     if not w is None:
-        m=x.mask()
-        if not m is None:
+        m=x.mask
+        if not m is MA.nomask:
             w=MA.masked_where(m,w)
 
     ## IF y has to be 1D less than x, then it is shrunk back
@@ -1320,11 +1324,11 @@ def linearregression(y,axis=None,x=None,error=None,probability=None,nointercept=
             ax2=ax.pop(axis[0])
             ax.insert(0,ax2)
             y=cdms.createVariable(y,axes=ax,id=yid,copy=0)
-            x=cdms.MV.array(ax2[:])
+            x=cdms.MV2.array(ax2[:])
             x.setAxis(0,ax2)
             y,x,w,axis,axs=__checker(y,x,None,0)
         else:
-            x=MA.arrayrange(y.shape[0])
+            x=MA.arange(y.shape[0])
             x=MA.resize(x,y.shape)
     else:
         y,x,w,axis,axs=__checker(y,x,None,0)
@@ -1475,9 +1479,9 @@ def _percentiles(out,percent):
     ns=MA.count(out,0)
     output=None
     for p in percent:
-        i=Numeric.floor((p/100.)*(ns-1))
+        i=numpy.floor((p/100.)*(ns-1))
         try:
-            i=i.astype(Numeric.Int)
+            i=i.astype(numpy.int)
         except:
             i=int(i)
         ii = i + 1
@@ -1486,14 +1490,14 @@ def _percentiles(out,percent):
             tmp=tmp.filled(1.E20)
         except:
             pass
-        Ai=Numeric.where(Numeric.equal(ns,1), 0., tmp)
+        Ai=numpy.where(numpy.equal(ns,1), 0., tmp)
         tmp=(100.*ii)/(ns-1)
         try:
             tmp=tmp.filled(1.E20)
         except:
             pass
-        Aii=Numeric.where(Numeric.equal(ns,1), 100., tmp)
-        ii=Numeric.where(Numeric.equal(ii,ns),ns-1,ii)
+        Aii=numpy.where(numpy.equal(ns,1), 100., tmp)
+        ii=numpy.where(numpy.equal(ii,ns),ns-1,ii).astype(numpy.int)
 ##         tmp = (p-Ai)/(Aii-Ai)*array_indexing.extract(out,ii) + \
 ##              (Aii-p)/(Aii-Ai)*array_indexing.extract(out,i)
         tmp = (p-Ai)/(Aii-Ai)*arrayindexing.get(out,ii) + \
@@ -1506,9 +1510,9 @@ def _percentiles(out,percent):
             pass
         if output is None:
             output=MA.array(tmp)
-            output=output.astype(out.typecode())
+            output=output.astype(out.dtype.char)
         else:
-            output=MA.concatenate((output,tmp.astype(MA.Float32)),0)
+            output=MA.concatenate((output,tmp.astype(numpy.float32)),0)
     return output
 
 def percentiles(x,percentiles=[50.],axis=0):
@@ -1585,21 +1589,22 @@ def rank(x,axis=0):
     x,dum,weights,axis,ax=__checker(x,None,None,axis)
 
     # First figures out indices to sort
-    a0=MA.array(MA.argsort(x.filled(1.E20),axis=0),'i')
+    a0=MA.array(MA.argsort(x.filled(1.E20),axis=0),dtype='i')
     n=a0.shape[0]
 
     # initialize output array
-    b=MA.zeros(a0.shape,'f')
+    b=MA.zeros(a0.shape,dtype='f')
 
     # Get the indices
 ##     print 'Indices are:',a0,x
+    ## Make sure b and a0 are of the right type
     b=array_indexing.rank(b,a0)
-    m=x.mask()
-    if not m is None:
-        b=MV.masked_where(m,b)
+    m=x.mask
+    if not m is MA.nomask:
+        b=MV2.masked_where(m,b)
     else:
-        b=MV.array(b)
-    n=MV.count(b,0)
+        b=MV2.array(b)
+    n=MV2.count(b,0)
     n.setAxisList(b.getAxisList()[1:])
     b,n=grower(b,n)
     b=100.*b/(n-1)
@@ -1614,7 +1619,7 @@ def rank(x,axis=0):
         # Now figures the other axes to add
         for i in range(len(axis)):
             sh.insert(i,len(axs[axis[i]]))
-        b=MV.reshape(b,sh)
+        b=MV2.reshape(b,sh)
         for i in range(len(ax)):
             b.setAxis(i+len(axis),ax[i])
         for i in range(len(axis)):

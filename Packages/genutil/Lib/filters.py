@@ -1,4 +1,6 @@
-import MA,cdms,MV,genutil
+# Adapted for numpy/ma/cdms2 by convertcdms.py
+# Adapted for numpy/ma/cdms2 by convertcdms.py
+import numpy.oldnumeric.ma as MA,cdms2 as cdms,MV2 as MV,genutil
 
 def custom1D(x,filter,axis=0):
     """
@@ -22,7 +24,7 @@ def custom1D(x,filter,axis=0):
     newx=newx(order=str(axis)+'...')
     sh=list(newx.shape)
     sh[0]=sh[0]-n+1
-    out=MA.zeros(sh,typecode=newx.typecode())
+    out=MA.zeros(sh,dtype=newx.dtype.char)
     ax=[]
     bnds=[]
     nax=newx.getAxis(0)
@@ -31,7 +33,7 @@ def custom1D(x,filter,axis=0):
         if i==0:
             filter.setAxis(0,sub.getAxis(0))
             filter,sub=genutil.grower(filter,sub)
-        out[i]=MA.average(sub,0,weights=filter)
+        out[i]=MA.average(sub,weights=filter, axis=0)
         if isMV:
             a=nax.subAxis(i,i+n)
             try:
@@ -42,7 +44,7 @@ def custom1D(x,filter,axis=0):
                 bnds.append([b1,b2])
             except: # No bounds on this axis
                 bnds=None
-                ax.append(float(MA.average(a[:])))
+                ax.append(float(MA.average(a[:], axis=0)))
     out=MV.array(out,id=newx.id)
     if isMV:
         for k in xatt.keys():
@@ -93,5 +95,5 @@ def runningaverage(x,N,axis=0):
             default value = 0. You can pass the name of the dimension or index
             (integer value 0...n) over which you want to compute the statistic.
     """
-    filter=MA.ones((N,),typecode='f')
+    filter=MA.ones((N,),dtype='f')
     return custom1D(x,filter,axis=axis)

@@ -1,6 +1,8 @@
+# Adapted for numpy/ma/cdms2 by convertcdms.py
+import numpy.oldnumeric as Numeric
 #from statistics import __checker
 import statistics
-import MA,cdms,genutil
+import numpy.oldnumeric.ma as MA,cdms2 as cdms,genutil
 def get(Array,Indices,axis=0):
     """
     Arrayrrayindexing returns Array[Indices], indices are taken along dimension given with axis
@@ -13,7 +15,7 @@ def get(Array,Indices,axis=0):
     isma=MA.isMA(Array)
     if isinstance(Indices,int):
         return Array[Indices]
-    if Indices.typecode() not in [MA.Int,MA.Int32,MA.Int16]:
+    if Indices.dtype.char not in [Numeric.Int,Numeric.Int32,Numeric.Int16]:
         raise "Error indices array must be made of integers (try: Indices=Indices.astype('l') first)"
     
     if cdms.isVariable(Array) :
@@ -31,11 +33,11 @@ def get(Array,Indices,axis=0):
         if Indices.shape!=Array.shape:
             raise "Error uncompatible shapes: "+str(Array.shape)+" and "+str(Indices.shape)
 
-    m=Array.mask()
+    m=Array.mask
     if not isinstance(Indices,int): Indices=Indices.raw_data() # Sometihng happened with masking of y by x mask
-    C=genutil.array_indexing.extract(Array.raw_data(),Indices)
-    if m is not None:
-        M=genutil.array_indexing.extract(m,Indices)
+    C=genutil.array_indexing_emulate.extract(Array.raw_data(),Indices)
+    if m is not MA.nomask:
+        M=genutil.array_indexing_emulate.extract(m,Indices)
         C=MA.masked_where(M,C,copy=0)
     elif isma:
         C=MA.array(C,copy=0,mask=None)
@@ -56,7 +58,7 @@ def set(Array,Indices,Values,axis=0):
     """
     ## First some checks
     #isma=MA.isMA(Array)
-    if Indices.typecode() not in [MA.Int,MA.Int32,MA.Int16]:
+    if Indices.dtype.char not in [Numeric.Int,Numeric.Int32,Numeric.Int16]:
         raise "Error indices array must be made of integers (try: Indices=Indices.astype('l') first)"
     
     if cdms.isVariable(Array) :
@@ -72,16 +74,16 @@ def set(Array,Indices,Values,axis=0):
         if Indices.shape!=Array.shape:
             raise "Error uncompatible shapes: "+str(Array.shape)+" and "+str(Indices.shape)
 
-    m=Array.mask()
-    mv=Values.mask()
+    m=Array.mask
+    mv=Values.mask
     Indices=Indices.raw_data() # Sometihng happened with masking of y by x mask
-    genutil.array_indexing.set(Array.raw_data(),Indices,Values.raw_data())
-    if m is not None:
-        if mv is not None:
-            genutil.array_indexing.set(m,Indices,mv)
-    elif mv is not None:
+    genutil.array_indexing_emulate.set(Array.raw_data(),Indices,Values.raw_data())
+    if m is not MA.nomask:
+        if mv is not MA.nomask:
+            genutil.array_indexing_emulate.set(m,Indices,mv)
+    elif mv is not MA.nomask:
         m=Numeric.zeros(mv.shape,mv.typcode())
-        genutil.array_indexing.set(m,Indices,mv)
+        genutil.array_indexing_emulate.set(m,Indices,mv)
         if not MA.allequal(m,0):
             Array=MA.masked_where(m,Array,copy=0)
     if not ax is None:

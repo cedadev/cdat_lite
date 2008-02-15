@@ -1,3 +1,5 @@
+# Adapted for numpy/ma/cdms2 by convertcdms.py
+import MV2
 import os,signal
 """
 ## XMGR Module 
@@ -2725,7 +2727,7 @@ class init(object):
 	    ln.append('     subtitle size '+str(g.stit.size)+'\n')
 	    ln.append('     subtitle color '+self.col(g.stit.color)+'\n')
 	    def axe(self,ln,ax,nm):
-                import MA
+                import numpy.oldnumeric.ma as MA
                 if nm[:3]!='alt' : ln.append('     '+nm+'axes scale '+ax.scale+'\n')
                 if nm[:3]!='alt' : ln.append('     '+nm+'axes invert '+ax.invert+'\n')
 		ln.append('     '+nm+'axis  '+ax.status+'\n')
@@ -2886,7 +2888,7 @@ class init(object):
         return ln
     
     def plot(self,dat,xs=None,G=None,S=None):
-        import MA
+        import numpy.oldnumeric.ma as MA
         if MA.isMA(dat):
             dat=[dat] # if you passed an array alone then put it in a list
             if not xs is None:
@@ -2906,7 +2908,6 @@ class init(object):
             sh=list(y.shape)
             if xs is None:
                 try:
-                    import cdms
                     x=y.getAxis(-1)
                 except:
                     x=MA.arrayrange(sh[-1])
@@ -2928,7 +2929,7 @@ class init(object):
                     else:
                         iS=0
             for i in xrange(len(x)):
-                if y.mask() is None :
+                if ((y.mask is None) or (y.mask is MV2.nomask)) :
                     lister.append('G'+str(iG)+'.S'+str(iS)+' point '+str(x[i]) + ', ' + str(y[0,i]) + ' \n')
                     for j in range(1,sh[0]):
                         tmp='G'+str(iG)+\
@@ -2940,7 +2941,7 @@ class init(object):
 ##                              '['+str(i)+']'+\
                         lister.append(tmp)
                 else:
-                    if y.mask()[0,i]==0 :
+                    if y.mask[0,i]==0 :
                         lister.append(
                             'G'+str(iG)+\
                             '.S'+str(iS)+\

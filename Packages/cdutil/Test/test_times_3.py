@@ -1,6 +1,7 @@
 #!/usr/bin/env python
+# Adapted for numpy/ma/cdms2 by convertcdms.py
 
-import cdms,cdutil,os,sys
+import cdms2 as cdms,cdutil,os,sys
 
 f=cdms.open(os.path.join(sys.prefix,'sample_data','tas_mo.nc'))
 s=f('tas')

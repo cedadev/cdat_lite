@@ -1,5 +1,7 @@
-from cdms import MV
-import cdms,cdtime,string,types,MA,Numeric,sys
+# Adapted for numpy/ma/cdms2 by convertcdms.py
+import numpy.oldnumeric as Numeric
+from cdms2 import MV2 as MV
+import cdms2 as cdms,cdtime,string,types,numpy.oldnumeric.ma as MA,numpy.oldnumeric as Numeric,sys
 
 def centroid(msk,bounds,coords=None):
     ''' Computes the centroid of a bunch of point
@@ -19,7 +21,7 @@ def centroid(msk,bounds,coords=None):
     if coords is None:
         coords=msk.getAxis(0).getBounds() # if MV then gets the bounds from there
     n=len(coords)
-    mask=msk.mask()
+    mask=MA.getmask(msk)
     if mask is None:
         msk=Numeric.zeros(msk.shape,Numeric.Float)
     else:
@@ -31,7 +33,7 @@ def centroid(msk,bounds,coords=None):
         c=float(coords[i][0]+coords[i][1])/2.-mean # location
         w=w*c/float(bounds[1]-bounds[0]) # factor to multiply by plus normalization
         msk[i]=(1.-msk[i])*w
-    msk=MA.sum(msk) # sums it
+    msk=MA.sum(msk, axis=0) # sums it
     sw=sw/2.
     msk=msk/sw
     return msk
@@ -405,7 +407,8 @@ class TimeSlicer:
             w.setAxisList(out.getAxisList())
         if out.getOrder(ids=1)!=initialorder:
             out = out(order=initialorder)
-            w = w(order=initialorder)
+            if weights:
+                w = w(order=initialorder)
         if weights:
             return out,w
         else:
@@ -466,13 +469,13 @@ class TimeSlicer:
         n=len(slices)
         sh=list(slab.shape)
         sh[0]=n
-        out  = MA.zeros(sh,typecode=MA.Float)
-        wout = MA.ones(sh,typecode=MA.Float)
+        out  = MA.zeros(sh,dtype=Numeric.Float)
+        wout = MA.ones(sh,dtype=Numeric.Float)
         for i in range(n):
             self.statusbar1(i,n,statusbar)
             sub=slices[i]
             sh[0]=len(sub)
-            msk=Numeric.ones(sh,typecode=MA.Float)
+            msk=Numeric.ones(sh,typecode=Numeric.Float)
             subb=bounds[i]
             nrm=norm[i][0]
 ##             print sub,subb,nrm,'are subb, nrm',len(sub)
@@ -484,7 +487,7 @@ class TimeSlicer:
             for j in range(len(sub)):
                 w=float(subb[j][1]-subb[j][0])/nrm
 ##                 print j,w
-                m=slab[sub[j]].mask()
+                m=MA.getmask(slab[sub[j]])
                 if m is not None:
                     msk[j]=msk[j]*(1.-m.astype(MV.Float))*w
                 else:
@@ -908,7 +911,7 @@ def generalCriteria(slab,mask,spread,arg):
     # prepare the mask
 ##     print 'Mask shape',mask.shape
     if not min is None:
-        fmask=Numeric.sum(mask)
+        fmask=MV.sum(mask, axis=0).filled()
         fmask=Numeric.less(fmask,min)
 ##         print 'fmask,slab',fmask.shape,slab.shape
 ##         import sys,vcs
@@ -996,7 +999,7 @@ def setTimeBoundsDaily(obj,frequency=1):
     """
     if isinstance(obj,cdms.AbstractAxis):
         setAxisTimeBoundsDaily(obj,frequency=frequency)
-    elif isinstance(obj,cdms.MV.AbstractVariable):
+    elif isinstance(obj,cdms.MV2.AbstractVariable):
         setSlabTimeBoundsDaily(obj,frequency=frequency)
     return
 
@@ -1056,7 +1059,7 @@ def setTimeBoundsMonthly(obj,stored=0):
     """
     if isinstance(obj,cdms.AbstractAxis):
         setAxisTimeBoundsMonthly(obj,stored=stored)
-    elif isinstance(obj,cdms.MV.AbstractVariable):
+    elif isinstance(obj,cdms.MV2.AbstractVariable):
         setSlabTimeBoundsMonthly(obj,stored=stored)
     return
 
@@ -1104,7 +1107,7 @@ def setTimeBoundsYearly(obj):
 """
     if isinstance(obj,cdms.AbstractAxis):
         setAxisTimeBoundsYearly(obj)
-    elif isinstance(obj,cdms.MV.AbstractVariable):
+    elif isinstance(obj,cdms.MV2.AbstractVariable):
         setSlabTimeBoundsYearly(obj)
     return
 
@@ -1226,7 +1229,7 @@ class Seasons(ASeason):
             vals[i]=float(v1.value+v2.value)/2.
             bnds[i]=[v1.value,v2.value]
             tmp,w=self._get(slab,self.seasons[i],criteriaarg,statusbar=statusbar,weights=True)
-            tmp2=tmp.mask()
+            tmp2=MA.getmask(tmp)
             if tmp2 is None:
                 tmp2=Numeric.ones(tmp.shape,typecode=Numeric.Float)*w
             else:
