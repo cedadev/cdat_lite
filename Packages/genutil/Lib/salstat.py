@@ -15,9 +15,14 @@ Other parts of this code were taken from stats.py by Gary Strangman of
 Harvard University (c) Not sure what year, Gary Strangman, released under the 
 GNU General Public License."""
 
-import numpy.oldnumeric.ma as MA,MV2 as MV,RandomArray,cdms2 as cdms,array_indexing_emulate as array_indexing
+import numpy.oldnumeric.ma as MA,MV2 as MV,cdms2 as cdms,array_indexing_emulate as array_indexing
 from statistics import __checker
 import numpy
+
+################################
+# RandomArray isn't included in numpy
+# Added by Stephen Pascoe
+import numpy.random
 
 ## Short routines used in the functional constructs to reduce analysis time
 add=MA.add
@@ -2177,7 +2182,8 @@ def _PairedPermutation(x, y, nperm=None):
     crit = MA.sum(xy[0],axis=0)
 
     for i in range(nperm):
-        index=RandomArray.randint(0,2,x.shape)
+        #index=RandomArray.randint(0,2,x.shape)
+        index=numpy.random.randint(0,2,x.shape)
         tmp=array_indexing.extract(xy,index)
         sum=MA.sum(tmp,axis=0)
         utail=MA.where(MA.greater_equal(sum,crit),utail+1.,utail)
