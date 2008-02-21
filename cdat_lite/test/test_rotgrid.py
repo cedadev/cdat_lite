@@ -26,12 +26,12 @@ class TestRotGrid(TestCase):
         f = cdms.open(rotgrid180)
         v = self._doSubset(f)
         self._printSubset(v)
-        assert v[15,15].mask == False
+        assert v.mask[15,15] == False
         assert v[15,15] > 270.
 
     def test360(self):
         f = cdms.open(rotgrid360)
         v = self._doSubset(f)
         self._printSubset(v)
-        assert v[15,15].mask == False
+        assert v.mask[15,15] == False
         assert v[15,15] > 270.

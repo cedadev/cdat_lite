@@ -1,5 +1,6 @@
 # Adapted for numpy/ma/cdms2 by convertcdms.py
 import numpy.oldnumeric as N
+from nose.tools import *
 
 def test_arange():
     # On 64-bit linux this fails with both Numeric-24.2 and Numeric-23.1
@@ -26,3 +27,11 @@ def test_intTypecode():
         raise AssertionError
     # Check the array is right
     assert list(x) == [0,1,1,0,0,0,0,0,0,0]
+
+def test_booleans():
+    # numpy doesn't let you do boolean tests on arrays.  Use a.all() instead
+    a = N.ones(5)
+
+    assert_raises(ValueError, lambda: not a)
+
+    assert_true(a.all())

@@ -25,7 +25,8 @@ def test_createAxis():
         ax_d = N.arange(10)
         try:
             ax = d.createAxis('x', ax_d)
-        except TypeError:
+        except TypeError, e:
+            print e
             raise AssertionError
         assert isinstance(ax, cdms.axis.FileAxis)
     finally:
@@ -41,4 +42,8 @@ def test_castAxis():
 
     ax = cdms.createAxis([1,2,3,4])
     n = N.array(ax)
+
+    print 'n.shape = %s' % (n.shape,)
+    print 'ax.shape = %s' % (ax.shape,)
+    
     assert n.shape == ax.shape
