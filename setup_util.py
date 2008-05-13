@@ -31,12 +31,14 @@ def _findNetcdf():
     prefix = None
     inc_dir = None
     lib_dir = None
+
+    lib = getattr(sys, 'lib', 'lib')
     
     def isPrefix(prefix):
         if prefix is None:
             return False
         print ('Looking for NetCDF installation in %s ...' % prefix),
-        if (os.path.exists('%s/lib/libnetcdf.a' % prefix) and 
+        if (os.path.exists('%s/%s/libnetcdf.a' % (prefix, lib)) and 
             os.path.exists('%s/include/netcdf.h' % prefix)):
             print 'yes'
             return True
@@ -73,7 +75,7 @@ Enter NetCDF installation prefix:''',
         if not isPrefix(prefix):
             raise SystemExit
 
-    return '%s/include' % prefix, '%s/lib' % prefix
+    return '%s/include' % prefix, '%s/%s' % (prefix, lib)
 
 netcdf_incdir, netcdf_libdir = _findNetcdf()
 
