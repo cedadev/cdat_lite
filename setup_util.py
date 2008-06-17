@@ -32,38 +32,54 @@ def _findNetcdf():
     inc_dir = None
     lib_dir = None
 
-    lib = getattr(sys, 'lib', 'lib')
-    
-    def isPrefix(prefix):
+    def findLib(prefix):
         if prefix is None:
-            return False
-        print ('Looking for NetCDF installation in %s ...' % prefix),
-        if (os.path.exists('%s/%s/libnetcdf.a' % (prefix, lib)) and 
-            os.path.exists('%s/include/netcdf.h' % prefix)):
+            return None
+        libs = ['lib']
+        if hasattr(sys, 'lib'):
+            libs.append(sys.lib)
+
+        for lib in libs:
+            print 'Looking for NetCDF library in %s/%s ...' % (prefix, lib),
+            if os.path.exists('%s/%s/libnetcdf.a' % (prefix, lib)):
+                print 'yes'
+                return '%s/%s' % (prefix, lib)
+            else:
+                print 'no'
+
+    def findInclude(prefix):
+        if prefix is None:
+            return None
+        print 'Looking for NetCDF include in %s/include ...' % prefix,
+        if os.path.exists('%s/include/netcdf.h' % prefix):
             print 'yes'
-            return True
+            return '%s/include' % prefix
         else:
             print 'no'
-            return False
 
     prefixes = ['/usr', '/usr/local',
                 os.environ.get('HOME'), os.environ.get('NETCDF_HOME')]
 
     # Try finding a common NetCDF prefix
+    found = False
     for p in prefixes:
-        if isPrefix(p):
-            prefix = p
+        lib = findLib(p)
+        include = findInclude(p)
+        if lib and include:
+            found = True
             break
     else:
         # Try looking for ncdump
         for ex_p in os.environ['PATH'].split(':'):
             if os.path.exists('%s/ncdump' % ex_p):
                 updir = os.path.dirname(ex_p.rstrip('/'))
-                if isPrefix(updir):
-                    prefix = updir
+                lib = findLib(updir)
+                include = findInclude(updir)
+                if lib and include:
+                    found = True
                     break
 
-    if not prefix:
+    if not found:
         print '''===================================================
 NetCDF installation not found.
         
@@ -72,10 +88,12 @@ environment variable and re-run setup.py
 
 Enter NetCDF installation prefix:''',
         prefix = raw_input()
-        if not isPrefix(prefix):
+        lib = findLib(prefix)
+        include = findInclude(prefix)
+        if not (lib and include):
             raise SystemExit
 
-    return '%s/include' % prefix, '%s/%s' % (prefix, lib)
+    return include, lib
 
 netcdf_incdir, netcdf_libdir = _findNetcdf()
 
