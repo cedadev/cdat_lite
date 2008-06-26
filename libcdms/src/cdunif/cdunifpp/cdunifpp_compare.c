@@ -72,41 +72,40 @@ static int pp_compare_ptrs(const void *a, const void *b)
 }
 
 
-/* routine to compare two PP records.
+#define COMPARE_INTS(tag) {int cmp=pp_compare_ints(a->hdr.tag,b->hdr.tag); if (cmp!=0) return cmp;}
+#define COMPARE_REALS(tag) {int cmp=pp_compare_reals(a->hdr.tag,b->hdr.tag); if (cmp!=0) return cmp;}
+
+
+/* routine to compare two PP records, to see if they are in the same 
+ * variable
+ *
  * returns: 
- *    -2 or 2  headers are from different variable
- *    -1 or 1  headers are from same variable
- *       0     difference not found in elements inspected
+ *
+ *    -1 or 1  headers are from different variables;
+ *               sign of return value gives consistent ordering
+ *
+ *       0     headers are from same variable
  */
+int pp_compare_records_between_vars(const PPrec *a, const PPrec *b) {
 
-int pp_compare_records(const void *p1, const void *p2)
-{
-  const PPrec *a = *(PPrec **)p1;
-  const PPrec *b = *(PPrec **)p2;
+  COMPARE_INTS(LBUSER4);
+  COMPARE_INTS(LBUSER7);
+  COMPARE_INTS(LBCODE);
+  COMPARE_INTS(LBVC);
+  COMPARE_INTS(LBTIM);
+  COMPARE_INTS(LBPROC);
+  COMPARE_REALS(BPLAT);
+  COMPARE_REALS(BPLON);
+  COMPARE_INTS(LBHEM);
+  COMPARE_INTS(LBROW);
+  COMPARE_INTS(LBNPT);
 
-#define COMPARE_INTS(tag,ret) {int cmp=pp_compare_ints(a->hdr.tag,b->hdr.tag); if (cmp!=0) return cmp*(ret);}
-#define COMPARE_REALS(tag,ret) {int cmp=pp_compare_reals(a->hdr.tag,b->hdr.tag); if (cmp!=0) return cmp*(ret);}
-
-  /* elements to distinguish variables */
-
-  COMPARE_INTS(LBUSER4,2);
-  COMPARE_INTS(LBUSER7,2);
-  COMPARE_INTS(LBCODE,2);
-  COMPARE_INTS(LBVC,2);
-  COMPARE_INTS(LBTIM,2);
-  COMPARE_INTS(LBPROC,2);
-  COMPARE_REALS(BPLAT,2);
-  COMPARE_REALS(BPLON,2);
-  COMPARE_INTS(LBHEM,2);
-  COMPARE_INTS(LBROW,2);
-  COMPARE_INTS(LBNPT,2);
-
-  COMPARE_REALS(BGOR,2);
-  COMPARE_REALS(BZY,2);
-  COMPARE_REALS(BDY,2);
-  COMPARE_REALS(BZX,2);
-  COMPARE_REALS(BDX,2);
-
+  COMPARE_REALS(BGOR);
+  COMPARE_REALS(BZY);
+  COMPARE_REALS(BDY);
+  COMPARE_REALS(BZX);
+  COMPARE_REALS(BDX);
+  
   /* Disambig index is used to force distinction between variables for records whose headers
    * are the same.  It is initialised to the same value for all records (in fact -1), but may
    * later be set to different values according to some heuristic.
@@ -114,43 +113,109 @@ int pp_compare_records(const void *p1, const void *p2)
 
   {
     int cmp=pp_compare_ints(a->disambig_index,b->disambig_index);
-    if (cmp!=0) return cmp*2;
+    if (cmp!=0) return cmp;
   }
-
-  /* elements to sort records within a variable
-   * (sort on time, then sort on level)
-   */
-
-  COMPARE_INTS(LBFT,1);
-
-  COMPARE_INTS(LBYR,1);
-  COMPARE_INTS(LBMON,1);
-  COMPARE_INTS(LBDAT,1);
-  COMPARE_INTS(LBDAY,1);
-  COMPARE_INTS(LBHR,1);
-  COMPARE_INTS(LBMIN,1);
-
-  COMPARE_INTS(LBYRD,1);
-  COMPARE_INTS(LBMOND,1);
-  COMPARE_INTS(LBDATD,1);
-  COMPARE_INTS(LBDAYD,1);
-  COMPARE_INTS(LBHRD,1);
-  COMPARE_INTS(LBMIND,1);
-
-  COMPARE_INTS(LBLEV,1);
-  COMPARE_REALS(BLEV,1);
-  COMPARE_REALS(BHLEV,1);
 
   return 0;
 }
 
+
+/* routine to compare two PP records that the calling routine 
+ * has already established are in the same variable.
+ * 
+ * returns: 
+ *
+ *    -1 or 1  times or levels differ;
+ *               sign of return value gives consistent ordering
+ *               of times and levels
+ *
+ *       0     records do not differ within values tested
+ */
+int pp_compare_records_within_var(const PPrec *a, const PPrec *b) {
+  
+  COMPARE_INTS(LBFT);
+
+  COMPARE_INTS(LBYR);
+  COMPARE_INTS(LBMON);
+  COMPARE_INTS(LBDAT);
+  COMPARE_INTS(LBDAY);
+  COMPARE_INTS(LBHR);
+  COMPARE_INTS(LBMIN);
+
+  COMPARE_INTS(LBYRD);
+  COMPARE_INTS(LBMOND);
+  COMPARE_INTS(LBDATD);
+  COMPARE_INTS(LBDAYD);
+  COMPARE_INTS(LBHRD);
+  COMPARE_INTS(LBMIND);
+
+  /*
+   *  Ordering of levels:
+   * 
+   *  Generally we want to sort on LBLEV before sorting on BLEV.
+   *
+   *  This is because in the case of hybrid levels, BLEV contains the B values
+   *  (in p = A + B p_s), which won't do for sorting, and fortunately in this
+   *  case LBLEV contains the model level index which is fine.
+   *
+   *  But there is a nasty special case: surface and boundary layer heat flux
+   *  has LBLEV = 9999, 2, 3, 4, ... where 9999 is the surface layer.  In this
+   *  case we *could* in fact sort on BLEV, but then we need to know when it's 
+   *  okay to do this (STASH code?).  
+   *
+   *  Maybe safer, treat 9999 lower than any level if comparing it with
+   *  another level.  (9999 should always be a special value and it is rare
+   *  for it to be mixed with non-special values in the same variable.)
+   */
+  {
+    int a_surface = (a->hdr.LBLEV == 9999);
+    int b_surface = (b->hdr.LBLEV == 9999);
+    if (a_surface && !b_surface) {
+      return -1;
+    }
+    else if (b_surface && !a_surface) {
+      return 1;
+    }
+  }
+
+
+  COMPARE_INTS(LBLEV);
+  COMPARE_REALS(BLEV);
+  COMPARE_REALS(BHLEV);
+
+  return 0;
+
+}
+
+
+/* routine to compare two PP records.
+ * returns: 
+ *    -2 or 2  headers are from different variable
+ *    -1 or 1  headers are from same variable
+ *       0     difference not found in elements inspected
+ */
+int pp_compare_records(const void *p1, const void *p2)
+{
+  const PPrec *a = *(PPrec **)p1;
+  const PPrec *b = *(PPrec **)p2;
+
+  int cmp;
+
+  cmp = pp_compare_records_between_vars(a, b);
+  if (cmp != 0)
+    return cmp * 2;
+
+  cmp = pp_compare_records_within_var(a, b);
+  if (cmp != 0)
+    return cmp;
+
+  return 0;
+}
+
+
 int pp_records_from_different_vars(const PPrec *a, const PPrec *b)
 {
-  int cmp;
-  cmp = pp_compare_records(&a,&b);
-  if (cmp == -2) return 1;
-  if (cmp == 2) return 1;
-  return 0;
+  return (pp_compare_records_between_vars(a, b) != 0);
 }
 
 /*---------------------------------------------------------*/

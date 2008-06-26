@@ -46,8 +46,10 @@ int pp_data_copy(const CuFile *file, const CuVar *var, const long start[], const
 
   ndim = var->ndims;
 
-  CKP(   size=pp_malloc(ndim*sizeof(int),heaplist)   );
-  CKP(   indices=pp_malloc(ndim*sizeof(int),heaplist)   );
+  if (ndim > 0) {
+    CKP(   size=pp_malloc(ndim*sizeof(int),heaplist)   );
+    CKP(   indices=pp_malloc(ndim*sizeof(int),heaplist)   );
+  }
 
   for (idim=0; idim<ndim; idim++) {
     size[idim] = file->dims[var->dims[idim]].len;
@@ -97,8 +99,11 @@ int pp_data_copy(const CuFile *file, const CuVar *var, const long start[], const
       carryout=1;
   }
   
-  CKI(  pp_free(size,heaplist)  );
-  CKI(  pp_free(indices,heaplist)  );
+  if (ndim > 0) {
+    CKI(  pp_free(size,heaplist)  );
+    CKI(  pp_free(indices,heaplist)  );
+  }
+
   return CU_SUCCESS;    
 
   ERRBLK("pp_data_copy",CU_SERROR);

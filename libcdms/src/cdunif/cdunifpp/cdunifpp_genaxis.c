@@ -307,10 +307,12 @@ PPdata *pp_genaxis_getCF(const PPgenaxis *axis, char *yname, char *yunits, PPlis
     switch (zaxis->lev_type) {
       
     case pseudo_lev_type:
+      longname = "pseudo-level (non-level coordinate)";
       name="z_pseudo%d";
       axisname=NULL;
       break;
     case height_lev_type:
+      longname = "height above surface";
       standardname="height";
       units="m";
       name="z%d_height";
@@ -318,22 +320,26 @@ PPdata *pp_genaxis_getCF(const PPgenaxis *axis, char *yname, char *yunits, PPlis
       break;
     case depth_lev_type:
       name="z%d_depth";
+      longname = "depth below surface";
       standardname="depth";
       units="m";
       posdir="down";
       break;
     case hybrid_sigmap_lev_type:
+      longname = "atmosphere hybrid sigma-pressure coordinate";
       standardname="atmosphere_hybrid_sigma_pressure_coordinate";
       name="z%d_hybrid_sigmap";
       posdir="down";
       break;
     case hybrid_height_lev_type:
+      longname = "atmosphere hybrid height coordinate";
       standardname="atmosphere_hybrid_height_coordinate";
       name="z%d_hybrid_height";
       units="m";
       posdir="up";
       break;
     case pressure_lev_type:
+      longname = "air pressure (vertical level)";
       standardname="air_pressure";
       units="Pa";
       name="z%d_p_level";
@@ -345,25 +351,32 @@ PPdata *pp_genaxis_getCF(const PPgenaxis *axis, char *yname, char *yunits, PPlis
       posdir="down";
       break;
     case soil_lev_type:
+      longname = "soil level";
       name="z%d_soil";
       posdir="up";
       break;
     case boundary_layer_top_lev_type:
+      longname = "top of boundary layer (dummy level coordinate)";
       name="z%d_bdylyrtop";
       break;
     case top_of_atmos_lev_type:
+      longname = "top of atmosphere (dummy level coordinate)";
       name="z%d_toa";
       break;
     case mean_sea_lev_type:
+      longname = "mean sea level (dummy level coordinate)";
       name="z%d_msl";
       break;
     case tropopause_lev_type:
+      longname = "tropopause (dummy level coordinate)";
       name="z%d_tropo";
       break;
     case surface_lev_type:
+      longname = "surface (dummy level coordinate)";
       name="z%d_surface";
       break;
     case other_lev_type:
+      longname = "level coordinate of unspecified type";
       name="z%d_level";
       break;      
     }

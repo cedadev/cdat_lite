@@ -40,7 +40,6 @@ int pp_process(CuFile *file)
   int have_time_mean, tmdimid; /* dimensions used for meaning (CF cell methods) */
   CuDim *cudims,*dim;
   PPdim *ppdim;
-  int n1dimid; /* size-1 dimension used for scalars (why not true scalar?) */
 
   int nvars, varid, cvarid;
   int ncvars; /* coord vars */
@@ -52,7 +51,6 @@ int pp_process(CuFile *file)
   PPgenaxis *axis;  /*JAK 2005-01-10 */
   int have_hybrid_sigmap;
   PPaxistype axistype;
-  int need_n1_dim;
   
   int rotmapid, rotgridid;
   PPlist *rotgrids, *rotmaps;
@@ -97,7 +95,6 @@ int pp_process(CuFile *file)
   have_hybrid_sigmap = 0;
   have_time_mean = 0;
   svindex = 0;
-  need_n1_dim = 0;
 
   /* initialisation constants just to avoid compiler warnings
    * (rather than get accustomed to ignoring warnings)
@@ -478,19 +475,11 @@ int pp_process(CuFile *file)
     tmdimid=ndims;
     ndims++;
   }
-
   if (have_hybrid_sigmap) {
-    /* will need a scalar variable called "p0" with associated dimension "n1" = 1 */
-    ncvars++;    
-    need_n1_dim=1;
-  }
-  /* also need "n1" if we have rotated_pole variable */
-  if (pp_list_size(rotmaps) > 0)
-    need_n1_dim=1;
+    /* will need a scalar variable called "p0" */
+   ncvars++;
+ }
 
-  if (need_n1_dim)
-    ndims++;
-  
   CKP(   cudims = CuCreateDims(file,ndims)   );
 
   /* need a grid_mapping variable for every rotation mapping,
@@ -583,6 +572,8 @@ int pp_process(CuFile *file)
 	varnamea=var->name;
 	CKP(   ppvar->data = pp_genaxis_to_values(axis,hybrid_sigmap_a_type,heaplist)   );
 	CKI(   pp_add_string_att(ppvar->atts,"units","Pa",heaplist)   );
+	CKI(   pp_add_string_att(ppvar->atts,"long_name",
+				 "atmospheric hybrid sigma-pressure 'A' coefficient",heaplist)   );
 	var->ndims=1;
 	var->dims[0] = dimid;
 	varid++;
@@ -593,6 +584,8 @@ int pp_process(CuFile *file)
 	sprintf(var->name,"z%d_hybrid_sigmap_bcoeff",idim);
 	varnameb=var->name;
 	CKP(   ppvar->data = pp_genaxis_to_values(axis,hybrid_sigmap_b_type,heaplist)   );
+	CKI(   pp_add_string_att(ppvar->atts,"long_name",
+				 "atmospheric hybrid sigma-pressure 'B' coefficient",heaplist)   );
 	var->ndims=1;
 	var->dims[0] = dimid;
 	varid++;
@@ -684,29 +677,16 @@ int pp_process(CuFile *file)
     dimid++;
   }
 
-  /* add n1 dimension if needed (see above) */
-  if (need_n1_dim) {
-
-    dim=&cudims[dimid];
-    strcpy(dim->name,"n1");
-    dim->len=1;
-
-    n1dimid=dimid;
-
-    dimid++;    
-  }
-
-
   /* add p0 variable if we had hybrid_sigmap coords */
   if (have_hybrid_sigmap) {
- 
- 
+     
     var=&cuvars[varid];
     ppvar=(PPvar*) var->internp;
     sprintf(var->name,"p0");
-    var->ndims=1;
-    var->dims[0]=n1dimid;
-    
+    var->ndims=0;
+    CKI(   pp_add_string_att(ppvar->atts,"long_name",
+			     "reference pressure value for atmospheric hybrid sigma-pressure coordinates",
+			     heaplist)   );
     /* single value consisting of p0 */
     CKP(   ppvar->data = pp_data_new(realtype,1,heaplist)   );
     ((Freal*)(ppvar->data->values))[0]=reference_pressure;
@@ -727,8 +707,7 @@ int pp_process(CuFile *file)
 
     /* single value of arbitrary type; set as integer = 0 */
     var->datatype=inttype;
-    var->ndims=1;
-    var->dims[0]=n1dimid;
+    var->ndims=0;
     CKP(   ppvar->data = pp_data_new(inttype,1,heaplist)   );
     ((Freal*)(ppvar->data->values))[0]=0;
 

@@ -26,7 +26,7 @@
 
 /*---------------------------------------------------------*/
 
-#define CDUNIFPP_VERSION "0.11"
+#define CDUNIFPP_VERSION "0.12"
 
 /*---------------------------------------------------------*/
 
@@ -863,6 +863,8 @@ int pp_check_sizes();
 /* int pp_compare_ints(Fint, Fint); */
 /* int pp_compare_reals(Freal, Freal); */
 /* int pp_compare_ptrs(const void *, const void *); */
+int pp_compare_records_between_vars(const PPrec *, const PPrec *);
+int pp_compare_records_within_var(const PPrec *, const PPrec *);
 int pp_compare_records(const void *, const void *);
 int pp_records_from_different_vars(const PPrec *, const PPrec *);
 int pp_compare_regaxes(const void *, const void *);

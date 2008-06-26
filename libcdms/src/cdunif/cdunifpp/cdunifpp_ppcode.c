@@ -1077,8 +1077,8 @@ char *pp_ppshortname(int code)
   case   45: return "dsigma_dt";
   case   46: return "uq";
   case   47: return "vq";
-  case   48: return "x-wind";
-  case   49: return "y-wind";
+  case   48: return "x_wind";
+  case   49: return "y_wind";
   case   50: return "wind";
   case   53: return "uomega";
   case   54: return "vomega";
@@ -1144,7 +1144,7 @@ char *pp_ppshortname(int code)
   case  131: return "mwl";
   case  132: return "fl";
   case  133: return "toa";
-  case  134: return "-20_deg.C";
+  case  134: return "minus20Clev";
   case  135: return "ul_ht";
   case  136: return "ll_ht";
   case  137: return "ul_p";
@@ -1411,7 +1411,7 @@ char *pp_ppunit(int code)
   case   86: return "s-1";
   case   87: return "kg kg-1 s-1";
   case   89: return "kg m-2";
-  case   90: return "kg m-2";
+  case   90: return "kg m-2 s-1";
   case   91: return "m";
   case   92: return "m";
   case   93: return "kg m-2";
