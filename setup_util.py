@@ -14,6 +14,7 @@ from glob import glob
 from setuptools import setup, Extension
 from distutils.command.build_ext import build_ext as build_ext_orig
 from distutils.cmd import Command
+import distutils.ccompiler
 
 import numpy
 
@@ -168,11 +169,16 @@ class build_ext(build_ext_orig):
         #if os.path.exists('cdat_lite/clib/lib/libcdms.a'):
         #    return
 
+        if self.compiler:
+            cc = self.compiler
+        else:
+            cc = distutils.ccompiler.new_compiler().compiler[0]
+
         if not os.path.exists('libcdms/Makefile'):
             self._system('cd libcdms ; '
-                         'CFLAGS="-fPIC" ./configure --disable-drs --disable-hdf --disable-dods '
+                         'CFLAGS="-fPIC" CC=%s ./configure --disable-drs --disable-hdf --disable-dods '
                          '--disable-ql --with-ncinc=%s --with-ncincf=%s --with-nclib=%s'
-                         % (netcdf_incdir, netcdf_incdir, netcdf_libdir))
+                         % (cc, netcdf_incdir, netcdf_incdir, netcdf_libdir))
 
         self._system('cd libcdms ; make db_util ; make cdunif')
 
