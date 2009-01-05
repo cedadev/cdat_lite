@@ -29,7 +29,7 @@ CDAT_HOME_URL = 'http://www-pcmdi.llnl.gov/software-portal/cdat'
 cdat_release = '5.0'
 cdat_tag = ''
 cdunifpp_version = '0.12'
-cdat_lite_version = '0.2.6'
+cdat_lite_version = '0.2.7'
 
 
 long_description = """
@@ -135,7 +135,7 @@ setup(name='cdat_lite',
       zip_safe = False,
       
       packages = ['unidata', 'cdms2', 'cdutil', 'xmgrace', 'genutil',
-                  'PropertiedClasses', 'regrid2', 
+                  'PropertiedClasses', 'regrid2', 'kinds',
                   'cdat_lite', 'cdat_lite.clib', 'cdat_lite.scripts', 'cdat_lite.test'],
       py_modules = ['MV2'],
       package_dir = {'': 'Packages/cdms2',
@@ -146,6 +146,7 @@ setup(name='cdat_lite',
                      'genutil': 'Packages/genutil/Lib',
                      'PropertiedClasses': 'Packages/Properties/Lib',
                      'regrid2': 'Packages/regrid2/Lib',
+                     'kinds': 'Packages/kinds/Lib',
                      'cdat_lite': 'cdat_lite',
                      'cdat_lite.scripts': 'cdat_lite/scripts',
                      'cdat_lite.clib': 'cdat_lite/clib',
@@ -163,7 +164,8 @@ setup(name='cdat_lite',
         makeExtension('genutil.array_indexing', 'genutil'),
         Extension('regrid2._regrid', ['Packages/regrid2/Src/_regridmodule.c']),
         Extension('regrid2._scrip', ['Packages/regrid2/Src/_scripmodule.c',
-                                     'Packages/regrid2/Src/regrid.c'])
+                                     'Packages/regrid2/Src/regrid.c']),
+        makeExtension('kinds._kinds', 'kinds'),
       ],
 
       # Since udunits.dat isn't in the Lib directory we use the data_files attribute
