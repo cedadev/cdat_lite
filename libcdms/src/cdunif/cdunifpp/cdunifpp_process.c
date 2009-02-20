@@ -25,15 +25,10 @@ int pp_process(CuFile *file)
   PPrec *recp;
   PPhdr *hdrp;
   PPgenaxis *xaxis, *yaxis, *zaxis, *taxis; /* JAK 2005-01-05 */
-  PPlevel *lev;
-  PPtime *time;
   PPlist *heaplist;
   PPlist *fieldvars;
   PPlisthandle handle, thandle;
   PPlist *gatts,*catts;
-
-  int vrec, nvrec, nz, nt, z_t_reg ; /* needed for check on variables */
-  PPrec *vrecp;
 
   int ndims, dimid;
   int idim; /* dim number of given type */
@@ -43,7 +38,9 @@ int pp_process(CuFile *file)
 
   int nvars, varid, cvarid;
   int ncvars; /* coord vars */
-  int nfvars; /* field vars */
+  int nfvars; /* field vars */  
+  int nvrec;  
+  PPrec **recs, **vrecs;
   CuVar *cuvars,*var;  
   PPvar *ppvar;
   PPlist *axislist;
@@ -87,14 +84,14 @@ int pp_process(CuFile *file)
   int has_cellmethod;
   char tmpstring[MAX_ATT_LEN+1];
 
-  int zindex,tindex,dindex,svindex,prev_zindex,prev_tindex,prev_dindex;
+  int zindex,tindex,svindex;
 
   /* ------------------------------------------------------ */  
   /* initialisation constants which matter */
   ncvars = 0;
   have_hybrid_sigmap = 0;
   have_time_mean = 0;
-  svindex = 0;
+  svindex = 1;
 
   /* initialisation constants just to avoid compiler warnings
    * (rather than get accustomed to ignoring warnings)
@@ -110,7 +107,6 @@ int pp_process(CuFile *file)
   tmdimid=-1;
   skip_this_variable=dont_free_horiz_axes=0;
   skip_reason=NULL;
-  prev_zindex=prev_tindex=prev_dindex=0;
   /* ------------------------------------------------------ */
 
   ppfile = file->internp;
@@ -118,16 +114,13 @@ int pp_process(CuFile *file)
   heaplist=ppfile->heaplist;
 
   nrec = ppfile->nrec;  
+  recs = ppfile->recs;
 
-  /* initialise disambig_index prior to initial sorting */
-  for (rec=0; rec<nrec ; rec++) {
-    recp = ppfile->recs[rec];
-    recp->disambig_index=-1;
-    recp->supervar_index=-1;
-  }
+  /* initialise elements in the records before sorting */
+  CKI(   pp_initialise_records(recs, nrec, heaplist)   );
 
   /* sort the records */
-  qsort(ppfile->recs, nrec, sizeof(PPrec*), pp_compare_records);  
+  qsort(recs, nrec, sizeof(PPrec*), pp_compare_records);  
 
   /* tmp space for global attributes */
   CKP(   gatts = pp_list_new(heaplist)   );
@@ -145,7 +138,7 @@ int pp_process(CuFile *file)
   /* before main loop over records, look for land mask */
   for (rec=0; rec<nrec ; rec++) {
 
-    recp = ppfile->recs[rec];
+    recp = recs[rec];
     hdrp = &recp->hdr;    
 
     if (pp_var_is_land_mask(hdrp)) {
@@ -171,7 +164,7 @@ int pp_process(CuFile *file)
 
   for (rec=0; rec<nrec ; rec++) {
 
-    recp = ppfile->recs[rec];
+    recp = recs[rec];
     hdrp = &recp->hdr;
 
     /* we are at start record of a variable at the very start, or if at we were at the
@@ -183,7 +176,7 @@ int pp_process(CuFile *file)
      * difference from the next record which constitutes a different variable
      */
     at_end_rec = ( rec == nrec-1 ||
-		   pp_records_from_different_vars(ppfile->recs[rec+1],recp));
+		   pp_records_from_different_vars(recs[rec+1],recp));
     
     /*------------------------------*/
     /* allow for variables which are unsupported for some reason */
@@ -204,10 +197,10 @@ int pp_process(CuFile *file)
       if (pp_get_var_compression(hdrp) == 2 && ppfile->landmask==NULL)
 	skip_reason="land/sea mask compression used but landmask field absent";
 
-      /* ADD ANY MORE VARIABLE SKIPPING CASES HERE. */
-
       if (pp_grid_supported(hdrp) == 0)
 	skip_reason="grid code not supported";
+
+      /* ADD ANY MORE VARIABLE SKIPPING CASES HERE. */
 
       if (skip_reason!=NULL) {
       	skip_this_variable = 1; 
@@ -262,106 +255,30 @@ int pp_process(CuFile *file)
 
     /* ====== THINGS DONE FOR EVERY PP RECORD ====== */
 
-    /* store level info */
-    CKP(  lev=pp_malloc(sizeof(PPlevel), heaplist)  );
-    CKI(  pp_lev_set(lev,hdrp)  );
-    CKI(  pp_zaxis_add(zaxis,lev,&zindex,heaplist)  );
-    recp->zindex=zindex;
+    CKI(  pp_zaxis_add(zaxis, recp->lev, &zindex, heaplist)  );
+    recp->zindex = zindex;
 
-    /* store time info */
-    CKP(  time=pp_malloc(sizeof(PPtime), heaplist)  );
-    CKI(  pp_time_set(time, hdrp)  );
-    CKI(  pp_taxis_add(taxis,time,&tindex,heaplist)  );
-    recp->tindex=tindex;
-    
+    CKI(  pp_taxis_add(taxis, recp->time, &tindex, heaplist)  );
+    recp->tindex = tindex;
 
     /* ===================================================== */
     if (at_end_rec) {
      /* ====== THINGS DONE ONLY AT END RECORD OF EACH VARIABLE ====== */
 
-      fvar->endrec=rec;
+      fvar->endrec = rec;
+      nvrec = fvar->endrec - fvar->startrec + 1;
+      vrecs = recs + fvar->startrec;
 
-      nvrec=fvar->endrec-fvar->startrec+1;
-      nz=pp_genaxis_len(zaxis);
-      nt=pp_genaxis_len(taxis);
-
-      /*------------------------------------------------------------*/
-
-      /* now test t and z indices to check whether the variable is on regular array of times and levels 
-       * (NB "regular" here refers to the ordering, not to whether the spacing is uniform)
-       */
-      z_t_reg=1;
-      
-      /* first test the most obvious case of irregular (for possible speed) */
-      if (nvrec != nz * nt)
-      	z_t_reg = 0;
-
-      /* z indices (faster varying) should loop be vrec % nz */
-      /* t indices (slower varying) should loop be vrec / nz */
-      if (z_t_reg) {
-	for (vrec=0; vrec<nvrec; vrec++) {
-	  vrecp = ppfile->recs[fvar->startrec+vrec];
-	  if (vrecp->zindex != vrec%nz || vrecp->tindex != vrec/nz) {
-	    z_t_reg=0;
-	    break;
-	  }
-	}
-      }
-      
       /* now if the axes are not regular, free the axes, split the variable into a number of variables and try again... */
-
-      if (!z_t_reg) {	
-
+      if (pp_set_disambig_index(zaxis, taxis, vrecs, nvrec, svindex)) {
+	
 	/* increment the supervar index, used later to show the connection between
 	 *  the separate variables into which this one will be split
 	 */
 	svindex++;
 
-	/* Set the disambiguate index on each record such as to split into number of variables.
-	 * The algorithm for this is quite simplistic (a separate variable for each level, further separate
-	 * variables for any repeated level-and-time combinations), but could later be replaced with a more
-	 * "intelligent" algorithm which minimises the number of variables subject to the regular axes
-	 * constraints.
-	 */
-	for (vrec=0; vrec<nvrec; vrec++) {
-	  vrecp = ppfile->recs[fvar->startrec+vrec];
-	  
-	  zindex = vrecp->zindex;
-	  tindex = vrecp->tindex;
-
-	  /* check for dups coord pairs */
-	  /* the exact expressions for dindex are fairly arbitrary -- just need to ensure that
-	   * indices for dup coordinate pairs will be different from indices for non-dups on other levels
-	   */
-	  if (vrec > 0 
-	      && zindex == prev_zindex
-	      && tindex == prev_tindex) {
-
-	    dindex = prev_dindex + 1;
-
-	  } else {
-
-	    dindex = zindex * nvrec;
-	  }
-	  
-	  /*
-	   * printf("rec %d, height %f, day %d hour %d, disambig index set to %d\n",vrec,vrecp->hdr.BLEV,vrecp->hdr.LBDAT,vrecp->hdr.LBHR,
-	   *        dindex);
-	   */
-
-	  vrecp->disambig_index = dindex;
-
-	  if (vrecp->supervar_index < 0)
-	    vrecp->supervar_index = svindex;
-
-	  /* save vals for next iter */
-	  prev_zindex=zindex;
-	  prev_tindex=tindex;
-	  prev_dindex=dindex;
-	}
-
 	/* now re-sort this part of the record list, now that we have set the disambig index */
-	qsort(ppfile->recs + fvar->startrec, nvrec, sizeof(PPrec*), pp_compare_records);  
+	qsort(vrecs, nvrec, sizeof(PPrec*), pp_compare_records);  
 
 	/* free the stuff assoc with the var we won't be using */
 	if (!dont_free_horiz_axes) {
@@ -378,6 +295,7 @@ int pp_process(CuFile *file)
 	rec = fvar->startrec - 1;
 	continue;
       }
+
       /*------------------------------------------------------------*/
 
       /*
@@ -795,7 +713,7 @@ int pp_process(CuFile *file)
   while ((fvar=pp_list_walk(&handle,0))!=NULL) {
     var=&cuvars[varid];
     ppvar=(PPvar*) var->internp;
-    hdrp=&ppfile->recs[fvar->startrec]->hdr;
+    hdrp=&recs[fvar->startrec]->hdr;
 
     CKI(   pp_var_lookup(hdrp,&stashmeta)   );
 
@@ -900,7 +818,7 @@ int pp_process(CuFile *file)
     }
 
     /* add supervar attribute */
-    svindex=ppfile->recs[fvar->startrec]->supervar_index;
+    svindex=recs[fvar->startrec]->supervar_index;
     if (svindex >= 0) {
       CKI(   pp_add_att(ppvar->atts,"super_variable_index",inttype,1,&svindex,heaplist)   );
     }
@@ -1002,7 +920,125 @@ int pp_process(CuFile *file)
 
   return 0;
 
-  ERRBLKI("cdunifpp_process");
+  ERRBLKI("pp_process");
 }
+
+
+/* initialise some values in PPrec structure */
+int pp_initialise_records(PPrec **recs, int nrec, PPlist *heaplist) {
+  int rec;
+  PPrec *recp;
+  PPhdr *hdrp;
+
+  for (rec=0; rec<nrec ; rec++) {
+
+    recp = recs[rec];
+    hdrp = &recp->hdr;
+
+    recp->disambig_index = -1;
+    recp->supervar_index = -1;
+
+    /* store level info */
+    CKP(  recp->lev = pp_malloc(sizeof(PPlevel), heaplist)  );
+    CKI(  pp_lev_set(recp->lev, hdrp)  );
+
+    /* store time info */
+    CKP(  recp->time = pp_malloc(sizeof(PPtime), heaplist)  );
+    CKI(  pp_time_set(recp->time, hdrp)  );
+    recp->mean_period = pp_mean_period(recp->time);
+  }
+  return 0;
+
+  ERRBLKI("pp_initialise_records");
+}
+
+/* Routine to set the disambiguate index on each record such as to split into number of variables.
+ * The algorithm for this is quite simplistic (a separate variable for each level, further separate
+ * variables for any repeated level-and-time combinations), but could later be replaced with a more
+ * "intelligent" algorithm which minimises the number of variables subject to the regular axes
+ * constraints.
+ *
+ * Return value:  1 - disambig index was set
+ *                0 - axes were regular - no need to set disambig index
+ */
+
+int pp_set_disambig_index(PPgenaxis *zaxis, PPgenaxis *taxis, PPrec **recs, int nvrec, int svindex) {
+
+  int vrec;
+  PPrec *vrecp;
+  int zindex, tindex, dindex;
+  int prev_zindex, prev_tindex, prev_dindex;
+
+  prev_zindex = prev_tindex = prev_dindex = 0;
+
+  /* do nothing if axes are regular */
+  if (pp_var_has_regular_z_t(zaxis, taxis, recs, nvrec))
+    return 0;
+
+  for (vrec=0; vrec<nvrec; vrec++) {
+    vrecp = recs[vrec];
+    
+    zindex = vrecp->zindex;
+    tindex = vrecp->tindex;
+
+    /* check for dups coord pairs */
+    /* the exact expressions for dindex are fairly arbitrary -- just need to ensure that
+     * indices for dup coordinate pairs will be different from indices for non-dups on other levels
+     */
+    if (vrec > 0 
+	&& zindex == prev_zindex
+	&& tindex == prev_tindex) {
+
+      dindex = prev_dindex + 1;
+      
+    } else {
+
+      dindex = zindex * nvrec;
+    }
+    
+    vrecp->disambig_index = dindex;
+    
+    if (vrecp->supervar_index < 0)
+      vrecp->supervar_index = svindex;
+
+    /* save vals for next iter */
+    prev_zindex = zindex;
+    prev_tindex = tindex;
+    prev_dindex = dindex;
+  }  
+  return 1;
+}
+
+
+/* routine to test t and z indices to check whether the variable is on regular
+ * array of times and levels (NB "regular" here refers to the ordering, not to
+ * whether the spacing is uniform)
+ */
+
+int pp_var_has_regular_z_t(PPgenaxis *zaxis, PPgenaxis *taxis, PPrec **recs, int nvrec) {
+
+  int vrec, nz, nt; /* needed for check on variables */
+  PPrec *vrecp;
+
+  nz = pp_genaxis_len(zaxis);
+  nt = pp_genaxis_len(taxis);
+
+  /*------------------------------------------------------------*/
+
+  /* first test the most obvious case of irregular (for possible speed) */
+  if (nvrec != nz * nt)
+    return 0;
+
+  /* z indices (faster varying) should loop be vrec % nz */
+  /* t indices (slower varying) should loop be vrec / nz */
+  for (vrec=0; vrec < nvrec; vrec++) {
+    vrecp = recs[vrec];
+    if (vrecp->zindex != vrec % nz || vrecp->tindex != vrec / nz)
+      return 0;
+  }
+  return 1;
+}
+
+
 
 #endif

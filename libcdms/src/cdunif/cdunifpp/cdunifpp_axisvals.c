@@ -277,6 +277,15 @@ int pp_is_rotated_grid(const PPhdr *hdrp) {
 }
 
 
+Freal pp_mean_period(const PPtime *time) {
+  /* returns the averaging period in days, or 0. if it is not a mean field */
+  Fint lbtim = time->type;
+  if (!pp_is_time_mean(lbtim)) {
+    return 0.;
+  }
+  return pp_time_diff(lbtim, &time->time2, &time->time1);
+}
+
 /* float_time returns time in days since origin time */
 
 Freal pp_time_diff(Fint LBTIM, const PPdate *date, const PPdate *orig_date)

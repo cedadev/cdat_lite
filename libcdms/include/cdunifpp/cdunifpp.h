@@ -26,7 +26,7 @@
 
 /*---------------------------------------------------------*/
 
-#define CDUNIFPP_VERSION "0.12"
+#define CDUNIFPP_VERSION "0.13pre1"
 
 /*---------------------------------------------------------*/
 
@@ -760,6 +760,8 @@ struct pp_rec {
   long disklen; /* length on disks (words) -- including padding + before unpacking */
   long datalen; /* data length (words) */ 
 
+  PPlevel *lev;
+  PPtime *time;
   int zindex; /* index on z axis within a variable - used for detecting vars with irreg z,t */
   int tindex; /* index on t axis within a variable - used for detecting vars with irreg z,t */
   int disambig_index; /* index used for splitting variables with irreg z,t into 
@@ -768,6 +770,8 @@ struct pp_rec {
 		       * across the set, but different from sets generated from other
 		       * super-variables
 		       */
+  Freal mean_period; /* period (in days) of time mean 
+			(store here so as to calculate once only) */
 };
 
 
@@ -850,6 +854,7 @@ int pp_is_time_mean(Fint);
 int pp_grid_supported(const PPhdr *);
 int pp_axis_regular(const PPextravec, const PPrec *, const PPfile *);
 int pp_is_rotated_grid(const PPhdr *);
+Freal pp_mean_period(const PPtime *);
 Freal pp_time_diff(Fint, const PPdate *, const PPdate *);
 PPcalendartype pp_calendar_type(Fint);
 long long pp_gregorian_to_secs(const PPdate *);
@@ -864,6 +869,8 @@ int pp_check_sizes();
 /* int pp_compare_reals(Freal, Freal); */
 /* int pp_compare_ptrs(const void *, const void *); */
 int pp_compare_records_between_vars(const PPrec *, const PPrec *);
+int pp_compare_mean_periods(const PPrec *, const PPrec *);
+int pp_both_values_in_range(Freal, Freal, Freal, Freal);
 int pp_compare_records_within_var(const PPrec *, const PPrec *);
 int pp_compare_records(const void *, const void *);
 int pp_records_from_different_vars(const PPrec *, const PPrec *);
@@ -928,6 +935,9 @@ char *pp_ppunit(int);
 
 /* in cdunifpp_process.c: */
 int pp_process(CuFile *);
+int pp_initialise_records(PPrec**, int, PPlist *);
+int pp_set_disambig_index(PPgenaxis *, PPgenaxis *, PPrec **, int, int);
+int pp_var_has_regular_z_t(PPgenaxis *, PPgenaxis *, PPrec **, int);
 
 /* in cdunifpp_read.c: */
 size_t pp_read_words(void *, size_t, PPconvert, const PPfile *);
@@ -1004,6 +1014,7 @@ PPdata *pp_xsaxis_to_values(const PPxsaxis *, PPlist *);
 int pp_xsaxis_set(PPgenaxis *, const PPrec *, const PPfile *, const PPextravec, PPlist *);
 int pp_axistype(const PPxsaxis *);
 
+PPlevtype pp_zaxis_lev_type(const PPgenaxis *);
 PPlevtype pp_level_type(const PPhdr *);
 int pp_zaxis_set(PPgenaxis *, const PPhdr *);
 int pp_zaxis_add(PPgenaxis *, PPlevel *, int *, PPlist *);
