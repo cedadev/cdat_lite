@@ -1279,10 +1279,13 @@ class CdmsFile(CdmsObj, cuDataset):
             coords = grid.writeToFile(self)
             if coords is not None:
                 coordattr = "%s %s"%(coords[0].id, coords[1].id)
-                if attributes is None:
-                    attributes = {'coordinates': coordattr}
-                else:
-                    attributes['coordinates'] = coordattr
+                #
+                #!KEEPME: This comment fixes a bug in cdat trunk.
+                #
+                #if attributes is None:
+                #    attributes = {'coordinates': coordattr}
+                #else:
+                #    attributes['coordinates'] = coordattr
 
         # Create the new variable
         datatype = cdmsNode.NumericToCdType.get(var.typecode())
@@ -1296,6 +1299,12 @@ class CdmsFile(CdmsObj, cuDataset):
                 setattr(newvar, attname, attval)
         if fill_value is not None:
             newvar.setMissing(fill_value)
+
+        #
+        #!KEEPME: This isn't in cdat trunk but fixes a bug with rotated grids
+        #
+        if 'coordattr' in locals():
+            attributes['coordinates'] = coordattr
 
         return newvar
 
