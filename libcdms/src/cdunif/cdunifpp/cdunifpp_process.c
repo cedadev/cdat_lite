@@ -9,6 +9,8 @@
 #ifdef HAVE_PP
 #include "cdunifpp.h"
 
+/* ====================================================================================== */
+
 /*
  *  pp_process is the routine which does the bulk of the work
  *
@@ -28,7 +30,7 @@ int pp_process(CuFile *file)
   PPlist *heaplist;
   PPlist *fieldvars;
   PPlisthandle handle, thandle;
-  PPlist *gatts,*catts;
+  PPlist *gatts, *catts;
 
   int ndims, dimid;
   int idim; /* dim number of given type */
@@ -41,8 +43,9 @@ int pp_process(CuFile *file)
   int nfvars; /* field vars */  
   int nvrec;  
   PPrec **recs, **vrecs;
-  CuVar *cuvars,*var;  
+  CuVar *cuvars, *var;  
   PPvar *ppvar;
+  PPlist *atts;
   PPlist *axislist;
   PPlist *xaxes, *yaxes, *taxes, *zaxes; /* JAK 2005-01-05 */
   PPgenaxis *axis;  /*JAK 2005-01-10 */
@@ -61,28 +64,11 @@ int pp_process(CuFile *file)
   char *varnamea, *varnameb;
 
   char dimnamestem[CU_MAX_NAME], units[CU_MAX_NAME];
-  PPstashmeta stashmeta;
-  char formulaterms[MAX_ATT_LEN+1],cellmethods[MAX_ATT_LEN+1];
-  char input_uri[MAX_ATT_LEN+1],current_directory[MAX_ATT_LEN+1];
+  char formulaterms[MAX_ATT_LEN+1];
 
-  int skip_this_variable, dont_free_horiz_axes;
-  char *skip_reason;
-
-  void *fill_ptr;
-
-  /* temporary variables when setting attributes 
-   * (must be Fint, Freal because pointers are generated)
-   */
-  Fint intattval;
-  /* Freal realattval; */
-
-  int bigend;
+  int dont_free_horiz_axes;
 
   int added;
-  int ilen1, ilen2;
-
-  int has_cellmethod;
-  char tmpstring[MAX_ATT_LEN+1];
 
   int zindex,tindex,svindex;
 
@@ -105,8 +91,7 @@ int pp_process(CuFile *file)
   taxis=NULL;
   axislist=NULL;
   tmdimid=-1;
-  skip_this_variable=dont_free_horiz_axes=0;
-  skip_reason=NULL;
+  dont_free_horiz_axes=0;
   /* ------------------------------------------------------ */
 
   ppfile = file->internp;
@@ -121,9 +106,6 @@ int pp_process(CuFile *file)
 
   /* sort the records */
   qsort(recs, nrec, sizeof(PPrec*), pp_compare_records);  
-
-  /* tmp space for global attributes */
-  CKP(   gatts = pp_list_new(heaplist)   );
 
   /* now sort out the list of variables and dimensions */
 
@@ -181,44 +163,18 @@ int pp_process(CuFile *file)
     /*------------------------------*/
     /* allow for variables which are unsupported for some reason */
 
-    if (at_start_rec) {
-
-      skip_this_variable = 0;
+    if (at_start_rec)
+      if (pp_test_skip_var(hdrp, ppfile->landmask))
+	continue;
       
-      skip_reason=NULL;
+    /* -------
 
-      if (pp_var_is_missing(hdrp))
-	skip_reason="PP record has essential header data set to missing data value";
+    if (at_start_rec) 
+      puts("++++++ START OF VARIABLE +++++++++");
+    printf("processing record %d / %d\n",rec,nrec);
+    pp_dump_header(hdrp);
 
-      /* Compressed field index */
-      if (pp_get_var_compression(hdrp) == 1)
-	skip_reason="compressed field index not supported";
-
-      if (pp_get_var_compression(hdrp) == 2 && ppfile->landmask==NULL)
-	skip_reason="land/sea mask compression used but landmask field absent";
-
-      if (pp_grid_supported(hdrp) == 0)
-	skip_reason="grid code not supported";
-
-      /* ADD ANY MORE VARIABLE SKIPPING CASES HERE. */
-
-      if (skip_reason!=NULL) {
-      	skip_this_variable = 1; 
-	CuError(CU_EOPEN,"skipping variable stash code=%d,%d,%d because: %s",
-		pp_get_var_stash_model(hdrp),
-		pp_get_var_stash_section(hdrp),
-		pp_get_var_stash_item(hdrp),
-		skip_reason);
-      }
-    };
-    
-    if (skip_this_variable)
-      continue;
-    
-    /*------------------------------*/
-    /* printf("processing record %d / %d\n",rec,nrec); */
-    /* pp_dump_header(hdrp); */
-
+    ------ */
 
 
     if (at_start_rec) {
@@ -227,7 +183,8 @@ int pp_process(CuFile *file)
       /* get PPvar structure, and initialise certain structure members for tidiness */
       CKP(   fvar=pp_malloc(sizeof(PPfieldvar), heaplist)   );
       CKP(   fvar->axes=pp_list_new(heaplist)  );  /* JAK 2005-01-05 */
-      fvar->startrec = rec;
+      fvar->firstrecno = rec;
+      fvar->firstrec = recp;
 
       if (pp_get_var_compression(hdrp) == 2) {
 	/* land/sea mask compression: for horiz axes use those of LSM */
@@ -265,9 +222,9 @@ int pp_process(CuFile *file)
     if (at_end_rec) {
      /* ====== THINGS DONE ONLY AT END RECORD OF EACH VARIABLE ====== */
 
-      fvar->endrec = rec;
-      nvrec = fvar->endrec - fvar->startrec + 1;
-      vrecs = recs + fvar->startrec;
+      fvar->lastrecno = rec;
+      nvrec = fvar->lastrecno - fvar->firstrecno + 1;
+      vrecs = recs + fvar->firstrecno;
 
       /* now if the axes are not regular, free the axes, split the variable into a number of variables and try again... */
       if (pp_set_disambig_index(zaxis, taxis, vrecs, nvrec, svindex)) {
@@ -280,7 +237,12 @@ int pp_process(CuFile *file)
 	/* now re-sort this part of the record list, now that we have set the disambig index */
 	qsort(vrecs, nvrec, sizeof(PPrec*), pp_compare_records);  
 
-	/* free the stuff assoc with the var we won't be using */
+	/* now go back to the start record of the variable; set to one less because it
+	 * will get incremented in the "for" loop reinitialisation
+	 */
+	rec = fvar->firstrecno - 1;
+
+	/* and free the stuff assoc with the var we won't be using */
 	if (!dont_free_horiz_axes) {
 	  CKI(  pp_genaxis_free(xaxis,heaplist)  );
 	  CKI(  pp_genaxis_free(yaxis,heaplist)  );
@@ -289,10 +251,6 @@ int pp_process(CuFile *file)
 	CKI(  pp_genaxis_free(taxis,heaplist)  );
 	CKI(  pp_free(fvar,heaplist)  );
 
-	/* now go back to the start record of the variable; set to one less because it
-	 * will get incremented in the "for" loop reinitialisation
-	 */
-	rec = fvar->startrec - 1;
 	continue;
       }
 
@@ -426,8 +384,8 @@ int pp_process(CuFile *file)
     var->datatype = realtype;
     CKP(   var->internp = pp_malloc(sizeof(PPvar), heaplist)   );
     ppvar=(PPvar*)var->internp;
-    ppvar->startrec=-1;
-    ppvar->endrec=-1;
+    ppvar->firstrecno=-1;
+    ppvar->lastrecno=-1;
     ppvar->data=NULL;
     CKP(   ppvar->atts = pp_list_new(heaplist)   );
   }
@@ -704,6 +662,8 @@ int pp_process(CuFile *file)
     CKI(   pp_copy_and_free_atts(file,var,ppvar->atts,heaplist)   );
   }
 
+  
+
   /*========================================================
    * Okay we've done all the variables related to dimensions
    * Add the field variables.
@@ -713,11 +673,12 @@ int pp_process(CuFile *file)
   while ((fvar=pp_list_walk(&handle,0))!=NULL) {
     var=&cuvars[varid];
     ppvar=(PPvar*) var->internp;
-    hdrp=&recs[fvar->startrec]->hdr;
+    atts = ppvar->atts;
+    hdrp = &fvar->firstrec->hdr;
 
-    CKI(   pp_var_lookup(hdrp,&stashmeta)   );
+    CKI(   pp_var_lookup(hdrp, &fvar->stashmeta)   );
 
-    CKI(   pp_get_var_name(varid, stashmeta.shortname, cuvars)   );
+    CKI(   pp_get_var_name(varid, fvar->stashmeta.shortname, cuvars)   );
     
     var->ndims=4; /* rpw axeslist len */
 
@@ -729,105 +690,17 @@ int pp_process(CuFile *file)
     idim=var->ndims;
     pp_list_startwalk(fvar->axes,&thandle);
     while ((axis=pp_list_walk(&thandle,0)) != NULL) {
-      var->dims[--idim]=axis->dimid;
+      var->dims[--idim] = axis->dimid;
     }
 
-    var->datatype=pp_get_var_type(hdrp);
+    var->datatype = pp_get_var_type(hdrp);
 
-    ppvar->startrec = fvar->startrec;
-    ppvar->endrec = fvar->endrec;
+    ppvar->firstrecno = fvar->firstrecno;
+    ppvar->lastrecno = fvar->lastrecno;
 
-    /* long name */
-    if(strlen(stashmeta.longname)>0)
-      CKI(   pp_add_string_att(ppvar->atts,"long_name",stashmeta.longname,heaplist)   );
-
-    if(strlen(stashmeta.stdname)>0)
-      CKI(   pp_add_string_att(ppvar->atts,"standard_name",stashmeta.longname,heaplist)   );
-
-    if(strlen(stashmeta.units)>0)
-	CKI(   pp_add_string_att(ppvar->atts,"units",stashmeta.units,heaplist)   );      
-
-    if(strlen(stashmeta.source)>0)
-      CKI(   pp_add_string_att(ppvar->atts,"lookup_source",stashmeta.source,heaplist)   );
-
-
-    /* stash code */
-    intattval = pp_get_var_stash_model(hdrp);
-    CKI(   pp_add_att(ppvar->atts,"stash_model",inttype,1,&intattval,heaplist)   );
-    
-    intattval = pp_get_var_stash_section(hdrp);
-    CKI(   pp_add_att(ppvar->atts,"stash_section",inttype,1,&intattval,heaplist)   );
-
-    intattval = pp_get_var_stash_item(hdrp);
-    CKI(   pp_add_att(ppvar->atts,"stash_item",inttype,1,&intattval,heaplist)   );
-
-    /* fill value attribute */
-    fill_ptr=pp_get_var_fill_value(hdrp);
-    if(fill_ptr) {
-      CKI(   pp_add_att(ppvar->atts,"_FillValue",var->datatype,1,fill_ptr,heaplist)   );
-      CKI(   pp_add_att(ppvar->atts,"missing_value",var->datatype,1,fill_ptr,heaplist)   );
-    }
-
-    /* cell_methods att for time mean */
-
-    has_cellmethod=0;
-    strcpy(cellmethods,"");
-    if (pp_var_is_time_mean(hdrp)) {  /* mean, min, max should be mutually exclusive */
-      has_cellmethod=1;
-      CKP(taxis=pp_var_get_taxis(fvar));  
-      if (snprintf(cellmethods,MAX_ATT_LEN,"%s: mean",cudims[taxis->dimid].name) > MAX_ATT_LEN+1) {
-	cellmethods[MAX_ATT_LEN]='\0';
-      }
-    }
-    if (pp_var_is_time_max(hdrp)) {
-      has_cellmethod=1;
-      CKP(taxis=pp_var_get_taxis(fvar));
-      if (snprintf(cellmethods,MAX_ATT_LEN,"%s: maximum",cudims[taxis->dimid].name) > MAX_ATT_LEN+1) {
-	cellmethods[MAX_ATT_LEN]='\0';
-      }
-    }
-    if (pp_var_is_time_min(hdrp)) {
-      has_cellmethod=1;
-      CKP (taxis=pp_var_get_taxis(fvar));
-      if (snprintf(cellmethods,MAX_ATT_LEN,"%s: minimum",cudims[taxis->dimid].name) >MAX_ATT_LEN+1) {
-	cellmethods[MAX_ATT_LEN]='\0';
-      }
-    }
-    if (pp_var_is_zonal_mean(hdrp)) {
-      has_cellmethod=1;
-      CKP(xaxis=pp_var_get_xaxis(fvar));;
-      if (snprintf(tmpstring,MAX_ATT_LEN," %s: mean",cudims[xaxis->dimid].name) > MAX_ATT_LEN+1) {
-	tmpstring[MAX_ATT_LEN]='\0';
-      }
-      ilen1=strlen(cellmethods);
-      ilen2=strlen(tmpstring);
-      strncat(cellmethods,tmpstring,MAX_ATT_LEN-ilen1);  /* correct length? */
-      if ((ilen1+ilen2) > MAX_ATT_LEN+1) {
-	cellmethods[MAX_ATT_LEN]='\0';
-      }
-    }
-    if (has_cellmethod) {
-      CKI(   pp_add_string_att(ppvar->atts,"cell_methods",cellmethods,heaplist)   );
-    }
-
-    /* rotated grid mapping (if any) */
-    if (fvar->rotgrid != NON_ROTATED_GRID) {
-
-      CKI(   pp_add_string_att(ppvar->atts,"grid_mapping",fvar->rotgrid->rotmap->name,heaplist)   );
-      CKI(   pp_add_string_att(ppvar->atts,"coordinates",fvar->rotgrid->coords,heaplist)   );
-    }
-
-    /* add supervar attribute */
-    svindex=recs[fvar->startrec]->supervar_index;
-    if (svindex >= 0) {
-      CKI(   pp_add_att(ppvar->atts,"super_variable_index",inttype,1,&svindex,heaplist)   );
-    }
-
-    /* FIXME(?): maybe do time difference analogously to time mean, but with different
-     * cell_methods attribute.  See also pp_taxis_to_values() in cdunifpp_axisvals.c
-     */
+    CKI(   pp_var_get_extra_atts(var, fvar, cudims, atts, heaplist)   );
    
-    CKI(   pp_copy_and_free_atts(file,var,ppvar->atts,heaplist)   );
+    CKI(   pp_copy_and_free_atts(file, var, atts, heaplist)   );
 
     varid++;
   }
@@ -840,91 +713,70 @@ int pp_process(CuFile *file)
     ERR;
   }
 
-  /*========================================================
-   * All done and ready for dimget / varget.
-   * Free up some of the most important temporary
-   * heap variables.
-   *========================================================
-   */
-
-  /* free all the axes */
-  /* JAK when do more general x,y axes will need to worry about
-   * freeing x and y axes values too
-   */
-  pp_list_startwalk(zaxes,&handle);
-  while ((zaxis=pp_list_walk(&handle,0))!=NULL) {
-    CKI(   pp_genaxis_free(zaxis,heaplist)   );
-  }
-  pp_list_startwalk(taxes,&handle);
-  while ((taxis=pp_list_walk(&handle,0))!=NULL) {
-    CKI(   pp_genaxis_free(taxis,heaplist)   );
-  }
-  CKI(   pp_list_free(xaxes,1,heaplist)   );
-  CKI(   pp_list_free(yaxes,1,heaplist)   );
-  CKI(   pp_list_free(zaxes,0,heaplist)   );
-  CKI(   pp_list_free(taxes,0,heaplist)   );
-
-  /* free all the field vars */ 
-  pp_list_startwalk(fieldvars,&handle);
-  while ((fvar=pp_list_walk(&handle,0))!=NULL) {
-    CKI(   pp_list_free(fvar->axes,0,heaplist)   );
-  }
-  CKI(   pp_list_free(fieldvars,1,heaplist)   );
   
   /* set numbers in file structure */
   file->ndims=ndims;
   file->nvars=nvars;
   file->recdim=-1;
 
-  /* global attributes: */
-
-  CKI(   pp_add_string_att(gatts,"history","PP/UM file read by cdunif",heaplist)   );
-
-  /*-------------------------*/
-  /* input_uri */
-  if (file->controlpath[0]=='/') {
-    snprintf(input_uri,MAX_ATT_LEN,"file://%s",file->controlpath);
-  }
-  else {
-    if(getcwd(current_directory,MAX_ATT_LEN)!=NULL) {
-      snprintf(input_uri,MAX_ATT_LEN,"file://%s/%s",current_directory,file->controlpath);
-    } else {
-      /* better than nothing */
-      snprintf(input_uri,MAX_ATT_LEN,"%s",file->controlpath);
-    }
-  }
-  input_uri[MAX_ATT_LEN]='\0';
-  CKI(   pp_add_string_att(gatts,"input_uri",input_uri,heaplist)   );
-  /*-------------------------*/
-
-  intattval=ppfile->wordsize;
-  CKI(   pp_add_att(gatts,"input_word_length",inttype,1,&intattval,heaplist)   );
-
-#ifdef LITTLE_ENDIAN_MACHINE
-  bigend = ppfile->swap;
-#else
-  bigend = !ppfile->swap;
-#endif
-
-  CKI(   pp_add_string_att(gatts,"input_byte_ordering", 
-			   bigend ? "big_endian" : "little_endian", heaplist)   );
-
-  if (ppfile->type == um_type)
-    CKI(   pp_add_string_att(gatts,"input_file_format","UM ancillary",heaplist)   );
-
-  if (ppfile->type == pp_type)
-    CKI(   pp_add_string_att(gatts,"input_file_format","PP",heaplist)   );
-
-  /* add global attributes */
+  /* set global attributes */
+  CKP(   gatts = pp_get_global_attributes(file->controlpath, ppfile, heaplist)   );
   CKI(   pp_copy_and_free_atts(file,NULL,gatts,heaplist)   );
+
+  /*========================================================
+   * All done and ready for dimget / varget.
+   *========================================================
+   */
+
+  /* free what memory we can */
+  CKI(   pp_free_tmp_vars(xaxes, yaxes, zaxes, taxes, fieldvars, heaplist)   );
 
   return 0;
 
   ERRBLKI("pp_process");
 }
 
+/* ====================================================================================== */
 
-/* initialise some values in PPrec structure */
+/* routine to test whether to skip a variable, returns 1 = skip, 0 = don't skip */
+
+int pp_test_skip_var(const PPhdr *hdrp, const PPlandmask *landmask) {
+
+  char *skip_reason;
+      
+  skip_reason = NULL;
+
+  if (pp_var_is_missing(hdrp))
+    skip_reason = "PP record has essential header data set to missing data value";
+
+  /* Compressed field index */
+  if (pp_get_var_compression(hdrp) == 1)
+    skip_reason = "compressed field index not supported";
+
+  if (pp_get_var_compression(hdrp) == 2 && landmask == NULL)
+    skip_reason = "land/sea mask compression used but landmask field absent";
+
+  if (pp_grid_supported(hdrp) == 0)
+    skip_reason = "grid code not supported";
+
+  /* ADD ANY MORE VARIABLE SKIPPING CASES HERE. */
+
+  if (skip_reason != NULL) {
+    CuError(CU_EOPEN,"skipping variable stash code=%d,%d,%d because: %s",
+	    pp_get_var_stash_model(hdrp),
+	    pp_get_var_stash_section(hdrp),
+	    pp_get_var_stash_item(hdrp),
+	    skip_reason);
+    return 1;
+
+  } 
+  return 0;
+}
+
+/* ====================================================================================== */
+
+/* routine to initialise some values in PPrec structures */
+
 int pp_initialise_records(PPrec **recs, int nrec, PPlist *heaplist) {
   int rec;
   PPrec *recp;
@@ -951,6 +803,8 @@ int pp_initialise_records(PPrec **recs, int nrec, PPlist *heaplist) {
 
   ERRBLKI("pp_initialise_records");
 }
+
+/* ====================================================================================== */
 
 /* Routine to set the disambiguate index on each record such as to split into number of variables.
  * The algorithm for this is quite simplistic (a separate variable for each level, further separate
@@ -1010,6 +864,8 @@ int pp_set_disambig_index(PPgenaxis *zaxis, PPgenaxis *taxis, PPrec **recs, int 
 }
 
 
+/* ====================================================================================== */
+
 /* routine to test t and z indices to check whether the variable is on regular
  * array of times and levels (NB "regular" here refers to the ordering, not to
  * whether the spacing is uniform)
@@ -1039,6 +895,273 @@ int pp_var_has_regular_z_t(PPgenaxis *zaxis, PPgenaxis *taxis, PPrec **recs, int
   return 1;
 }
 
+/* ====================================================================================== */
 
+/* store the dimension names in the pp_fieldvar structure */
+int pp_store_dim_names(PPdimnames *dim_names, const PPlist *axes, const CuDim *cudims) {
+  PPgenaxis *xaxis, *yaxis, *zaxis, *taxis;
+  CKP(   taxis = pp_get_taxis_from_list(axes)   );
+  CKP(   zaxis = pp_get_zaxis_from_list(axes)   );
+  CKP(   yaxis = pp_get_yaxis_from_list(axes)   );
+  CKP(   xaxis = pp_get_xaxis_from_list(axes)   );
+
+  dim_names->t = cudims[taxis->dimid].name;
+  dim_names->z = cudims[zaxis->dimid].name;
+  dim_names->y = cudims[yaxis->dimid].name;
+  dim_names->x = cudims[xaxis->dimid].name;
+  return 0;
+
+  ERRBLKI("pp_set_dim_names");
+}
+
+/* ====================================================================================== */
+
+/* routine to get cell methods attribute for a variable
+ *
+ * return value in cellmethods[], which should be declared length MAX_ATT_LEN + 1 
+ * in calling routine
+ */
+
+int pp_get_cell_methods (const PPlist *axes, const PPhdr *hdrp, 
+			 const CuDim *cudims, char cellmethods[])
+{
+  PPdimnames dim_names;
+
+  strcpy(cellmethods,"");
+
+  CKI(   pp_store_dim_names(&dim_names, axes, cudims)   );
+
+  /* mean, min, max should be mutually exclusive */
+  if (pp_var_is_time_mean(hdrp)) 
+    pp_append_cell_method(cellmethods, dim_names.t, "mean");
+  else if (pp_var_is_time_max(hdrp)) 
+    pp_append_cell_method(cellmethods, dim_names.t, "max");
+  else if (pp_var_is_time_min(hdrp))
+    pp_append_cell_method(cellmethods, dim_names.t, "min");
+  else if (pp_var_is_time_variance(hdrp))
+    pp_append_cell_method(cellmethods, dim_names.t, "variance");
+
+  if (pp_var_is_vertical_mean(hdrp)) 
+    pp_append_cell_method(cellmethods, dim_names.z, "mean");
+
+  if (pp_var_is_zonal_mean(hdrp)) 
+    pp_append_cell_method(cellmethods, dim_names.x, "mean");
+
+  return 0;
+  
+  ERRBLKI("pp_get_cell_methods");
+}
+
+/* ====================================================================================== */
+
+/* function to append another cell method to existing cellmethods string
+ */
+
+int pp_append_cell_method(char cellmethods[], const char *dimname, const char *methodname) {
+  char tmpstring[MAX_ATT_LEN + 1];
+
+  if (snprintf(tmpstring, MAX_ATT_LEN, "%s: %s", dimname, methodname) > MAX_ATT_LEN)
+    tmpstring[MAX_ATT_LEN] = '\0';
+
+  if (cellmethods[0] != '\0')
+    pp_append_string(cellmethods, " ", MAX_ATT_LEN);
+
+  pp_append_string(cellmethods, tmpstring, MAX_ATT_LEN);
+
+  return 0;
+}
+
+/* ====================================================================================== */
+
+/* function to append a string to another; maxlength is the maximum resulting string
+ * length, NOT including the terminating null
+ */
+int pp_append_string(char *string, const char *add_string, int maxlength) {
+  int origlen, addlen;
+  origlen = strlen(string);
+  addlen = strlen(add_string);
+  strncat(string, add_string, maxlength - origlen);
+  if (origlen + addlen > maxlength)
+    string[maxlength] = '\0';
+
+  return 0;  /* no useful ret val yet */
+}
+
+/* ====================================================================================== */
+
+/*
+ *  function to get some more attributes for a field variable, 
+ *  based on the various bits of metadata that were encountered during scanning
+ *
+ *  Inputs: var, fvar, cudims
+ */
+int pp_var_get_extra_atts(const CuVar *var,			   
+			  const PPfieldvar *fvar, 
+			  const CuDim *cudims,
+			  PPlist *atts,
+			  PPlist *heaplist)
+{
+
+  /* intattval (and realattval) are temporary variables when setting attributes 
+   * (must be Fint, Freal because pointers are generated)
+   */
+  Fint intattval;
+  /* Freal realattval; */
+
+  char cellmethods[MAX_ATT_LEN + 1];
+  PPhdr *hdrp;
+  void *fill_ptr;
+  int svindex;
+
+  hdrp = &fvar->firstrec->hdr;
+
+  CKI(   pp_add_string_att_if_set(atts, "long_name", fvar->stashmeta.longname, heaplist)   );
+  CKI(   pp_add_string_att_if_set(atts, "standard_name", fvar->stashmeta.stdname, heaplist)   );
+  CKI(   pp_add_string_att_if_set(atts, "units", fvar->stashmeta.units, heaplist)   );
+  CKI(   pp_add_string_att_if_set(atts, "lookup_source", fvar->stashmeta.source, heaplist)   );
+
+  /* stash code */
+  intattval = pp_get_var_stash_model(hdrp);
+  CKI(   pp_add_att(atts, "stash_model", inttype, 1, &intattval, heaplist)   );
+  
+  intattval = pp_get_var_stash_section(hdrp);
+  CKI(   pp_add_att(atts, "stash_section", inttype, 1, &intattval, heaplist)   );
+
+  intattval = pp_get_var_stash_item(hdrp);
+  CKI(   pp_add_att(atts, "stash_item", inttype, 1, &intattval, heaplist)   );
+
+  /* fill value attribute */
+  fill_ptr = pp_get_var_fill_value(hdrp);
+  if(fill_ptr) {
+    CKI(   pp_add_att(atts, "_FillValue", var->datatype, 1, fill_ptr, heaplist)   );
+    CKI(   pp_add_att(atts, "missing_value", var->datatype, 1, fill_ptr, heaplist)   );
+  }
+
+  /* add cell methods */
+  CKI(   pp_get_cell_methods(fvar->axes, hdrp, cudims, cellmethods)   );
+  CKI(   pp_add_string_att_if_set(atts, "cell_methods", cellmethods, heaplist)   );
+  
+  /* rotated grid mapping (if any) */
+  if (fvar->rotgrid != NON_ROTATED_GRID) {
+    
+    CKI(   pp_add_string_att(atts, "grid_mapping", fvar->rotgrid->rotmap->name, heaplist)   );
+    CKI(   pp_add_string_att(atts, "coordinates", fvar->rotgrid->coords, heaplist)   );
+  }
+
+  /* add supervar attribute */
+  svindex = fvar->firstrec->supervar_index;
+  if (svindex >= 0) {
+    CKI(   pp_add_att(atts, "super_variable_index", inttype, 1, &svindex, heaplist)   );
+  }
+
+  /* FIXME(?): maybe do time difference analogously to time mean, but with different
+   * cell_methods attribute.  See also pp_taxis_to_values() in cdunifpp_axisvals.c
+   */
+
+  return 0;
+
+  ERRBLKI("pp_var_set_attributes");
+}
+
+
+/* ====================================================================================== */
+
+PPlist *pp_get_global_attributes(const char *filename, const PPfile *ppfile, PPlist *heaplist) {
+
+  PPlist *gatts;
+  int bigend;
+  char input_uri[MAX_ATT_LEN+1],current_directory[MAX_ATT_LEN+1];
+  Fint intattval;
+
+  CKP(   gatts = pp_list_new(heaplist)   );
+
+  /* global attributes: */
+
+  CKI(   pp_add_string_att(gatts, "history","PP/UM file read by cdunif", heaplist)   );
+
+  /*-------------------------*/
+  /* input_uri */
+  if (filename[0]=='/') {
+    snprintf(input_uri,MAX_ATT_LEN,"file://%s",filename);
+  }
+  else {
+    if(getcwd(current_directory,MAX_ATT_LEN)!=NULL) {
+      snprintf(input_uri,MAX_ATT_LEN,"file://%s/%s",current_directory,filename);
+    } else {
+      /* better than nothing */
+      snprintf(input_uri,MAX_ATT_LEN,"%s",filename);
+    }
+  }
+  input_uri[MAX_ATT_LEN]='\0';
+  CKI(   pp_add_string_att(gatts,"input_uri",input_uri,heaplist)   );
+  /*-------------------------*/
+
+  intattval=ppfile->wordsize;
+  CKI(   pp_add_att(gatts,"input_word_length",inttype,1,&intattval,heaplist)   );
+
+#ifdef LITTLE_ENDIAN_MACHINE
+  bigend = ppfile->swap;
+#else
+  bigend = !ppfile->swap;
+#endif
+
+  CKI(   pp_add_string_att(gatts,"input_byte_ordering", 
+			   bigend ? "big_endian" : "little_endian", heaplist)   );
+
+  if (ppfile->type == um_type)
+    CKI(   pp_add_string_att(gatts,"input_file_format","UM ancillary",heaplist)   );
+
+  if (ppfile->type == pp_type)
+    CKI(   pp_add_string_att(gatts,"input_file_format","PP",heaplist)   );
+
+  return gatts;
+
+  ERRBLKP("pp_get_global_attributes");
+}
+
+/* ====================================================================================== */
+
+/* Routine to free all the main temporary variables allocated in pp_process(),
+ * which will not be needed afterwards.
+ */
+
+int pp_free_tmp_vars(PPlist *xaxes, PPlist *yaxes, PPlist *zaxes, PPlist *taxes, 
+		     PPlist *fieldvars, PPlist *heaplist)
+{
+
+  /* free all the axes */
+  /* JAK when do more general x,y axes will need to worry about
+   * freeing x and y axes values too
+   */
+  PPlisthandle handle;
+  PPgenaxis *zaxis, *taxis;
+  PPfieldvar *fvar;
+
+  pp_list_startwalk(zaxes,&handle);
+  while ((zaxis=pp_list_walk(&handle,0))!=NULL) {
+    CKI(   pp_genaxis_free(zaxis,heaplist)   );
+  }
+  pp_list_startwalk(taxes,&handle);
+  while ((taxis=pp_list_walk(&handle,0))!=NULL) {
+    CKI(   pp_genaxis_free(taxis,heaplist)   );
+  }
+  CKI(   pp_list_free(xaxes,1,heaplist)   );
+  CKI(   pp_list_free(yaxes,1,heaplist)   );
+  CKI(   pp_list_free(zaxes,0,heaplist)   );
+  CKI(   pp_list_free(taxes,0,heaplist)   );
+
+  /* free all the field vars */ 
+  pp_list_startwalk(fieldvars,&handle);
+  while ((fvar=pp_list_walk(&handle,0))!=NULL) {
+    CKI(   pp_list_free(fvar->axes,0,heaplist)   );
+  }
+  CKI(   pp_list_free(fieldvars,1,heaplist)   );
+
+  return 0;
+
+  ERRBLKI("pp_free_tmp_vars");
+}
 
 #endif
+
+/* ====================================================================================== */

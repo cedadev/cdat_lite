@@ -356,7 +356,6 @@ int pp_compare_lists(const PPlist *l1, const PPlist *l2, int (*compfunc)(const v
 int pp_compare_levels(const void *p1, const void *p2) {
   const PPlevel *a = *(PPlevel **)p1;
   const PPlevel *b = *(PPlevel **)p2;
-  int cmp;
 
   /* macros called LCOMPARE_INTS and LCOMPARE_REALS to emphasise difference from those in pp_compare_records */
 

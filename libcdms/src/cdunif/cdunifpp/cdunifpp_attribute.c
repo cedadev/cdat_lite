@@ -55,7 +55,7 @@ int pp_add_att(PPlist *attlist, const char *name, CuType datatype, long len, con
   CKI(   pp_list_add(attlist,att,heaplist)   );  
   return 0;
 
-  ERRBLKI("pp_att_att");
+  ERRBLKI("pp_add_att");
 }
 
 /*-------------------------------------------------
@@ -76,6 +76,16 @@ int pp_add_string_att(PPlist *attlist, const char *name, const char *val, PPlist
   return pp_add_att(attlist, name, CuChar, strlen(val), val, heaplist);
 
   ERRBLKI("pp_add_string_att");
+}
+
+int pp_add_string_att_if_set(PPlist *attlist, const char *name, const char *val, PPlist *heaplist)
+{
+  CKP(val);
+  if (val[0] == '\0')
+    return 0;
+  return pp_add_string_att(attlist, name, val, heaplist);
+
+  ERRBLKI("pp_add_string_att_if_set");
 }
 
 /*-------------------------------------------------*/
