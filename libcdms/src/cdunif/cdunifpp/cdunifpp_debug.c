@@ -209,3 +209,44 @@ void pp_dump_header(const PPhdr *hdr)
 }
 
 #endif
+
+void pp_dump_date(PPdate *date) {
+  printf ("%d-%d-%d %d:%d:%d\n",
+	  date->year, date->month, date->day, date->hour, date->minute, date->second);
+}
+
+void pp_dump_time(PPtime *t) {
+  printf("     Time at %p\n", t);
+  printf("       Time1: ");
+  pp_dump_date(&t->time1);
+  printf("       Time2: ");
+  pp_dump_date(&t->time2);
+}
+
+
+void pp_dump_list(PPlist *list, void (func)(void *)) {
+  PPlisthandle handle;
+  void *value;
+
+  printf("    %d values on list\n", list->n);
+  pp_list_startwalk(list,&handle);
+  while ((value=pp_list_walk(&handle,0))!=NULL)
+    func(value);
+}
+
+void pp_dump_taxis(PPgenaxis *taxis) {
+  PPtaxis *t;
+
+  t = (PPtaxis*) taxis->axis;
+
+  printf("PP_DUMP_TAXIS\n");
+  printf("  taxis = %p axis = %p\n", taxis, t);
+
+  printf("  pp_dump_taxis orig: ");
+  pp_dump_date(&t->time_orig);
+  printf("  pp_dump_taxis Values: \n");
+  pp_dump_list(t->values, pp_dump_time);
+  puts("----------------------");
+  fflush(stdout);
+};
+

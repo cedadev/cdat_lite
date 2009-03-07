@@ -1,16 +1,16 @@
+## Automatically adapted for numpy.oldnumeric Aug 01, 2007 by 
+
 #!/usr/bin/env python
 
 print 'Test 2: CdmsFile I/O ... ',
 
-import cdms,MA,string,os,sys
-from MA import masked
+import cdms2,numpy,string,os,sys
+from numpy.ma import masked
 from markError import NTIME,NLAT,NLON,x,clearError,markError,reportError
-
 from markError import get_sample_data_dir
-
 clearError()
 
-f = cdms.open(os.path.join(get_sample_data_dir(),'readonly.nc'))
+f = cdms2.open(os.path.join(get_sample_data_dir(),'readonly.nc'))
 u = f.variables['u']
 umasked = f.variables['umasked']
 
@@ -29,16 +29,16 @@ compmask = x[0,0,0:4,8:24]
 compmask[1]=masked
 
 lonaxis = f['longitude']
-if not MA.allequal(lonaxis.getValue(), lonaxis[:]): markError("Axis getValue()")
+if not numpy.ma.allequal(lonaxis.getValue(), lonaxis[:]): markError("Axis getValue()")
 
-if not MA.allequal(uslice,comp): markError("Slice read")
-if not MA.allequal(uslicemask,compmask): markError("Slice read, masked")
+if not numpy.ma.allequal(uslice,comp): markError("Slice read")
+if not numpy.ma.allequal(uslicemask,compmask): markError("Slice read, masked")
 if lonaxis.isVirtual(): markError("virtual axis test")
 
 if u.units!='m/s': markError("Attribute read: "+u.units)
 
 t = u.getTime()
-if not MA.allequal(t[:],[   0.]): markError("Axis read")
+if not numpy.ma.allequal(t[:],[   0.]): markError("Axis read")
 if not t.units=="days since 2000-1-1": markError("Axis attribute: "+t.units)
 
 grid = u.getGrid()
@@ -48,7 +48,7 @@ try:
     os.unlink('junk.nc')
 except:
     pass
-g = cdms.open('junk.nc','a')
+g = cdms2.open('junk.nc','a')
 xx = u.subSlice()
 g.write(xx)
 g.close()
@@ -62,7 +62,7 @@ try:
     badslice = u[:,4:12,8:24]
     badslice = u[0:1]
     badu = u.getValue()
-except cdms.CDMSError, e:
+except cdms2.CDMSError, e:
     i = string.find(str(e),"Cannot read from closed")
     if i!=0: markError("Handling read from closed file")
 else:
@@ -70,7 +70,7 @@ else:
     
 try:
     badslice = u[0:1]
-except cdms.CDMSError, e:
+except cdms2.CDMSError, e:
     i = string.find(str(e),"Cannot read from closed")
     if i!=0: markError("Handling read from closed file")
 else:
@@ -78,7 +78,7 @@ else:
     
 try:
     badu = u.getValue()
-except cdms.CDMSError, e:
+except cdms2.CDMSError, e:
     i = string.find(str(e),"Cannot read from closed")
     if i!=0: markError("Handling read from closed file")
 else:
@@ -88,7 +88,7 @@ try:
     u[0,0,0] = -99.9
     u[0:1]=-99.9
     u.setValue(fullu)
-except cdms.CDMSError, e:
+except cdms2.CDMSError, e:
     i = string.find(str(e),"Cannot write to a closed")
     if i!=0: markError("Handling write to a closed file")
 else:

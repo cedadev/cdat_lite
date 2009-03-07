@@ -1,19 +1,24 @@
 #!/usr/bin/env python
+# Adapted for numpy/ma/cdms2 by convertcdms.py
 
-import cdms,cdutil,os,sys
+import cdms2,cdutil,os,sys
 
-f=cdms.open(os.path.join(sys.prefix,'sample_data','tas_mo.nc'))
+f=cdms2.open(os.path.join(cdms2.__path__[0],'..','..','..','..','sample_data','tas_mo.nc'))
 s=f('tas')
-
-print s.shape
 tc=s.getTime().asComponentTime()
 
 print tc[0],tc[-1]
 
 cdutil.setTimeBoundsMonthly(s)
 ref=cdutil.ANNUALCYCLE.climatology(s(time=('1980','1985','co')))
-print ref.shape
 dep=cdutil.ANNUALCYCLE.departures(s)
-print 'dep',dep.shape
+ref=ref(order='y...')
 dep=cdutil.ANNUALCYCLE.departures(s,ref=ref)
-print 'dep',dep.shape
+# testing that an ma in worng order would fail
+try:
+    dep=cdutil.ANNUALCYCLE.departures(s,ref=ref(order='t...').filled())
+    failed = False
+except:
+    failed = True
+if failed is False:
+    raise RuntimeError, "Should have failed with ma passed as ref (not mv2)"

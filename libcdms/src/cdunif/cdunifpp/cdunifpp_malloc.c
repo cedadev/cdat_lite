@@ -81,6 +81,19 @@ void *pp_malloc(size_t size, PPlist *heaplist){
   ERRBLKP("pp_malloc");
 }
 
+
+void *pp_dup(const void *inptr, size_t size, PPlist *heaplist) {
+  
+  void *outptr;
+  
+  CKP(   outptr = pp_malloc(size, heaplist)   );
+  memcpy(outptr, inptr, size);
+  return outptr;
+
+  ERRBLKP("pp_dup");
+}
+
+
 int pp_free(void *ptr, PPlist *heaplist){
 
   PPlistel *el;

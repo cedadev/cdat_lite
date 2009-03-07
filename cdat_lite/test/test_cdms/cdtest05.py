@@ -1,45 +1,45 @@
+## Automatically adapted for numpy.oldnumeric Aug 01, 2007 by 
+
 #!/usr/bin/env python
 
-import cdms,MA,cdtime,os,sys
-from cdms import MV
+import cdms2,numpy,cdtime,os,sys
+from cdms2 import MV2 as MV
 from markError import NTIME,NLAT,NLON,x,clearError,markError,reportError
-
 from markError import get_sample_data_dir
-
 clearError()
 
 print 'Test 5: get/sub, time functions ...',
 
-f = cdms.open(os.path.join(get_sample_data_dir(),'test.xml'))
+f = cdms2.open(os.path.join(get_sample_data_dir(),'test.xml'))
 v = f.variables['v']
 vp = x[1,1:,4:12,8:24]
 wp = x[1,2,4:12]
-xp = MA.concatenate((x[1,1:,4:12,8:NLON],x[1,1:,4:12,0:8]),axis=2)
+xp = numpy.ma.concatenate((x[1,1:,4:12,8:NLON],x[1,1:,4:12,0:8]),axis=2)
 
 # getRegion - positional
 
 s = v.getRegion((366.,731.,'ccn'),(-42.,42.,'ccn'),(90.,270.,'con'))
-if not MA.allequal(vp,s): markError('getRegion/positional failed')
+if not numpy.ma.allequal(vp,s): markError('getRegion/positional failed')
 
 # getRegion - keyword
 s = v.getRegion(latitude=(-42.,42.,'ccn'),longitude=(90.,270.,'con'),time=(366.,731.,'ccn'))
-if not MA.allequal(vp,s): markError('getRegion/keyword failed')
+if not numpy.ma.allequal(vp,s): markError('getRegion/keyword failed')
 
 # getRegion - wraparound
 s4 = v.getRegion(time=(366.,731.,'ccn'),latitude=(-42.,42.,'ccn'),longitude=(90.,450.,'con'))
-if not MA.allequal(xp,s4): markError('getRegion wraparound failed')
+if not numpy.ma.allequal(xp,s4): markError('getRegion wraparound failed')
 
 # getSlice - positional
 s = v.getSlice(2,(4,12),Ellipsis,squeeze=0)
-if not MA.allequal(wp,s): markError('getSlice/positional failed')
+if not numpy.ma.allequal(wp,s): markError('getSlice/positional failed')
 
 # getSlice - keyword
 s = v.getSlice(latitude=(4,12), time=2)
-if not MA.allequal(wp,s): markError('getSlice/keyword failed')
+if not numpy.ma.allequal(wp,s): markError('getSlice/keyword failed')
 
 # subRegion - positional
 s2 = v.subRegion((366.,731.,'ccn'),(-42.,42.,'ccn'),(90.,270.,'con'))
-if not MA.allequal(vp,s2): markError('subRegion/positional failed')
+if not numpy.ma.allequal(vp,s2): markError('subRegion/positional failed')
 
 # subRegion - squeeze
 try:
@@ -48,13 +48,13 @@ except IndexError:
      markError('subRegion squeeze option failed')
 
 # mf 20010308 subRegion - extended wrap
-fw = cdms.open(os.path.join(get_sample_data_dir(),'ps.wrap.test.0E.nc'))
+fw = cdms2.open(os.path.join(get_sample_data_dir(), 'ps.wrap.test.0E.nc'))
 ps = fw.getVariable('ps')
 ps1 = ps[:,:,36:]
 ps2 = ps[:,:,:37]
-s2 = MA.concatenate((ps1,ps2),axis=2)
+s2 = numpy.ma.concatenate((ps1,ps2),axis=2)
 s2w = fw('ps',longitude=(-180,180,'ccn'))
-if not MA.allequal(s2,s2w): markError('subRegion extended wrap')
+if not numpy.ma.allequal(s2,s2w): markError('subRegion extended wrap')
 varlist = fw.getVariables(spatial=1)
 
 u = f['u']
@@ -62,50 +62,50 @@ u1 = u[:,:,8:]
 u2 = u[:,:,:8]
 ucat = MV.concatenate((u1,u2),axis=2)
 su = u.subRegion(lon=(90,450,'co'))
-if not MA.allequal(ucat,su): markError('subRegion wrap, test 2')
+if not numpy.ma.allequal(ucat,su): markError('subRegion wrap, test 2')
 
 # negative strides
-fc = cdms.Cdunif.CdunifFile(os.path.join(get_sample_data_dir(), 'ps.wrap.test.0E.nc'))
+fc = cdms2.Cdunif.CdunifFile(os.path.join(get_sample_data_dir(),'ps.wrap.test.0E.nc'))
 psc = fc.variables['ps']
 psb = psc[:]
 s3c = psb[0,::-1]
 s4c = psb[0,::-2]
 s3 = fw('ps',latitude=(90,-90))
-if not MA.allequal(s3,s3c): markError('Reverse interval failed')
+if not numpy.ma.allequal(s3,s3c): markError('Reverse interval failed')
 
 s4 = ps.getSlice(':',(None,None,-1))
 # s4 = ps.subRegion(latitude=slice(None,None,-1))
-if not MA.allequal(s4,s3c): markError('Negative stride failed')
+if not numpy.ma.allequal(s4,s3c): markError('Negative stride failed')
 s5 = ps.getSlice(':',(None,None,-2))
-if not MA.allequal(s5,s4c): markError('Negative stride=2 failed')
+if not numpy.ma.allequal(s5,s4c): markError('Negative stride=2 failed')
 s6w = fw('ps',longitude=(180,-180,'ccn'))
-if not MA.allequal(s2[...,::-1],s6w): markError('subRegion extended wrap')
+if not numpy.ma.allequal(s2[...,::-1],s6w): markError('subRegion extended wrap')
 
 fw.close()
 fc.close()
 
 # subRegion - keyword
 s2 = v.subRegion(latitude=(-42.,42.,'ccn'),longitude=(90.,270.,'con'),time=(366.,731.,'ccn'))
-if not MA.allequal(vp,s2): markError('subRegion/keyword failed')
+if not numpy.ma.allequal(vp,s2): markError('subRegion/keyword failed')
 
 # subRegion - order
 al = s2.getAxisList()
-result = cdms.avariable.order2index(al, 'yxt')
+result = cdms2.avariable.order2index(al, 'yxt')
 if not result == [1,2,0]: markError('order2index 1 failed.')
-result = cdms.avariable.order2index(al, '...(longitude)t')
+result = cdms2.avariable.order2index(al, '...(longitude)t')
 if not result == [1,2,0]: markError('order2index 2 failed.')
-result = cdms.avariable.order2index(al, '...20')
+result = cdms2.avariable.order2index(al, '...20')
 if not result == [1,2,0]: markError('order2index 3 failed.')
-result = cdms.avariable.order2index(al, '1...')
+result = cdms2.avariable.order2index(al, '1...')
 if not result == [1,0,2]: markError('order2index 4 failed.')
 s3 = s2(order='yxt', squeeze=1)
 if not s3.getOrder() == 'yxt': markError('subRegion/order failed')
 s2 = v.subRegion(latitude=(-42.,42.,'ccn'),longitude=(90.,270.,'con'),time=(366.,731.,'ccn'), order='yxt')
-if not MA.allequal(s3,s2): markError('subRegion/order 2 failed')
+if not numpy.ma.allequal(s3,s2): markError('subRegion/order 2 failed')
 
 # subRegion - time types
 s2 = v.subRegion(latitude=(-42.,42.,'ccn'),longitude=(90.,270.,'con'),time=('2001-1','2002-1','ccn'))
-if not MA.allequal(vp,s2): markError('subRegion/time string failed')
+if not numpy.ma.allequal(vp,s2): markError('subRegion/time string failed')
 
 t1 = cdtime.comptime(2001)
 #
@@ -113,7 +113,7 @@ t1 = cdtime.comptime(2001)
 #
 t2 = cdtime.comptime(2002)
 s2 = v.subRegion(latitude=(-42.,42.,'ccn'),longitude=(90.,270.,'con'),time=(t1,t2))
-if not MA.allequal(vp,s2): markError('subRegion/component-time failed')
+if not numpy.ma.allequal(vp,s2): markError('subRegion/component-time failed')
 
 t1 = cdtime.comptime(2003)
 t2 = cdtime.comptime(2004)
@@ -126,7 +126,7 @@ except:
 t1 = cdtime.reltime(0,"years since 2001")
 t2 = cdtime.reltime(1,"year since 2001")
 s2 = v.subRegion(latitude=(-42.,42.,'ccn'),longitude=(90.,270.,'con'),time=(t1,t2,'ccn'))
-if not MA.allequal(vp,s2): markError('subRegion/component-time failed')
+if not numpy.ma.allequal(vp,s2): markError('subRegion/component-time failed')
 
 try:
     xx = v.subRegion('2000')
@@ -135,11 +135,11 @@ except:
 
 # subSlice - positional
 s3 = v.subSlice(2,(4,12),Ellipsis,squeeze=0)
-if not MA.allequal(wp,s3): markError('subSlice/positional failed')
+if not numpy.ma.allequal(wp,s3): markError('subSlice/positional failed')
 
 # subSlice - keyword
 s3 = v.subSlice(latitude=(4,12),time=2)
-if not MA.allequal(wp,s3): markError('subSlice/keyword failed')
+if not numpy.ma.allequal(wp,s3): markError('subSlice/keyword failed')
 
 # subSlice - squeeze
 try:
@@ -154,13 +154,13 @@ except:
      markError('required selector failed')
 try:
     s3 = v.subSlice(required='lumbarsupport')
-except cdms.CDMSError:
+except cdms2.CDMSError:
     pass
 except:
     markError('required selector failed')
 try:
     s3 = v.subSlice(required='lumbarsupport')
-except cdms.SelectorError:
+except cdms2.SelectorError:
     pass
 except:
     markError('required selector failed')

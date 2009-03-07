@@ -255,9 +255,19 @@ int pp_var_is_time_max(const PPhdr *hdr)
   return (hdr->LBPROC & 8192);
 }
 
+int pp_var_is_time_variance(const PPhdr *hdr)
+{
+  return (hdr->LBPROC & 65536);
+}
+
 int pp_var_is_zonal_mean(const PPhdr *hdr)
 {
   return (hdr->LBPROC & 64);
+}
+
+int pp_var_is_vertical_mean(const PPhdr *hdr)
+{
+  return (hdr->LBPROC & 2048);
 }
 
 /* sometimes a variable is included but which has some

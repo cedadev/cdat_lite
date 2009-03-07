@@ -1,4 +1,5 @@
-from cdms.selectors import SelectorComponent
+# Adapted for numpy/ma/cdms2 by convertcdms.py
+from cdms2.selectors import SelectorComponent
 class DomainComponent(SelectorComponent):
     '''gets a domain, and by default adjusts the bounds to the domain
     or if exact is set to 0 or None gets all the domain that has
@@ -36,7 +37,7 @@ class DomainComponent(SelectorComponent):
     def specify(self,slab,axes,specification,confined_by,aux):
         ''' First part: confine the slab within a Domain wide enough to do the exact in post'''
         import string,copy
-        from MA import minimum,maximum
+        from numpy.ma import minimum,maximum
         # myconfined is for later, we can't confine a dimension twice with an argument plus a keyword or 2 keywords
         myconfined=[None]*len(axes)
         self.aux=copy.copy(specification)
@@ -149,7 +150,7 @@ class DomainComponent(SelectorComponent):
     
     def post(self,fetched,slab,axes,specifications,confined_by,aux,axismap):
         ''' Post processing retouches the bounds and later will deal with the mask'''
-        import cdms
+        import cdms2 as cdms
         fetched=cdms.createVariable(fetched,copy=1)
         faxes=fetched.getAxisList()
         if self.exact:
@@ -215,12 +216,12 @@ class DomainComponent(SelectorComponent):
                         ax.designateLatitude()
                     faxes[axismap[i]]=ax
 
-        a=cdms.createVariable(fetched.filled(),mask=fetched.mask(),axes=faxes)
+        a=cdms.createVariable(fetched.filled(),mask=fetched.mask,axes=faxes)
         return a                        
                         
 def domain(*args, **kargs):
     '''construct the selector'''
-    import cdms
+    import cdms2 as cdms
     a=cdms.selectors.Selector(DomainComponent(*args,**kargs))
     return a
 

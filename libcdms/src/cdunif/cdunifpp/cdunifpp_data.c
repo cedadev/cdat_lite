@@ -49,6 +49,9 @@ int pp_data_copy(const CuFile *file, const CuVar *var, const long start[], const
   if (ndim > 0) {
     CKP(   size=pp_malloc(ndim*sizeof(int),heaplist)   );
     CKP(   indices=pp_malloc(ndim*sizeof(int),heaplist)   );
+  } else {
+    size = indices = NULL;
+    /* won't use these NULL values - only to suppress compiler warnings about uninitialised */
   }
 
   for (idim=0; idim<ndim; idim++) {
@@ -132,8 +135,8 @@ int pp_data_read(const CuFile *file, const CuVar *var, const long start[], const
   ppvar = var->internp;
   heaplist = ppfile->heaplist;
 
-  startrec = ppvar->startrec;
-  endrec = ppvar->endrec;
+  startrec = ppvar->firstrecno;
+  endrec = ppvar->lastrecno;
   nrec = endrec - startrec + 1;
 
   CKP(   size=pp_malloc(ndim*sizeof(int),heaplist)   );

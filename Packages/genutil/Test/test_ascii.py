@@ -22,7 +22,7 @@ for i in range(3):
     if ax.id!='axis':
         print 'genutil.ASCII: Error axis on variables should be named axis, looks like the axis setup failed!\nCheck axis=True option'
         sys.exit(1)
-    if ax[:]!=[1.,2.,2.13,4.]:
+    if (ax[:]!=[1.,2.,2.13,4.]).any():
         print ax[:]
         print 'genutil.ASCII: Error axis on variables have wrong values, looks like the axis setup failed!\nCheck axis=True option'
         sys.exit(1)

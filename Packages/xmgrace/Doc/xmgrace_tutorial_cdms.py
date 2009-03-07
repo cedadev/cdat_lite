@@ -1,3 +1,4 @@
+# Adapted for numpy/ma/cdms2 by convertcdms.py
 # Tutorial for xmgrace module, using Numeric only
 
 # it is recomended to run it usibng parser.py or just read it
@@ -27,8 +28,8 @@ if not os.path.exists(TESTDIR+'model.ctl'):
 TEMPDIR = './'
 
 # quick example for using xmgrace
-import cdms
-from cdms import MV
+import cdms2 as cdms
+from cdms2 import MV2 as MV
 
 # preliminary work, retrieve data and make a zonal mean, 2 different year
 f=cdms.open(TESTDIR+'tas.rnl_ncep.nc')

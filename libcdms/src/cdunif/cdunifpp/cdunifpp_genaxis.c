@@ -376,6 +376,7 @@ PPdata *pp_genaxis_getCF(const PPgenaxis *axis, char *yname, char *yunits, PPlis
       name="z%d_surface";
       break;
     case other_lev_type:
+    default:
       longname = "level coordinate of unspecified type";
       name="z%d_level";
       break;      
@@ -393,8 +394,9 @@ PPdata *pp_genaxis_getCF(const PPgenaxis *axis, char *yname, char *yunits, PPlis
       calatt="360_day";
       break;
     case model:
+    default:
       calatt="none";
-      break;
+      break;      
     }
     
     CKI(   pp_add_string_att(atts,"calendar",
@@ -409,7 +411,8 @@ PPdata *pp_genaxis_getCF(const PPgenaxis *axis, char *yname, char *yunits, PPlis
 
   case xsaxis_type:
     getxsaxis(axis,xsaxis);
-    switch (xsaxis->axiscode) {
+    iaxis = xsaxis->axiscode;
+    switch (iaxis) {
     case 11:
       name="longitude%d";
       units="degrees_east";
@@ -424,6 +427,7 @@ PPdata *pp_genaxis_getCF(const PPgenaxis *axis, char *yname, char *yunits, PPlis
       standardname="latitude";
       break;
     default:
+      CKP(   name = pp_malloc(15, heaplist)   );
       sprintf(name,"axis%d%%d",iaxis);
       units="tobefilled";
     }
@@ -550,7 +554,6 @@ int pp_zaxis_set(PPgenaxis *axis, const PPhdr *hdr) {
 }
 
 PPlevtype pp_level_type(const PPhdr *hdr) {
-  Fint lbvc;
 
   if (hdr->LBUSER5 != 0 
       && hdr->LBUSER5 != int_missing_data)
@@ -602,13 +605,15 @@ PPlevtype pp_level_type(const PPhdr *hdr) {
  * Return values are analogous to pp_taxis_add, see below.
  */
 
-int pp_zaxis_add(PPgenaxis *axis, /*const*/ PPlevel *lev, int *index_return, PPlist *heaplist) {
+int pp_zaxis_add(PPgenaxis *axis, const PPlevel *lev, int *index_return, PPlist *heaplist) {
+  PPlevel *levcopy;
   PPzaxis *zaxis;
 
   checkaxistype(axis,zaxis_type);
   getzaxis(axis,zaxis);
 
-  return pp_list_add_or_find(zaxis->values, &lev, pp_compare_levels, 0, pp_free, index_return, heaplist);
+  CKP(   levcopy = pp_dup(lev, sizeof(PPlevel), heaplist)   );
+  return pp_list_add_or_find(zaxis->values, &levcopy, pp_compare_levels, 0, pp_free, index_return, heaplist);
 
   ERRBLKI("pp_zaxis_add");
 }
@@ -656,13 +661,19 @@ int pp_taxis_set(PPgenaxis *axis, const PPhdr *hdrp) {
  * NOTE: the return value of this function may be tested with the CKI() macro.
  * Do not add non-error cases with negative return values.
  */
-int pp_taxis_add(PPgenaxis *axis, /*const*/ PPtime *time, int *index_return, PPlist *heaplist) {
+int pp_taxis_add(PPgenaxis *axis, const PPtime *time, int *index_return, PPlist *heaplist) {  
+  PPtime *timecopy;
   PPtaxis *taxis;
 
   checkaxistype(axis,taxis_type);
   gettaxis(axis,taxis);
 
-  return pp_list_add_or_find(taxis->values, &time, pp_compare_times, 0, pp_free, index_return, heaplist);
+  /* use a copy of the input PPtime structure; this is because the input is supposed to be const,
+   * and specifically is something that we might not want to free when we do pp_list_free.
+   */
+
+  CKP(   timecopy = pp_dup(time, sizeof(PPtime), heaplist)   );
+  return pp_list_add_or_find(taxis->values, &timecopy, pp_compare_times, 0, pp_free, index_return, heaplist);
 
   ERRBLKI("pp_taxis_add");
 }
@@ -742,39 +753,62 @@ int pp_set_horizontal_axes(PPrec *recp, PPfile *ppfile,
   ERRBLKI("pp_set_horizontal_axes");
 }
 
-PPgenaxis *pp_var_get_taxis(PPfieldvar *fvar) {
+/* Some helper functions for pp_var_get_*axis  -- can make them public if there is
+ * ever a need to call them from other routines
+ */
+
+static int pp_genaxis_is_regaxis_of_type(const PPgenaxis *axis, PPaxisregtype type) {
+  PPregaxis *regaxis;
+  if (axis->gentype != regaxis_type)
+    return 0;
+  getregaxis(axis, regaxis);
+  return (regaxis->type == type);
+}
+
+static int pp_genaxis_is_x(const PPgenaxis *axis) {
+  return pp_genaxis_is_regaxis_of_type(axis, xregtype);
+}
+
+static int pp_genaxis_is_y(const PPgenaxis *axis) {
+  return pp_genaxis_is_regaxis_of_type(axis, yregtype);
+}
+
+static int pp_genaxis_is_z(const PPgenaxis *axis) {
+  return axis->gentype == zaxis_type;
+}
+
+static int pp_genaxis_is_t(const PPgenaxis *axis) {
+  return axis->gentype == taxis_type;
+}
+
+static PPgenaxis *pp_get_axis_satisfying(const PPlist *axes, int (*test)(const PPgenaxis *)) {
   PPlisthandle handle;
-  PPlist *axes;
   PPgenaxis *axis;
 
-  axes=fvar->axes;
-  pp_list_startwalk(axes,&handle);
-  while ((axis=pp_list_walk(&handle,0)) != NULL) {
-    if (axis->gentype == taxis_type) {
+  pp_list_startwalk(axes, &handle);
+  while ((axis = pp_list_walk(&handle, 0)) != NULL)
+    if (test(axis))
       return axis;
-    }
-  }
   return NULL;
 }
 
-PPgenaxis *pp_var_get_xaxis(PPfieldvar *fvar) {
-  PPlisthandle handle;
-  PPlist *axes;
-  PPregaxis *xaxis;
-  PPgenaxis *axis;
+/* ---------------------- */
 
-  axes=fvar->axes;
-  pp_list_startwalk(axes,&handle);
-  while ((axis=pp_list_walk(&handle,0)) != NULL) {
-    if (axis->gentype == regaxis_type) {
-      getregaxis(axis,xaxis);
-      if (xaxis->type == xregtype) {
-	return axis;
-      }
-    }
-  }
-  return NULL;
+PPgenaxis *pp_get_xaxis_from_list(const PPlist *axes) {
+  return pp_get_axis_satisfying(axes, pp_genaxis_is_x);
 }
+PPgenaxis *pp_get_yaxis_from_list(const PPlist *axes) {
+  return pp_get_axis_satisfying(axes, pp_genaxis_is_y);
+}
+PPgenaxis *pp_get_zaxis_from_list(const PPlist *axes) {
+  return pp_get_axis_satisfying(axes, pp_genaxis_is_z);
+}
+PPgenaxis *pp_get_taxis_from_list(const PPlist *axes) {
+  return pp_get_axis_satisfying(axes, pp_genaxis_is_t);
+}
+
+/* ---------------------- */
+
 
 /* these routines should probably go somewhere else */
 
@@ -811,13 +845,17 @@ int pp_lev_set(PPlevel *lev, PPhdr *hdrp) {
     break;
 
   default:
-    lev->values.misc.level = hdrp->BLEV;
+    if (hdrp->BLEV == 0 
+	&& hdrp->LBLEV != 9999
+	&& hdrp->LBLEV != 8888) 
+      lev->values.misc.level = hdrp->LBLEV;
+    else
+      lev->values.misc.level = hdrp->BLEV;
 #ifdef BDY_LEVS
     lev->values.misc.ubdy_level = hdrp->BULEV;
     lev->values.misc.lbdy_level = hdrp->BRLEV;
 #endif
     break;
-
   }
   return 0;
 }

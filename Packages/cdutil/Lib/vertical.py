@@ -1,6 +1,8 @@
+# Adapted for numpy/ma/cdms2 by convertcdms.py
+import MV2
 import genutil
-import MV
-import cdms
+import cdms2
+import numpy
 def reconstructPressureFromHybrid(ps,A,B,Po):
     """
     Reconstruct the Pressure field on sigma levels, from the surface pressure
@@ -68,45 +70,45 @@ def linearInterpolation(A,I,levels=[100000, 92500, 85000, 70000, 60000, 50000, 4
     sh=list(I.shape)
     nsigma=sh[0] #number of sigma levels
     sh[0]=nlev
-    t=MV.zeros(sh,typecode=MV.Float32)
+    t=MV2.zeros(sh,typecode=MV2.float32)
     sh2=I[0].shape
     prev=-1
     for ilev in range(nlev): # loop through pressure levels
         if status is not None:
             prev=genutil.statusbar(ilev,nlev-1.,prev)
         lev=levels[ilev] # get value for the level
-        Iabv=MV.ones(sh2,MV.Float)
+        Iabv=MV2.ones(sh2,MV2.float)
         Aabv=-1*Iabv # Array on sigma level Above
         Abel=-1*Iabv # Array on sigma level Below
         Ibel=-1*Iabv # Pressure on sigma level Below
         Iabv=-1*Iabv # Pressure on sigma level Above
-        Ieq=MV.masked_equal(Iabv,-1) # Area where Pressure == levels
+        Ieq=MV2.masked_equal(Iabv,-1) # Area where Pressure == levels
         for i in range(1,nsigma): # loop from second sigma level to last one
-            a = MV.greater_equal(I[i],  lev) # Where is the pressure greater than lev
-            b =    MV.less_equal(I[i-1],lev) # Where is the pressure less than lev
+            a = MV2.greater_equal(I[i],  lev) # Where is the pressure greater than lev
+            b =    MV2.less_equal(I[i-1],lev) # Where is the pressure less than lev
             # Now looks if the pressure level is in between the 2 sigma levels
             # If yes, sets Iabv, Ibel and Aabv, Abel
-            a=MV.logical_and(a,b)
-            Iabv=MV.where(a,I[i],Iabv) # Pressure on sigma level Above
-            Aabv=MV.where(a,A[i],Aabv) # Array on sigma level Above
-            Ibel=MV.where(a,I[i-1],Ibel) # Pressure on sigma level Below
-            Abel=MV.where(a,A[i-1],Abel) # Array on sigma level Below
-            Ieq= MV.where(MV.equal(I[i],lev),A[i],Ieq)
+            a=MV2.logical_and(a,b)
+            Iabv=MV2.where(a,I[i],Iabv) # Pressure on sigma level Above
+            Aabv=MV2.where(a,A[i],Aabv) # Array on sigma level Above
+            Ibel=MV2.where(a,I[i-1],Ibel) # Pressure on sigma level Below
+            Abel=MV2.where(a,A[i-1],Abel) # Array on sigma level Below
+            Ieq= MV2.where(MV2.equal(I[i],lev),A[i],Ieq)
 
-        val=MV.masked_where(MV.equal(Ibel,-1.),lev) # set to missing value if no data below lev if there is
+        val=MV2.masked_where(MV2.equal(Ibel,-1.),numpy.ones(Ibel.shape)*lev) # set to missing value if no data below lev if there is
         
         tl=(val-Ibel)/(Iabv-Ibel)*(Aabv-Abel)+Abel # Interpolation
-        if Ieq.mask() is None:
+        if ((Ieq.mask is None) or (Ieq.mask is MV22.nomask)):
             tl=Ieq
         else:
-            tl=MV.where(1-Ieq.mask(),Ieq,tl)
-        t[ilev]=tl.astype(MV.Float32)
+            tl=MV2.where(1-Ieq.mask,Ieq,tl)
+        t[ilev]=tl.astype(MV2.float32)
 
     ax=A.getAxisList()
-    autobnds=cdms.getAutoBounds()
-    cdms.setAutoBounds('off')
-    lvl=cdms.createAxis(MV.array(levels).filled())
-    cdms.setAutoBounds(autobnds)
+    autobnds=cdms2.getAutoBounds()
+    cdms2.setAutoBounds('off')
+    lvl=cdms2.createAxis(MV2.array(levels).filled())
+    cdms2.setAutoBounds(autobnds)
     try:
         lvl.units=I.units
     except:
@@ -156,45 +158,45 @@ def logLinearInterpolation(A,P,levels=[100000, 92500, 85000, 70000, 60000, 50000
     sh=list(P.shape)
     nsigma=sh[0] #number of sigma levels
     sh[0]=nlev
-    t=MV.zeros(sh,typecode=MV.Float32)
+    t=MV2.zeros(sh,typecode=MV2.float32)
     sh2=P[0].shape
     prev=-1
     for ilev in range(nlev): # loop through pressure levels
         if status is not None:
             prev=genutil.statusbar(ilev,nlev-1.,prev)
         lev=levels[ilev] # get value for the level
-        Pabv=MV.ones(sh2,MV.Float)
+        Pabv=MV2.ones(sh2,MV2.float)
         Aabv=-1*Pabv # Array on sigma level Above
         Abel=-1*Pabv # Array on sigma level Below
         Pbel=-1*Pabv # Pressure on sigma level Below
         Pabv=-1*Pabv # Pressure on sigma level Above
-        Peq=MV.masked_equal(Pabv,-1) # Area where Pressure == levels
+        Peq=MV2.masked_equal(Pabv,-1) # Area where Pressure == levels
         for i in range(1,nsigma): # loop from second sigma level to last one
-            a=MV.greater_equal(P[i],  lev) # Where is the pressure greater than lev
-            b=   MV.less_equal(P[i-1],lev) # Where is the pressure less than lev
+            a=MV2.greater_equal(P[i],  lev) # Where is the pressure greater than lev
+            b=   MV2.less_equal(P[i-1],lev) # Where is the pressure less than lev
             # Now looks if the pressure level is in between the 2 sigma levels
             # If yes, sets Pabv, Pbel and Aabv, Abel
-            a=MV.logical_and(a,b)
-            Pabv=MV.where(a,P[i],Pabv) # Pressure on sigma level Above
-            Aabv=MV.where(a,A[i],Aabv) # Array on sigma level Above
-            Pbel=MV.where(a,P[i-1],Pbel) # Pressure on sigma level Below
-            Abel=MV.where(a,A[i-1],Abel) # Array on sigma level Below
-            Peq= MV.where(MV.equal(P[i],lev),A[i],Peq)
+            a=MV2.logical_and(a,b)
+            Pabv=MV2.where(a,P[i],Pabv) # Pressure on sigma level Above
+            Aabv=MV2.where(a,A[i],Aabv) # Array on sigma level Above
+            Pbel=MV2.where(a,P[i-1],Pbel) # Pressure on sigma level Below
+            Abel=MV2.where(a,A[i-1],Abel) # Array on sigma level Below
+            Peq= MV2.where(MV2.equal(P[i],lev),A[i],Peq)
 
-        val=MV.masked_where(MV.equal(Pbel,-1.),lev) # set to missing value if no data below lev if there is
+        val=MV2.masked_where(MV2.equal(Pbel,-1),numpy.ones(Pbel.shape)*lev) # set to missing value if no data below lev if there is
         
-        tl=MV.log(val/Pbel)/MV.log(Pabv/Pbel)*(Aabv-Abel)+Abel # Interpolation
-        if Peq.mask() is None:
+        tl=MV2.log(val/Pbel)/MV2.log(Pabv/Pbel)*(Aabv-Abel)+Abel # Interpolation
+        if ((Peq.mask is None) or (Peq.mask is MV2.nomask)):
             tl=Peq
         else:
-            tl=MV.where(1-Peq.mask(),Peq,tl)
-        t[ilev]=tl.astype(MV.Float32)
+            tl=MV2.where(1-Peq.mask,Peq,tl)
+        t[ilev]=tl.astype(MV2.float32)
         
     ax=A.getAxisList()
-    autobnds=cdms.getAutoBounds()
-    cdms.setAutoBounds('off')
-    lvl=cdms.createAxis(MV.array(levels).filled())
-    cdms.setAutoBounds(autobnds)
+    autobnds=cdms2.getAutoBounds()
+    cdms2.setAutoBounds('off')
+    lvl=cdms2.createAxis(MV2.array(levels).filled())
+    cdms2.setAutoBounds(autobnds)
     try:
         lvl.units=P.units
     except:

@@ -1,29 +1,29 @@
+## Automatically adapted for numpy.oldnumeric Aug 01, 2007 by 
+
 #!/usr/bin/env python
 
-import cdms,MA, Numeric, os, sys
+import cdms2, numpy, os, sys
 from markError import NTIME,NLAT,NLON,x,clearError,markError,reportError
-
 from markError import get_sample_data_dir
-
 clearError()
 
-print 'Test 4: CdmsFile [MA] read/write ...',
+print 'Test 4: CdmsFile [numpy.ma] read/write ...',
 
-time = MA.array([0.0,366.0,731.0])
-lat = MA.arange(NLAT)*(180./(NLAT-1))-90.
-lon = MA.arange(NLON)*(360.0/NLON)
+time = numpy.ma.array([0.0,366.0,731.0])
+lat = numpy.ma.arange(NLAT)*(180./(NLAT-1))-90.
+lon = numpy.ma.arange(NLON)*(360.0/NLON)
 timestr = ['2000','2001','2002']
 u = x[0]
 
-f = cdms.createDataset('readwrite.nc')
-h = cdms.open(os.path.join(get_sample_data_dir(),'readonly.nc'))
-tobj = f.createAxis('time',MA.array([time[1]]))
+f = cdms2.createDataset('readwrite.nc')
+h = cdms2.open(os.path.join(get_sample_data_dir(),'readonly.nc'))
+tobj = f.createAxis('time',numpy.ma.array([time[1]]))
 tobj.units = 'days since 2000-1-1'
 latobj = f.createAxis('latitude',lat)
 latobj.units = 'degrees_north'
 lonobj = f.createAxis('longitude',lon)
 lonobj.units = 'degrees_east'
-var = f.createVariable('u',MA.Float,(tobj,latobj,lonobj))
+var = f.createVariable('u',numpy.float,(tobj,latobj,lonobj))
 var.units = 'm/s'
 try:
     var[:]=u[0]
@@ -42,12 +42,12 @@ varattrs = var.attributes
 var.long_name = 'Test variable'
 var.param = -99
 if var.param!=-99: markError("R/W param: "+var.param)
-if (not varattrs.has_key('param')) or varattrs['param']!=-99: markError("Updating variable attributes")
+if (not var.attributes.has_key('param')) or var.attributes['param']!=-99: markError("Updating variable attributes")
 
 fattrs = f.attributes
 f.Conventions = 'CF1.0'
 if f.Conventions!='CF1.0': markError("Cache global attribute")
-if (not fattrs.has_key('Conventions')) or fattrs['Conventions']!='CF1.0': markError("Updating global attributes")
+if (not f.attributes.has_key('Conventions')) or f.attributes['Conventions']!='CF1.0': markError("Updating global attributes")
 
 latattrs = latobj.attributes
 latobj[NLAT/2] = 6.5
@@ -55,17 +55,17 @@ if latobj[NLAT/2]==lat[NLAT/2]: markError("Rewrite axis: %f"%vlat[NLAT/2])
 lat[NLAT/2] = 6.5
 latobj.standard_name = 'Latitude'
 if latobj.standard_name!='Latitude': markError("Cache axis attribute")
-if (not latattrs.has_key('standard_name')) or latattrs['standard_name']!='Latitude': markError("Updating axis attributes")
+if (not latobj.attributes.has_key('standard_name')) or latobj.attributes['standard_name']!='Latitude': markError("Updating axis attributes")
 
 
-p0 = f.createVariable('p0',MA.Float,())
+p0 = f.createVariable('p0',numpy.float,())
 p0.assignValue(-99.9)
 
-varmasked = f.createVariable('umasked',cdms.CdDouble,(tobj,latobj,lonobj),fill_value=-99.9)
+varmasked = f.createVariable('umasked',cdms2.CdDouble,(tobj,latobj,lonobj),fill_value=-99.9)
 umask = x[0,0]
 umask.set_fill_value(-111.1)
-umask[4:12,8:24] = MA.masked
-fmask = MA.getmask(umask)
+umask[4:12,8:24] = numpy.ma.masked
+fmask = numpy.ma.getmask(umask)
 varmasked[:] = umask
 varmasked.units = "m/s"
 varmasked.long_name = "Eastward wind velocity"
@@ -74,14 +74,14 @@ uh = h.variables['u']
 u2 = f.createVariableCopy(uh,'u2')
 u2[:]=uh[:]
 
-# Create an array with the special MA.masked value, write
+# Create an array with the special numpy.ma.masked value, write
 x0 = x[0,0]
-um2 = MA.where(MA.less(x0,128.0),MA.masked,x0)
+um2 = numpy.ma.where(numpy.ma.less(x0,128.0),numpy.ma.masked,x0)
 f.write(um2, id='u3')
 
 f.close()
 #-----------------------------------------------------------
-g = cdms.open('readwrite.nc','r+')
+g = cdms2.open('readwrite.nc','r+')
 try:
     con = '<not read>'
     con = g.Conventions
@@ -117,22 +117,22 @@ if val!=-99.9: markError("Read 0-D variable: %f"%val)
 gvarm = g.variables['umasked']
 gmaskm = gvarm.subSlice(squeeze=1)
 if gmaskm.getMissing()!=-99.9: markError("Reading missing_value",gmaskm.getMissing())
-mask = MA.getmask(gmaskm)
-if mask is None or not MA.allequal(mask,fmask): markError("Reading mask",mask)
+mask = numpy.ma.getmask(gmaskm)
+if mask is None or not numpy.ma.allequal(mask,fmask): markError("Reading mask",mask)
 
-newlat = MA.array(vlat[:])
+newlat = numpy.ma.array(vlat[:])
 vlat.assignValue(newlat)
 
 grid = gvarm.getGrid()
 grid.setMask(mask)
 m = grid.getMask()
-if not MA.allequal(m,mask): markError("Get/set grid mask")
+if not numpy.ma.allequal(m,mask): markError("Get/set grid mask")
 
 u3 = g.variables['u3']
 lon = u3.getAxis(1)
 lon.designateLongitude()
 b = lon.getBounds()
-if type(b)!=Numeric.ArrayType: markError("Bounds type is not Numeric")
+if type(b)!=numpy.ndarray: markError("Bounds type is not numpy")
 
 g.close()
 reportError()

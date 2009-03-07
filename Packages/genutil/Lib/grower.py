@@ -1,5 +1,7 @@
+# Adapted for numpy/ma/cdms2 by convertcdms.py
+# Adapted for numpy/ma/cdms2 by convertcdms.py
 import string
-import cdms
+import cdms2 as cdms
 
 def grower(x, y, singleton=0):
     """
@@ -76,7 +78,7 @@ def grower(x, y, singleton=0):
                               ') you specified to grow only singleton dims, exiting'
                     xsh=list(x.shape)
                     xsh.insert(0,len(ax))
-                    x=cdms.MV.resize(x,xsh)
+                    x=cdms.MV2.resize(x,xsh)
                     newaxes.insert(0,ax)
                     x.setAxisList(newaxes)
     xorder=x.getOrder(ids=1)
@@ -108,7 +110,7 @@ def grower(x, y, singleton=0):
                                   ') you specified to grow only singleton dims, exiting'
                     ysh=list(y.shape)
                     ysh.insert(0,len(ax))
-                    y=cdms.MV.resize(y,ysh)
+                    y=cdms.MV2.resize(y,ysh)
                     newaxes.insert(0,ax)
                     y.setAxisList(newaxes)
     # Figure out the string to reorder x and y

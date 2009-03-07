@@ -1,8 +1,9 @@
+# Adapted for numpy/ma/cdms2 by convertcdms.py
 import string
 import types
-import Numeric
-import MA
-import cdms
+import numpy
+import numpy.ma
+import cdms2
 import os
 import cdutil
 
@@ -23,7 +24,7 @@ def checkListNumbers(self,name,value):
     return value
     
 def setSlab(self,name,value):
-    if isinstance (value,Numeric.ArrayType ) or MA.isMA(value):
+    if isinstance (value,numpy.ndarray ) or numpy.ma.isMA(value):
         self.data=value
         return ('data',value)
     elif type(value) == types.StringType:
@@ -53,7 +54,7 @@ def  setDataSetGrid(self,name,value):
         self.grid.grid=value
     
 def setGrid(self,name,value):
-    if isinstance(value,cdms.grid.AbstractGrid):
+    if isinstance(value,cdms2.grid.AbstractGrid):
         return value
     elif value is None:
         self.var=None
@@ -66,7 +67,7 @@ def setGrid(self,name,value):
         raise ValueError, name+" must be a grid object or None"
         
 def setSlabOnly(self,name,value):
-    if isinstance (value,Numeric.ArrayType ) or MA.isMA(value):
+    if isinstance (value,numpy.ndarray ) or numpy.ma.isMA(value):
         return value
     elif type(value) == types.NoneType:
         return value
@@ -84,10 +85,10 @@ def getSlab(self,name):
     if times_type == 'indices':
         times=slice(times[0],times[1])
         
-    if isinstance (value,Numeric.ArrayType ) or MA.isMA(value):
+    if isinstance (value,numpy.ndarray ) or numpy.ma.isMA(value):
         return value
     elif type(value)==types.StringType:
-        f=cdms.open(value)
+        f=cdms2.open(value)
         if not times is None:
             v=f(self.var,time=times)
         else:

@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 
 import cdutil,os,sys
-ref = os.path.join(sys.prefix,'sample_data','tas_dnm-95a.xml')
+ref = os.path.join(cdutil.__path__[0],'..','..','..','..','sample_data','tas_dnm-95a.xml')
 # Reference
 Ref=cdutil.VariableConditioner(ref)
 Ref.var='tas'
 Ref.id='JONES'# optional
 # Test
-tst = os.path.join(sys.prefix,'sample_data','tas_ccsr-95a.xml')
+tst = os.path.join(cdutil.__path__[0],'..','..','..','..','sample_data','tas_ccsr-95a.xml')
 Tst=cdutil.VariableConditioner(tst)
 Tst.var='tas'
 Tst.id='NCEP' #optional

@@ -5,8 +5,8 @@ AC_INIT(src)
 PC_OS
 
 dnl Checks for programs.
-PC_PROG_CC
-PC_PROG_FC
+AC_PROG_CC
+AC_PROG_FC
 AC_PROG_RANLIB
 AC_PROG_INSTALL
 
@@ -184,7 +184,7 @@ fi
 dnl
 dnl DAP requires additional libraries
 dnl
-DAP_LIB_OPTIONS="netcdf"
+dnl DAP_LIB_OPTIONS="netcdf -lhdf5_hl -lhdf5 -lm -lz"
 
 if test "X$ENABLE_DAP" = "Xyes"; then
 dnl   case "${OS}$OS_MAJOR" in
@@ -196,30 +196,25 @@ dnl                DAP_LIB_OPTIONS="nc-dap -ldap -lstdc++ -lcurl -lz -lssl -lpth
 dnl                ;;
 dnl   esac
       AC_ARG_WITH([nclib], [--with-nclib=DIR        libnetcdf.a is in DIR (default [NCLIB])],[NCLIB=$withval])
-      DAP_LIB_OPTIONS="nc-dap "`${NCLIB}/../bin/ncdap-config --libs`
+      NC_LIB_OPTIONS="nc-dap "`${NCLIB}/../bin/ncdap-config --libs`
 dnl   PC_CHECK_ARG_LIB(DAPLIB,/usr/local/lib,[daplib],$DAP_LIB_OPTIONS,SDstart,DAPOPTS,dap,libnc-dap.a, dnl
 dnl   [--with-dap=DIR       libnc-dap.a is in DIR (default [DAPLIB])])
-fi
+else
+ dnl ----------------------------------------------------------------------
+ AC_ARG_WITH([hdf5lib], [--with-hdf5lib=DIR        libhdf5.a is in DIR (default [HDF5LIB])],[HDF5LIB=$withval])
 
-
-dnl ----------------------------------------------------------------------
-case "${OS}$OS_MAJOR" in
+ case "${OS}$OS_MAJOR" in
 	sunos5*)
-		NC_LIB_OPTIONS=$DAP_LIB_OPTIONS" -lnsl -lm"
-  		;;
-  	irix6*)
-		NC_LIB_OPTIONS=$DAP_LIB_OPTIONS" -n32"
+		NC_LIB_OPTIONS="netcdf -L$HDF5LIB -lhdf5_hl -lhdf5 -lnsl -lm"
   		;;
   	linux*)
-		NC_LIB_OPTIONS=$DAP_LIB_OPTIONS" -lm"
-  		;;
-  	Windows_NT*)
-		NC_LIB_OPTIONS=$DAP_LIB_OPTIONS" -lm"
+		NC_LIB_OPTIONS="netcdf -L$HDF5LIB -lhdf5_hl -lhdf5 -lm -lz"
   		;;
   	*)
-		NC_LIB_OPTIONS=$DAP_LIB_OPTIONS
+		NC_LIB_OPTIONS="netcdf -L$HDF5LIB -lhdf5_hl -lhdf5 -lm -lz"
   		;;
-esac
+  esac
+fi
 PC_CHECK_ARG_LIB(NCLIB,/usr/local/lib,[nclib],$NC_LIB_OPTIONS,ncopen,NCOPTS,netcdf,libnetcdf.a, dnl
   [--with-nclib=DIR        libnetcdf.a is in DIR (default [NCLIB])])
 dnl ----------------------------------------------------------------------
@@ -284,6 +279,9 @@ dnl	PC_ENSURE(CPPFLAGS, -DBYTESWAP -DAbsoftUNIXFortran -D__linux_absoft) dnl
 	PC_ENSURE(CPPFLAGS, -DCRAY) dnl
 dnl	GRADS_IEEE2CRAY_OBJECT=ieee2cray.o
 	;;
+    darwin*)
+    	GRADS_BYTEORDER=0
+        ;;
 esac
 
 AC_SUBST(GRADS_BYTEORDER)dnl

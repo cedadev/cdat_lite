@@ -14,11 +14,90 @@ from glob import glob
 from setuptools import setup, Extension
 from distutils.command.build_ext import build_ext as build_ext_orig
 from distutils.cmd import Command
+import distutils.ccompiler
 
+import numpy
 
 class ConfigError(Exception):
     """Configuration failed."""
     pass
+
+
+def _findNetcdf():
+    """Find NetCDF libraries installed on the system or prompt the user.
+    
+    Various heuristics are tried to find the NetCDF installation.
+    """
+    
+    prefix = None
+    inc_dir = None
+    lib_dir = None
+
+    def findLib(prefix):
+        if prefix is None:
+            return None
+        libs = ['lib']
+        if hasattr(sys, 'lib'):
+            libs.append(sys.lib)
+
+        for lib in libs:
+            print 'Looking for NetCDF library in %s/%s ...' % (prefix, lib),
+            if os.path.exists('%s/%s/libnetcdf.a' % (prefix, lib)):
+                print 'yes'
+                return '%s/%s' % (prefix, lib)
+            else:
+                print 'no'
+
+    def findInclude(prefix):
+        if prefix is None:
+            return None
+        print 'Looking for NetCDF include in %s/include ...' % prefix,
+        if os.path.exists('%s/include/netcdf.h' % prefix):
+            print 'yes'
+            return '%s/include' % prefix
+        else:
+            print 'no'
+
+    prefixes = ['/usr', '/usr/local',
+                os.environ.get('HOME'), os.environ.get('NETCDF_HOME')]
+
+    # Try finding a common NetCDF prefix
+    found = False
+    for p in prefixes:
+        lib = findLib(p)
+        include = findInclude(p)
+        if lib and include:
+            found = True
+            break
+    else:
+        # Try looking for ncdump
+        for ex_p in os.environ['PATH'].split(':'):
+            if os.path.exists('%s/ncdump' % ex_p):
+                updir = os.path.dirname(ex_p.rstrip('/'))
+                lib = findLib(updir)
+                include = findInclude(updir)
+                if lib and include:
+                    found = True
+                    break
+
+    if not found:
+        print '''===================================================
+NetCDF installation not found.
+        
+Please enter the NetCDF installation directory below or set the NETCDF_HOME
+environment variable and re-run setup.py
+
+Enter NetCDF installation prefix:''',
+        prefix = raw_input()
+        lib = findLib(prefix)
+        include = findInclude(prefix)
+        if not (lib and include):
+            raise SystemExit
+
+    return include, lib
+
+netcdf_incdir, netcdf_libdir = _findNetcdf()
+
 
 
 def makeExtension(name, package_dir=None, sources=None,
@@ -26,14 +105,19 @@ def makeExtension(name, package_dir=None, sources=None,
     """Convenience function for building extensions from the Packages directory.
     """
 
+    if include_dirs is None:
+        include_dirs = []
+    if library_dirs is None:
+        library_dirs = []
+
     if not package_dir:
         package_dir = name
     if not sources:
         sources = glob('Packages/%s/Src/*.c' % package_dir)
-    if not include_dirs:
-        include_dirs = ['Packages/%s/Include' % package_dir]
-    if not library_dirs:
-        library_dirs = ['Packages/%s/Lib' % package_dir]
+
+    include_dirs += ['Packages/%s/Include' % package_dir, netcdf_incdir,
+                     numpy.get_include()]
+    library_dirs += ['Packages/%s/Lib' % package_dir, netcdf_libdir]
 
     e = Extension(name, sources,
                   include_dirs=include_dirs,
@@ -58,12 +142,11 @@ class build_ext(build_ext_orig):
         self.build_base = self.distribution.command_obj['build'].build_base
         self.build_lib = self.distribution.command_obj['build'].build_lib
 
-        self.netcdf_incdir, self.netcdf_libdir = self._findNetcdf()
-
         # Option attributes
-        self.include_dirs += [self.findNumericHeaders(), self.netcdf_incdir,
-                              'libcdms/include']
-        self.library_dirs += [self.netcdf_libdir, 'libcdms/lib']
+        #self.include_dirs += [self.findNumericHeaders(), self.netcdf_incdir,
+        #                      'libcdms/include']
+        self.include_dirs += [numpy.get_include(), 'libcdms/include']
+        self.library_dirs += [netcdf_libdir, 'libcdms/lib']
         self.libraries += ['cdms', 'netcdf']
 
     def run(self):
@@ -71,59 +154,6 @@ class build_ext(build_ext_orig):
         self._buildLibcdms()
 
         build_ext_orig.run(self)
-
-    def _findNetcdf(self):
-        """Find NetCDF libraries installed on the system or prompt the user.
-
-        Various heuristics are tried to find the NetCDF installation.
-        """
-
-        prefix = None
-        inc_dir = None
-        lib_dir = None
-
-        def isPrefix(prefix):
-            if prefix is None:
-                return False
-            print ('Looking for NetCDF installation in %s ...' % prefix),
-            if (os.path.exists('%s/lib/libnetcdf.a' % prefix) and 
-                os.path.exists('%s/include/netcdf.h' % prefix)):
-                print 'yes'
-                return True
-            else:
-                print 'no'
-                return False
-
-        prefixes = ['/usr', '/usr/local',
-                    os.environ.get('HOME'), os.environ.get('NETCDF_HOME')]
-
-        # Try finding a common NetCDF prefix
-        for p in prefixes:
-            if isPrefix(p):
-                prefix = p
-                break
-        else:
-            # Try looking for ncdump
-            for ex_p in os.environ['PATH'].split(':'):
-                if os.path.exists('%s/ncdump' % ex_p):
-                    updir = os.path.dirname(ex_p.rstrip('/'))
-                    if isPrefix(updir):
-                        prefix = updir
-                        break
-
-        if not prefix:
-            print '''===================================================
-NetCDF installation not found.
-
-Please enter the NetCDF installation directory below or set the NETCDF_HOME
-environment variable and re-run setup.py
-
-Enter NetCDF installation prefix:''',
-            prefix = raw_input()
-            if not isPrefix(prefix):
-                raise SystemExit
-
-        return '%s/include' % prefix, '%s/lib' % prefix
 
     def _linkFiles(self, files, destDir):
         for file in files:
@@ -136,14 +166,19 @@ Enter NetCDF installation prefix:''',
     def _buildLibcdms(self):
         """Build the libcdms library.
         """
-        if os.path.exists('cdat_lite/clib/lib/libcdms.a'):
-            return
+        #if os.path.exists('cdat_lite/clib/lib/libcdms.a'):
+        #    return
+
+        if self.compiler:
+            cc = self.compiler
+        else:
+            cc = distutils.ccompiler.new_compiler().compiler[0]
 
         if not os.path.exists('libcdms/Makefile'):
             self._system('cd libcdms ; '
-                         'CFLAGS="-fPIC" ./configure --disable-drs --disable-hdf --disable-dods '
+                         'CFLAGS="-fPIC" CC=%s ./configure --disable-drs --disable-hdf --disable-dods '
                          '--disable-ql --with-ncinc=%s --with-ncincf=%s --with-nclib=%s'
-                         % (self.netcdf_incdir, self.netcdf_incdir, self.netcdf_libdir))
+                         % (cc, netcdf_incdir, netcdf_incdir, netcdf_libdir))
 
         self._system('cd libcdms ; make db_util ; make cdunif')
 

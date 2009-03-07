@@ -1,20 +1,19 @@
+## Automatically adapted for numpy.oldnumeric Aug 01, 2007 by 
+
 #!/usr/bin/env python
 
 # Test dataset I/O
 
 print 'Test 1: Dataset I/O ... ',
 
-import cdms,MA,string,os,sys
-from cdms.variable import WriteNotImplemented
-from cdms.avariable import NotImplemented
+import cdms2,numpy,string,os,sys
+from cdms2.variable import WriteNotImplemented
+from cdms2.avariable import NotImplemented
 from markError import NTIME,NLAT,NLON,x,clearError,markError,reportError
-
 from markError import get_sample_data_dir
-
 clearError()
 
-
-f = cdms.open(os.path.join(get_sample_data_dir(),'test.xml'))
+f = cdms2.open(os.path.join(get_sample_data_dir(),'test.xml'))
 if f.id!='test': markError('File id',f.id)
 u = f.variables['u']
 try:
@@ -31,16 +30,16 @@ fullu = u[:]
 
 uslice = u[:,4:12,8:24]
 comp = x[0,:,4:12,8:24]
-if not MA.allequal(uslice,comp): markError("Slice read")
+if not numpy.ma.allequal(uslice,comp): markError("Slice read")
 
 u2 = u[0:-1]
 comp2 = x[0,0:-1]
-if not MA.allequal(u2,comp2): markError("Negative index slice",u2.shape)
+if not numpy.ma.allequal(u2,comp2): markError("Negative index slice",u2.shape)
 
 if u.units!='m/s': markError("Attribute read: "+u.units)
 
 t = u.getTime()
-if not MA.allequal(t[:],[   0., 366., 731.,]): markError("Axis read")
+if not numpy.ma.allequal(t[:],[   0., 366., 731.,]): markError("Axis read")
 if not t.units=="days since 2000-1-1": markError("Axis attribute: "+t.units)
 if t.isVirtual(): markError("virtual axis test")
 
@@ -48,7 +47,7 @@ grid = u.getGrid()
 if grid.id!='grid_16x32': markError("Grid id",grid.id)
 
 # Test extended write
-out = cdms.open("testExtendWrite.nc",'w')
+out = cdms2.open("testExtendWrite.nc",'w')
 v = f.variables['v']
 u0 = u.subSlice(0)
 u1 = u.subSlice(1)
@@ -69,7 +68,7 @@ try:
 except:
     markError("Read with negative stride")
 uoutar = uout.getSlice()
-if not MA.allclose(u[:], uoutar): markError("Extended write")
+if not numpy.ma.allclose(u[:], uoutar): markError("Extended write")
 
 out.close()
 
@@ -81,11 +80,10 @@ except:
 
 f.close()
 
-
 try:
     badslice = u[:,4:12,8:24]
     badu = u.getValue()
-except cdms.CDMSError, e:
+except cdms2.CDMSError, e:
     i = string.find(str(e),"Cannot read from closed")
     if i!=0: markError("Handling read from closed file")
 else:
@@ -93,7 +91,7 @@ else:
 
 try:
     badu = u.getValue()
-except cdms.CDMSError, e:
+except cdms2.CDMSError, e:
     i = string.find(str(e),"Cannot read from closed")
     if i!=0: markError("Handling read from closed file")
 else:
@@ -101,7 +99,7 @@ else:
 
 try:
     badslice = u[0:1]
-except cdms.CDMSError, e:
+except cdms2.CDMSError, e:
     i = string.find(str(e),"Cannot read from closed")
     if i!=0: markError("Handling read from closed file")
 else:
@@ -109,21 +107,21 @@ else:
 
 try:
     u[0,0,0]=-99.9
-except cdms.CDMSError, e:
+except cdms2.CDMSError, e:
     if str(e)!=WriteNotImplemented: markError("Handling write to dataset")
 else:
     markError("Handling write to dataset")
     
 try:
     u[0:1]=-99.9
-except cdms.CDMSError, e:
+except cdms2.CDMSError, e:
     if str(e)!=WriteNotImplemented: markError("Handling write to dataset")
 else:
     markError("Handling write to dataset")
     
 try:
     u.assignValue(fullu)
-except cdms.CDMSError, e:
+except cdms2.CDMSError, e:
     i = string.find(str(e),NotImplemented)
     if i!=0: markError("Handling write to dataset")
 else:

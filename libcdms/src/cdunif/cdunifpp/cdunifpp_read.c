@@ -126,9 +126,11 @@ int pp_swapbytes(void *ptr, int bytes, int nchunk)
     }
     break;
   default:
-    pp_switch_bug("pp_swap_bytes");
+    pp_switch_bug("pp_swap_bytes"); ERR;
   }
   return 0;
+
+  ERRBLKI("pp_swapbytes");
 }
 
 /*---------------------------------------------------------*/
@@ -879,7 +881,7 @@ int pp_evaluate_lengths (const PPhdr *hdrp, const PPfile *ppfile, long *datalenp
 	0;
       break;
     default:
-      pp_switch_bug("pp_evaluate_lengths");
+      pp_switch_bug("pp_evaluate_lengths"); ERR;
     }
   }
   else {
@@ -901,7 +903,7 @@ int pp_evaluate_lengths (const PPhdr *hdrp, const PPfile *ppfile, long *datalenp
       disklen = (hdrp->LBNREC != 0) ? hdrp->LBNREC : hdrp->LBLREC;
       break;
     default:
-      pp_switch_bug("pp_evaluate_lengths");
+      pp_switch_bug("pp_evaluate_lengths");  ERR;
     }
   }
 
@@ -912,6 +914,8 @@ int pp_evaluate_lengths (const PPhdr *hdrp, const PPfile *ppfile, long *datalenp
     *disklenp = disklen;
 
   return 0;
+
+  ERRBLKI("pp_evaluate_lengths");
 }
 
 PPdata *pp_read_extradata(const PPrec *rec, const PPfile *ppfile, PPlist *heaplist, const PPextravec extra) {

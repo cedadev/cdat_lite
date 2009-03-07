@@ -1,10 +1,11 @@
+# Adapted for numpy/ma/cdms2 by convertcdms.py
 """This is a set of tests for averager - which can be used to calculate area weighted averages."""
-import cdms, MV, Numeric, MA, cdtime, os, sys
+import cdms2, MV2, numpy, numpy.ma, cdtime, os, sys
 from cdutil import area_weights, averager, AveragerError
-cdms.setAutoBounds('on')
-f=cdms.open(os.path.join(sys.prefix,'sample_data','tas_ukmo_con.nc'))
+cdms2.setAutoBounds('on')
+f=cdms2.open(os.path.join(cdms2.__path__[0],'..','..','..','..','sample_data','tas_ukmo_con.nc'))
 x = f('tas')
-
+ans = averager(x, axis='yt', weights = ['weighted','equal'], combinewts=1)
 try:
     ans = averager(x, axis='yt', weights = ['weighted','equal'], combinewts=1)
 except AveragerError:
@@ -13,17 +14,17 @@ except AveragerError:
 
 
 try:
-    ans2 = averager(x, axis='yx', weights = [Numeric.ones(len(x.getLatitude()), Numeric.Float), 'generate'], combinewts=1)
+    ans2 = averager(x, axis='yx', weights = [numpy.ones(len(x.getLatitude()), numpy.float), 'generate'], combinewts=1)
 except AveragerError:
     print 'Failure! 2'
 
 
-b = Numeric.array([1.,2.3, 3.0, 4.3])
-b1 = MA.array(b)
+b = numpy.array([1.,2.3, 3.0, 4.3])
+b1 = numpy.ma.array(b)
 
 try:
-    b2,w = MA.average(b1, weights=None, returned=1)
-    assert MA.allclose(b2, 2.65)
+    b2,w = numpy.ma.average(b1, weights=None, returned=1)
+    assert numpy.ma.allclose(b2, 2.65)
 except AveragerError :
     print 'Failure! 3'
 
@@ -32,42 +33,42 @@ try:
     b2b,wb = averager(b1, weights=None, returned=1)
 except AveragerError:
     print 'Failure! 4'
-assert MA.allclose(b2b, 2.65)
-assert MA.allclose(wb, w)
+assert numpy.ma.allclose(b2b, 2.65)
+assert numpy.ma.allclose(wb, w)
 
 
 try:
     ba = averager(b)
 except AveragerError:
     print 'failure! 5'
-assert MA.allclose(ba, 2.65)
+assert numpy.ma.allclose(ba, 2.65)
 
 
 try:
     bs = averager(b, action='sum')
 except AveragerError:
     print 'Failure! 6'
-assert MA.allclose(bs, 10.6)
+assert numpy.ma.allclose(bs, 10.6)
 
 
 
-b = Numeric.ones((3,4,5))
+b = numpy.ones((3,4,5))
 try:
     c = averager(b, weights=None, axis=[0,2], action='sum')
 except AveragerError:
     print 'Failure! 7'
-assert MA.allclose(c, [ 15., 15., 15., 15.,])
-assert isinstance(c, Numeric.ArrayType)
+assert numpy.ma.allclose(c, [ 15., 15., 15., 15.,])
+assert isinstance(c, numpy.ndarray)
 
 try:
-    c2 = averager(b, weights=Numeric.ones(b.shape), axis=[0,2], action='sum')
+    c2 = averager(b, weights=numpy.ones(b.shape), axis=[0,2], action='sum')
     print 'Averager did not fail as it should have'
 except AveragerError:
     pass
 
 
 try:
-    c2 = averager(b, weights=Numeric.ones((3,5,4)), axis=[0,2], action='sum')
+    c2 = averager(b, weights=numpy.ones((3,5,4)), axis=[0,2], action='sum')
     print 'Averager did not fail as it should have'
 except AveragerError:
     pass
@@ -81,49 +82,49 @@ except AveragerError:
 
 
 
-d0MA = MA.average(b, weights=MA.array([1.,2.,3.,4.,5.]), axis=2)
+d0MA = numpy.ma.average(b, weights=numpy.ma.array([1.,2.,3.,4.,5.]), axis=2)
 try:
-    d0 = averager(b, weights=MA.array([1.,2.,3.,4.,5.]), axis=2) 
+    d0 = averager(b, weights=numpy.ma.array([1.,2.,3.,4.,5.]), axis=2) 
 except AveragerError:
     print 'Failure! 11'
-assert MA.allclose(d0, d0MA)
+assert numpy.ma.allclose(d0, d0MA)
 
 
 try:
-    d1 = averager(b, weights=MA.array([1.,2.,3.,4.,5.]), axis=2, action='sum')
+    d1 = averager(b, weights=numpy.ma.array([1.,2.,3.,4.,5.]), axis=2, action='sum')
 except AveragerError:
     print 'Failure! 12'
 
 try:
-    d2 = averager(b, weights=[MA.array([1.,2.,3.]),'equal'], axis=[0,2], action='sum')
+    d2 = averager(b, weights=[numpy.ma.array([1.,2.,3.]),'equal'], axis=[0,2], action='sum')
 except  AveragerError:
     print 'Failure! 13'
 
 
-b = Numeric.array([1.,2.3, 3.0, 4.3])
+b = numpy.array([1.,2.3, 3.0, 4.3])
 try:
     bs = averager(b, action='sum')
 except AveragerError:
     print 'Failure! 14'
-assert MA.allclose(bs, 10.6)  
+assert numpy.ma.allclose(bs, 10.6)  
 
 
-b = Numeric.ones((3,4,5))
+b = numpy.ones((3,4,5))
 try:
     c = averager(b, weights=None, axis=[0,2], action='sum')
 except AveragerError:
     print 'Failure! 15'
-assert MA.allclose(c, [ 15., 15., 15., 15.,])
-assert isinstance(c, Numeric.ArrayType)
+assert numpy.ma.allclose(c, [ 15., 15., 15., 15.,])
+assert isinstance(c, numpy.ndarray)
 
 
 
-b1 = MA.array(b)
+b1 = numpy.ma.array(b)
 try:
     c1 = averager(b1, weights=None, axis=[0,2])
 except AveragerError:
     print 'Failure! 16'
-assert MA.isMaskedArray(c1)
+assert isinstance(c1,numpy.ndarray)
 
 
 
@@ -193,7 +194,7 @@ except AveragerError:
 
 
 try:
-    a = Numeric.array(range(10), Numeric.Float)
+    a = numpy.array(range(10), numpy.float)
     averager(x, axis='tx', weight=['equal', a]) 
     raise RuntimeError, "Test did not fail as it should."
 except AveragerError:
@@ -203,7 +204,7 @@ except AveragerError:
 
 
 try:
-    b=MA.array(a)
+    b=numpy.ma.array(a)
     averager(x, axis='tx', weight=['equal', b]) 
     raise RuntimeError, "Test did not fail as it should."
 except AveragerError:
@@ -275,7 +276,7 @@ except AveragerError:
 #
 # The values in this file were calculated using old routines in CDAT2.4
 #
-fcheck = cdms.open(os.path.join(sys.prefix,'sample_data','tas_gavg_rnl_ecm.nc'))
+fcheck = cdms2.open(os.path.join(cdms2.__path__[0],'..','..','..','..','sample_data','tas_gavg_rnl_ecm.nc'))
 start = cdtime.componenttime(1979, 1, 1)
 end =  cdtime.componenttime(1979, 12, 1)
 correct = fcheck('tas', time=(start, end))
@@ -284,7 +285,7 @@ correct = fcheck('tas', time=(start, end))
 # The source for the averages in the above file is the raw data in the file below.
 # The difference in units (degrees C and degrees K) should be the obvious answer.
 #
-f = cdms.open(os.path.join(sys.prefix,'sample_data','tas_ecm_1979.nc'))
+f = cdms2.open(os.path.join(cdms2.__path__[0],'..','..','..','..','sample_data','tas_ecm_1979.nc'))
 
 #
 # I can invoke averager by passing the f('tas') as the variable instead of first extracting
@@ -308,10 +309,10 @@ result1 = averager(x, axis='xy', weight=['generate', 'generate'])
 
 #
 # Second Method: Create the area weights and
-#                convert it into an MV before passing to the averager.
+#                convert it into an MV2 before passing to the averager.
 #
 aw = area_weights(x)
-aw = cdms.createVariable(aw, axes=x.getAxisList())
+aw = cdms2.createVariable(aw, axes=x.getAxisList())
 result2 = averager(x, axis='x(lat)', weight=aw)
 
 
@@ -331,20 +332,20 @@ result3 = averager(temp_step, axis='y', weight=temp_wts)
 # Now check the 3 results....... they will be different by 273.0 (Centigrade to Kelvin)
 #
 diff1 = result1 - correct
-assert MV.allclose(273.0, diff1)
+assert MV2.allclose(273.0, diff1)
 diff2 = result2 - correct
-assert MV.allclose(273.0, diff1)
+assert MV2.allclose(273.0, diff1)
 diff3 = result3 - correct
-assert MV.allclose(273.0, diff1)
-assert MV.allclose(result1, result2)
-assert MV.allclose(result2, result3)
+assert MV2.allclose(273.0, diff1)
+assert MV2.allclose(result1, result2)
+assert MV2.allclose(result2, result3)
 
 #
 # This test is to verify the action='sum' option
 #
-tasm_file = os.path.join(sys.prefix,'sample_data','tas_cru_1979.nc')
+tasm_file = os.path.join(cdms2.__path__[0],'..','..','..','..','sample_data','tas_cru_1979.nc')
 
-ftasm = cdms.open(tasm_file)
+ftasm = cdms2.open(tasm_file)
 xtasm = ftasm('tas')
 ywt = area_weights(xtasm)
 #
@@ -361,16 +362,16 @@ except AveragerError:
 #
 xavg_1 = averager(xtasm, axis = 'xy', weights = ywt)
 xavg_2 = averager(xtasm, axis = 'xy', weights = ['generate', 'generate', 'generate'], combinewts=1)
-assert MV.allclose(xavg_1, xavg_2)
+assert MV2.allclose(xavg_1, xavg_2)
 
 #
 # Real world Averager Test #2
 #
-newf = cdms.open(os.path.join(sys.prefix,'sample_data','clt.nc'))
+newf = cdms2.open(os.path.join(cdms2.__path__[0],'..','..','..','..','sample_data','clt.nc'))
 u = newf('u')
 u2 = averager(u, axis='1')
 u3 = averager(u, axis='(plev)')
-assert MA.allclose(u2, u3)
+assert numpy.ma.allclose(u2, u3)
 
 
 u4 = averager(u, axis='1x', weight=area_weights(u))
@@ -388,11 +389,11 @@ clt_ave = averager(clt, axis='txy')
 clt1a = averager(clt, axis='t')
 clt2a = averager(clt1a, axis='x')
 clt3a = averager(clt2a, axis='y')
-assert MA.allclose(clt_ave, clt3a)
+assert numpy.ma.allclose(clt_ave, clt3a)
 
 # Now try the sum
 clt_sum = averager(clt, axis='txy', action='sum')
 clt1 = averager(clt, axis='t', action='sum')
 clt2 = averager(clt1, axis='x', action='sum')
 clt3 = averager(clt2, axis='y', action='sum')
-assert MA.allclose(clt_sum, clt3)
+assert numpy.ma.allclose(clt_sum, clt3)

@@ -1,7 +1,8 @@
-import cdms,vcs,cdutil.continent_fill,sys,os
+# Adapted for numpy/ma/cdms2 by convertcdms.py
+import cdms2,vcs,cdutil.continent_fill,sys,os
 import vcs.test.support
 bg= vcs.test.support
-f = cdms.open(os.path.join(sys.prefix,'sample_data','clt.nc'))
+f = cdms2.open(os.path.join(cdms2.__path__[0],'..','..','..','..','sample_data','clt.nc'))
 s=f('clt')
 x=vcs.init()
 #x.ratio=0
@@ -22,7 +23,7 @@ vcs.test.support.check_plot(x)
 if '--extended' not in sys.argv:
      print '\n************* PARTIAL TEST *****************'
      print 'FOR COMPLETE TEST OF THIS MODULE USE '
-     print '   -F (--full) or -E (--extended) option'
+     print '   --extended'
      print '************* PARTIAL TEST *****************\n'
      sys.exit()
 

@@ -1,7 +1,11 @@
-import MA,cdms,Numeric,MV
+# Adapted for numpy/ma/cdms2 by convertcdms.py
+import MV2
+import numpy.ma,cdms2
 #import genutil
 from grower import grower
-import arrayindexing,array_indexing
+import numpy
+
+import arrayindexing,array_indexing_emulate as array_indexing
 
 class StatisticsError (Exception):
     def __init__ (self, args=None):
@@ -21,12 +25,12 @@ def __gammln1(x):
     stp=2.5066282746310005
     y=x*1.
     tmp=x+5.5
-    tmp=(x+0.5)*MA.log(tmp)-tmp
+    tmp=(x+0.5)*numpy.ma.log(tmp)-tmp
     ser=1.000000000190015
     for j in range(6):
         y=y+1.
         ser=ser+cof[j]/y
-    return tmp+MA.log(stp*ser/x)
+    return tmp+numpy.ma.log(stp*ser/x)
 
 def __betacf1(a,b,x):
     MAXIT=100
@@ -37,39 +41,39 @@ def __betacf1(a,b,x):
     qam=a-1.
     c=1.
     d=1.-qab*x/qap
-    d=MA.where(MA.less(MA.absolute(d),FPMIN),FPMIN,d)
+    d=numpy.ma.where(numpy.ma.less(numpy.ma.absolute(d),FPMIN),FPMIN,d)
     d=1./d
     h=d
     for m in range(1,MAXIT+1):
         m2=2*m
         aa=m*(b-m)*x/((qam+m2)*(a+m2))
         d=1.+aa*d
-        d=MA.where(MA.less(MA.absolute(d),FPMIN),FPMIN,d)
+        d=numpy.ma.where(numpy.ma.less(numpy.ma.absolute(d),FPMIN),FPMIN,d)
         c=1.+aa/c
-        c=MA.where(MA.less(MA.absolute(c),FPMIN),FPMIN,c)
+        c=numpy.ma.where(numpy.ma.less(numpy.ma.absolute(c),FPMIN),FPMIN,c)
         d=1./d
         h=h*d*c
         aa=-(a+m)*(qab+m)*x/((a+m2)*(qap+m2))
         d=1.+aa*d
-        d=MA.where(MA.less(MA.absolute(d),FPMIN),FPMIN,d)
+        d=numpy.ma.where(numpy.ma.less(numpy.ma.absolute(d),FPMIN),FPMIN,d)
         c=1.+aa/c
-        c=MA.where(MA.less(MA.absolute(c),FPMIN),FPMIN,c)
+        c=numpy.ma.where(numpy.ma.less(numpy.ma.absolute(c),FPMIN),FPMIN,c)
         d=1./d
         delet=d*c
         h=h*delet
-        if MA.allclose(delet,1.,atol=EPS,rtol=0.):
+        if numpy.ma.allclose(delet,numpy.ones(delet.shape),atol=EPS,rtol=0.):
             break
-    h=MA.masked_where(MA.greater(MA.absolute(delet-1.),EPS),h)
+    h=numpy.ma.masked_where(numpy.ma.greater(numpy.ma.absolute(delet-1.),EPS),h)
     return h
     
 def __betai1(a, b, x):
-    bt=MA.logical_or(MA.equal(x,0.),MA.equal(x,1.))
-    bt=MA.where(bt,0.,MA.exp(
+    bt=numpy.ma.logical_or(numpy.ma.equal(x,0.),numpy.ma.equal(x,1.))
+    bt=numpy.ma.where(bt,0.,numpy.ma.exp(
         __gammln1(a+b)-__gammln1(a)-__gammln1(b)+\
-        a*MA.log(x)+b*MA.log(1.-x)
+        a*numpy.ma.log(x)+b*numpy.ma.log(1.-x)
         )
                 )
-    return MA.where(MA.less(x,(a+1.)/(a+b+2.)),
+    return numpy.ma.where(numpy.ma.less(x,(a+1.)/(a+b+2.)),
                     bt*__betacf1(a,b,x)/a,
                     1.-bt*__betacf1(b,a,1.-x)/b)
 
@@ -96,8 +100,8 @@ def __probnd1(x):
     term1 = ((((b1 * t) + (b2 * (t ** 2))) + \
               (b3 * (t ** 3))) + (b4 * (t ** 4))) + \
               (b5 * (t ** 5))
-    z = (1.0 / MA.sqrt(2.0 * MA.pi)) * MA.exp(- ((x * x) / 2.0))
-    return MA.where(MA.greater(x,7.),0.,z * term1)
+    z = (1.0 / numpy.ma.sqrt(2.0 * numpy.pi)) * numpy.ma.exp(- ((x * x) / 2.0))
+    return numpy.ma.where(numpy.ma.greater(x,7.),0.,z * term1)
     
 
 def __probf1(y, n1, n2, id):
@@ -132,15 +136,15 @@ c     EXTERNALS:
 c
 c     function PROBND1 - Calculates the area under a normal curve.
 """
-    ly=MA.less(y,1.)
-    x=MA.where(ly,1./MA.array(y),y)
-    n=MA.where(ly,n1,n2)
-    n1=MA.where(ly,n2,n1)
-    n2=MA.where(ly,n,n2)
+    ly=numpy.ma.less(y,1.)
+    x=numpy.ma.where(ly,1./numpy.ma.array(y),y)
+    n=numpy.ma.where(ly,n1,n2)
+    n1=numpy.ma.where(ly,n2,n1)
+    n2=numpy.ma.where(ly,n,n2)
     term1 = 2.0 / (9.0 * n1)
     term2 = 2.0 / (9.0 * n2)
     term3 = ((x ** (1.0 / 3.0)) * (1.0 - term2)) - (1.0 - term1)
-    term4 = MA.sqrt(term1 + ((x ** (2.0 / 3.0)) * term2))
+    term4 = numpy.ma.sqrt(term1 + ((x ** (2.0 / 3.0)) * term2))
     term5 = term3 / term4
     probf1 = id * __probnd1(term5)
         
@@ -148,7 +152,7 @@ c     function PROBND1 - Calculates the area under a normal curve.
     #     close to 1.0 and the degrees of freedom are small. Therefore,
     #     insure that the probabilities returned cannot exceed 1.0.
     
-    return MA.where(MA.greater(probf1,1.),1.,probf1)
+    return numpy.ma.where(numpy.ma.greater(probf1,1.),1.,probf1)
 
 
 def __geometricmean(x):
@@ -159,12 +163,12 @@ def __geometricmean(x):
     Usage:
     geo=__geometricmean(x)
     """
-    g=MA.exp(MA.sum(MA.log(x)/MA.count(x,0),0))
+    g=numpy.ma.exp(numpy.ma.sum(numpy.ma.log(x)/numpy.ma.count(x,axis=0),0))
     # Now check for negative values
-    t=MA.sum(MA.less(x,0.),0)
-    g=MA.masked_where(MA.greater(t,0.),g)
-    t=MA.sum(MA.equal(x,0),0)
-    g=MA.where(MA.greater(t,0),0.,g)
+    t=numpy.ma.sum(numpy.ma.less(x,0.),axis=0)
+    g=numpy.ma.masked_where(numpy.ma.greater(t,0.),g)
+    t=numpy.ma.sum(numpy.ma.equal(x,0),axis=0)
+    g=numpy.ma.where(numpy.ma.greater(t,0),0.,g)
     return g
     
    
@@ -173,15 +177,15 @@ def _treat_missing(out,x,max_pct_missing=100.):
     # Max_pct_missing to missing data specified, calculate new mask
     # If fraction of data that is missing is more than the max_pct_missing allows mask point out
     """
-##     xmask=MA.less_equal((1. - max_pct_missing/100.),(MA.size(x,axis=0)-MA.count(x,axis=0))/float(MA.size(x,axis=0)))
-##     print 'X:',x.shape,MA.size(x,axis=0),MA.count(x,axis=0)
-    xmask = MA.less_equal((max_pct_missing/100.),(MA.size(x,axis=0)-MA.count(x,axis=0))/float(MA.size(x,axis=0)))
-    # MA.sum ignores missing_data, mask out results where amount of missing_data
+##     xmask=numpy.ma.less_equal((1. - max_pct_missing/100.),(numpy.ma.size(x,axis=0)-numpy.ma.count(x,axis=0))/float(numpy.ma.size(x,axis=0)))
+##     print 'X:',x.shape,numpy.ma.size(x,axis=0),numpy.ma.count(x,axis=0)
+    xmask = numpy.ma.less_equal((max_pct_missing/100.),(numpy.ma.size(x,axis=0)-numpy.ma.count(x,axis=0))/float(numpy.ma.size(x,axis=0)))
+    # numpy.ma.sum ignores missing_data, mask out results where amount of missing_data
     # is over the specified max_pct_missing
-##     inverse_mask=Numeric.choose(MA.getmaskarray(out),(1.0,0,0)) * xmask
-##     return MA.masked_where(Numeric.choose(inverse_mask,(1.0,0.0)),out)
+##     inverse_mask=numpy.choose(numpy.ma.getmaskarray(out),(1.0,0,0)) * xmask
+##     return numpy.ma.masked_where(numpy.choose(inverse_mask,(1.0,0.0)),out)
 ##     print 'TM:',xmask.shape,out.shape
-    return MA.masked_where(xmask,out)
+    return numpy.ma.masked_where(xmask,out)
     
 def __covariance(x,y,weights=None,centered=1,biased=1):
     """
@@ -195,23 +199,23 @@ def __covariance(x,y,weights=None,centered=1,biased=1):
         raise StatisticsError,'Error in covariance, you cannot have weights and unbiased together'
     
     if centered == 1:
-        xmean=MA.average(x,weights=weights)
-        ymean=MA.average(y,weights=weights)
+        xmean=numpy.ma.average(x,weights=weights, axis=0)
+        ymean=numpy.ma.average(y,weights=weights, axis=0)
         x=x-xmean
         y=y-ymean
         del(xmean)
         del(ymean)
     #
     if weights is None:
-        weights=MA.ones(x.shape,typecode=x.typecode())
-    if not x.mask() is None :
-        weights=MA.masked_where(x.mask(),weights)
-##     if not y.mask() is None :
-##         weights=MA.masked_where(y.mask(),weights)
+        weights=numpy.ma.ones(x.shape,dtype=x.dtype.char)
+    if not ((x.mask is None) or (x.mask is MV2.nomask)) :
+        weights=numpy.ma.masked_where(x.mask,weights)
+##     if not ((y.mask is None) or (y.mask is MV2.nomask)) :
+##         weights=numpy.ma.masked_where(y.mask,weights)
     if biased == 1:
-        cov = MA.sum(x*y*weights,0)/MA.sum(weights,0)
+        cov = numpy.ma.sum(x*y*weights,axis = 0)/numpy.ma.sum(weights,axis = 0)
     else:
-        cov = MA.sum(x*y)/(MA.count(x*y,0)-1)
+        cov = numpy.ma.sum(x*y, axis=0)/(numpy.ma.count(x*y,axis=0)-1)
 
     return cov
 
@@ -233,7 +237,7 @@ def __std(x,weights=None,centered=1,biased=1):
         Does the main computation for returning standard deviation. See 
         documentation of std() for details.
     """
-    return MA.sqrt(__variance(x,weights=weights,centered=centered,biased=biased))
+    return numpy.ma.sqrt(__variance(x,weights=weights,centered=centered,biased=biased))
 
 
 def __correlation(x,y,weights=None,centered=1,biased=1):
@@ -280,8 +284,8 @@ def __laggedcovariance(x,y,lag=1,centered=1,partial=1):
         
     
     if centered == 1 :
-        xmean=MA.average(x)
-        ymean=MA.average(y)
+        xmean=numpy.ma.average(x, axis=0)
+        ymean=numpy.ma.average(y, axis=0)
     else:
         xmean=0.
         ymean=0.
@@ -297,7 +301,7 @@ def __laggedcovariance(x,y,lag=1,centered=1,partial=1):
             tmp=x[lag:]*y[:-lag]
         else:
             tmp=x[:-lag]*y[lag:]
-    return MA.sum(tmp)/MA.count(x*y,0)
+    return numpy.ma.sum(tmp, axis=0)/numpy.ma.count(x*y,axis=0)
 
 def __laggedcorrelation(x,y,lag,centered=1,partial=1,biased=1):
     """
@@ -343,13 +347,13 @@ def __autocorrelation(x,lag,centered=1,partial=1):
         documentation of autocorrelation() for details.
     """
     if partial==1 and centered==1 and lag!=0:
-        mean1=MA.average(x[:-lag])
-        mean2=MA.average(x[lag:])
+        mean1=numpy.ma.average(x[:-lag], axis=0)
+        mean2=numpy.ma.average(x[lag:], axis=0)
         x1=x[:-lag]-mean1
         x2=x[lag:]-mean2
-        num=MA.sum(x1*x2)
-        den=MA.sum(MA.power(x1,2))*MA.sum(MA.power(x2,2))
-        return num/MA.sqrt(den)
+        num=numpy.ma.sum(x1*x2, axis=0)
+        den=numpy.ma.sum(numpy.ma.power(x1,2),axis=0)*numpy.ma.sum(numpy.ma.power(x2,2), axis=0)
+        return num/numpy.ma.sqrt(den)
     else:
         return __autocovariance(x,lag,centered=centered,partial=partial)/__autocovariance(x,0,centered=centered,partial=partial)
 
@@ -362,8 +366,8 @@ def __meanabsdiff(x,y,weights=None,centered=1):
         documentation of meanabsdiff() for details.
     """    
     if centered == 1 :
-        xmean=MA.average(x,weights=weights)
-        ymean=MA.average(y,weights=weights)
+        xmean=numpy.ma.average(x,weights=weights, axis=0)
+        ymean=numpy.ma.average(y,weights=weights, axis=0)
     else:
         xmean=0.
         ymean=0.
@@ -372,13 +376,13 @@ def __meanabsdiff(x,y,weights=None,centered=1):
     del(xmean)
     del(ymean)
     if weights is None:
-        weights=MA.ones(x.shape,typecode=x.typecode())
-    if not x.mask() is None :
-        weights=MA.masked_where(x.mask(),weights)
-    if not y.mask() is None :
-        weights=MA.masked_where(y.mask(),weights)
+        weights=numpy.ma.ones(x.shape,dtype=x.dtype.char)
+    if not ((x.mask is None) or (x.mask is MV2.nomask)) :
+        weights=numpy.ma.masked_where(x.mask,weights)
+    if not ((y.mask is None) or (y.mask is MV2.nomask)) :
+        weights=numpy.ma.masked_where(y.mask,weights)
         
-    return MA.sum(MA.absolute(x-y)*weights)/MA.sum(weights)
+    return numpy.ma.sum(numpy.ma.absolute(x-y)*weights,axis=0)/numpy.ma.sum(weights, axis=0)
                              
 
 def __linearregression(y,x,error=None,probability=None,noslope=None,nointercept=None):
@@ -393,12 +397,12 @@ def __linearregression(y,x,error=None,probability=None,noslope=None,nointercept=
     if not error is None:
         if error>3:
             raise StatisticsError,"Error in __linearregression, error must be None (0), 1, ,2 or 3"
-    xmean=MA.average(x)
-    ymean=MA.average(y)
+    xmean=numpy.ma.average(x, axis=0)
+    ymean=numpy.ma.average(y, axis=0)
     x=x-xmean
     y=y-ymean
-    xy=MA.sum(y*x)
-    xx=MA.sum(x*x)
+    xy=numpy.ma.sum(y*x, axis=0)
+    xx=numpy.ma.sum(x*x, axis=0)
     slope=xy/xx
     intercept=ymean-slope*xmean
     V=[]
@@ -410,16 +414,16 @@ def __linearregression(y,x,error=None,probability=None,noslope=None,nointercept=
         return V
     elif error==1:
         E=[]
-        n1=MA.count(y,0)
+        n1=numpy.ma.count(y,axis=0)
         # Unadjusted errors
-        res=(y+ymean)-(intercept+(x+xmean)*MA.resize(slope,MA.shape(y))) # x2
-        ssd=MA.sum(res*res)
+        res=(y+ymean)-(intercept+(x+xmean)*numpy.ma.resize(slope,numpy.ma.shape(y))) # x2
+        ssd=numpy.ma.sum(res*res, axis=0)
         amsd1=ssd/(n1-2.) # amsd1=ssd/idfd1
         if noslope is None or noslope==0:
-            E.append(MA.sqrt(amsd1/xx))
+            E.append(numpy.ma.sqrt(amsd1/xx))
         if nointercept is None or nointercept==0:
             s1=xmean*xmean/xx+1./n1
-            E.append(MA.sqrt(amsd1*s1))
+            E.append(numpy.ma.sqrt(amsd1*s1))
         if probability is None or probability==0:
             return V, E
         else:
@@ -427,7 +431,7 @@ def __linearregression(y,x,error=None,probability=None,noslope=None,nointercept=
             Pt2=[]
             Pf1=[]
             Pf2=[]
-            f=MA.sum(y*y)-ssd # ssr
+            f=numpy.ma.sum(y*y, axis=0)-ssd # ssr
             f=f/amsd1
             aa1 = n1 / 2.0
             if noslope is None or noslope==0:
@@ -448,9 +452,9 @@ def __linearregression(y,x,error=None,probability=None,noslope=None,nointercept=
     else:
         E=[]
         # Adjusted error from residual
-        n1=MA.count(y,0)
-        res=(y+ymean)-(intercept+MA.resize(slope,MA.shape(y))*(x+xmean)) # x2
-        ssd=MA.sum(res*res)
+        n1=numpy.ma.count(y,axis=0)
+        res=(y+ymean)-(intercept+numpy.ma.resize(slope,numpy.ma.shape(y))*(x+xmean)) # x2
+        ssd=numpy.ma.sum(res*res, axis=0)
         if error==2:
             ac=__autocorrelation(res,1,centered=1,partial=0)
             rdfd2 = 1.0 + ac
@@ -462,10 +466,10 @@ def __linearregression(y,x,error=None,probability=None,noslope=None,nointercept=
         rneff = n1 * rdfd2 # rneff 
         amsd2=ssd/(rneff -2.)   # ssd/rdfd2
         if noslope is None or noslope==0:
-            E.append(MA.sqrt(amsd2/xx))
+            E.append(numpy.ma.sqrt(amsd2/xx))
         if nointercept is None or nointercept==0:
             s1=xmean*xmean/xx+1./n1
-            E.append(MA.sqrt(amsd2*s1))
+            E.append(numpy.ma.sqrt(amsd2*s1))
         if probability is None or probability==0:
             return V, E
         else:
@@ -473,7 +477,7 @@ def __linearregression(y,x,error=None,probability=None,noslope=None,nointercept=
             Pt2=[]
             Pf1=[]
             Pf2=[]
-            f=MA.sum(y*y)-ssd # ssr = amsr
+            f=numpy.ma.sum(y*y, axis=0)-ssd # ssr = amsr
             amsd1=ssd/(n1-2.) # amsd1=ssd/idfd1
             f=f/amsd1 # amsr/ssd
             aa1 = n1 / 2.0
@@ -500,32 +504,32 @@ def __linearregression(y,x,error=None,probability=None,noslope=None,nointercept=
 def __makeweights(x,w,axes):
     """
     This function takes an array and weights options from Krishna\'s averager
-    and return an MA of the coresponding weights
+    and return an numpy.ma of the coresponding weights
     """
 
     # Now if weights is a list, uses Krishna's stuff to get the weights....
     import cdutil
     tmpaxes=axes
     if type(axes)==type(1): tmpaxes=str(axes)
-    # First make sure x and w have same dims if w is MV
-    if cdms.isVariable(w) and cdms.isVariable(x) and x.shape!=w.shape:
+    # First make sure x and w have same dims if w is MV2
+    if cdms2.isVariable(w) and cdms2.isVariable(x) and x.shape!=w.shape:
         x,w=grower(x,w)
     w=cdutil.__check_weightoptions(x, tmpaxes, w)
-    if not MA.isarray(w):
+    if not numpy.ma.isarray(w):
         # Ok Krishna returned a list of 1D arrays.... Let's put it together
         axs=x.getAxisList()
-        axes=cdms.order2index(axs,axes)[:len(cdms.orderparse(axes))]
+        axes=cdms2.order2index(axs,axes)[:len(cdms2.orderparse(axes))]
         endax=[]
         for i in range(len(axes)):
             if w[i]=='unweighted':
-                w[i]=MA.ones(len(axs[axes[i]]),typecode=x.typecode())
+                w[i]=numpy.ma.ones(len(axs[axes[i]]),dtype=x.dtype.char)
             if i==0:
                 wo=w[i]
                 endax.append(axs[axes[i]])
             else:
-                wo=wo[...,MA.NewAxis]*w[i]
+                wo=wo[...,None]*w[i]
                 endax.append(axs[axes[i]])
-        w=cdms.MV.array(wo)
+        w=cdms2.MV2.array(wo)
         w.setAxisList(endax)
 ##     else:
 ##         w.setAxisList(x.getAxisList())
@@ -533,35 +537,35 @@ def __makeweights(x,w,axes):
             
 def __checker(x,y,w,axes,smally=0):
     # Are the input Variables ?
-    xismv=cdms.isVariable(x)
-    yismv=cdms.isVariable(y)
+    xismv=cdms2.isVariable(x)
+    yismv=cdms2.isVariable(y)
     if y is None : yismv=1
-    wismv=cdms.isVariable(w)
+    wismv=cdms2.isVariable(w)
     if w is None : wismv=1
     ax=None
-    if not MA.isarray(x):
-        x=MA.array(x,copy=0)
-    if not MA.isarray(y) and not y is None:
-        y=MA.array(y,copy=0)
-    if not MA.isarray(w) and not w is None and not type(w)==type(''):
+    if not numpy.ma.isarray(x):
+        x=numpy.ma.array(x,copy=0)
+    if not numpy.ma.isarray(y) and not y is None:
+        y=numpy.ma.array(y,copy=0)
+    if not numpy.ma.isarray(w) and not w is None and not type(w)==type(''):
         if not type(w[0])==type(''):
-            w=MA.array(w,copy=0)
+            w=numpy.ma.array(w,copy=0)
         else:
             if not xismv:
-                raise StatisticsError,'Error if weights are a list then x must be an MV !!!'
+                raise StatisticsError,'Error if weights are a list then x must be an MV2 !!!'
             w=__makeweights(x,w,axes)
             wismv=1
     elif not w is None:
             if not xismv:
-                raise StatisticsError,'Error if weights are a list then x must be an MV !!!'
+                raise StatisticsError,'Error if weights are a list then x must be an MV2 !!!'
             w=__makeweights(x,w,axes)
             wismv=1
         
     if xismv * yismv * wismv !=1:
-        # We didn't pass all MVs shapes have to match (unless None)
+        # We didn't pass all MV2s shapes have to match (unless None)
         if smally==0:
-            if x.shape!=MA.shape(y) and not y is None:
-                raise StatisticsError,'Error x and y shape do not match !'+str(x.shape)+','+str(MA.shape(y))
+            if x.shape!=numpy.ma.shape(y) and not y is None:
+                raise StatisticsError,'Error x and y shape do not match !'+str(x.shape)+','+str(numpy.ma.shape(y))
         else:
             shy=list(y.shape)
             shy2=y.shape
@@ -576,19 +580,19 @@ def __checker(x,y,w,axes,smally=0):
                 myaxes=list(axes)
             for anaxis in myaxes[::-1]:
                 shy.insert(0,shx[anaxis])
-            y=MA.resize(y,shy)
+            y=numpy.ma.resize(y,shy)
             sh=range(len(x.shape))
             if axes!=0:
                 for i in range(len(myaxes)):
                     sh[myaxes[i]]=i
                     sh[i]=myaxes[i]
-                y=MA.transpose(y,sh)
-            if x.shape!=MA.shape(y) and not y is None:
+                y=numpy.ma.transpose(y,sh)
+            if x.shape!=numpy.ma.shape(y) and not y is None:
                 raise StatisticsError,'Error x and y shape do not match (y shouldbe 1D less than x) !'+str(x.shape)+','+str(shy2)+' Remember y must be 1D less than x'
-        if x.shape!=MA.shape(w) and not w is None:
-            raise StatisticsError,'Error x and weights shape do not match !'+str(x.shape)+','+str(MA.shape(w))+' ATTENTION if you are trynig to pass a list of 1D arrays for each dim, then x must be an MV !!!'
+        if x.shape!=numpy.ma.shape(w) and not w is None:
+            raise StatisticsError,'Error x and weights shape do not match !'+str(x.shape)+','+str(numpy.ma.shape(w))+' ATTENTION if you are trynig to pass a list of 1D arrays for each dim, then x must be an MV2 !!!'
         if type(axes)!=type([]) :
-            axes=cdms.orderparse(str(axes))
+            axes=cdms2.orderparse(str(axes))
         for i in axes:
             if len(x.shape)<i:
                 raise StatisticsError,'Error you have '+str(len(x.shape))+' dimensions and try to work on dim:'+str(i)
@@ -612,7 +616,7 @@ def __checker(x,y,w,axes,smally=0):
         # Last thing convert the axes input to numbers
         if type(axes)==type(1) : axes=str(axes)
         if type(axes)!=type([]):
-            axesparse=cdms.orderparse(axes)
+            axesparse=cdms2.orderparse(axes)
             naxes=len(axesparse)
             for i in range(naxes):
                 o=axesparse[i]
@@ -643,26 +647,26 @@ def __checker(x,y,w,axes,smally=0):
             fsh.append(xsh[i])
             if not ax is None: ax2.append(ax[i])
     if not ax is None: ax=ax2
-    x=MA.transpose(x,forder)
-    x=MA.resize(x,fsh)
+    x=numpy.ma.transpose(x,forder)
+    x=numpy.ma.resize(x,fsh)
     if not y is None:
-        y=MA.transpose(y,forder)
-        y=MA.resize(y,fsh)
+        y=numpy.ma.transpose(y,forder)
+        y=numpy.ma.resize(y,fsh)
     if not w is None:
-        w=MA.transpose(w,forder)
-        w=MA.resize(w,fsh)
+        w=numpy.ma.transpose(w,forder)
+        w=numpy.ma.resize(w,fsh)
     # Now mask everything correctly (union of masks)
     if not y is None:
-        m=y.mask()
-        if not m is None:
-            x=MA.masked_where(m,x)
-        m=x.mask()
-        if not m is None:
-            y=MA.masked_where(m,y)
+        m=y.mask
+        if not m is numpy.ma.nomask:
+            x=numpy.ma.masked_where(m,x)
+        m=x.mask
+        if not m is numpy.ma.nomask:
+            y=numpy.ma.masked_where(m,y)
     if not w is None:
-        m=x.mask()
-        if not m is None:
-            w=MA.masked_where(m,w)
+        m=x.mask
+        if not m is numpy.ma.nomask:
+            w=numpy.ma.masked_where(m,w)
 
     ## IF y has to be 1D less than x, then it is shrunk back
     if smally==1:
@@ -699,14 +703,14 @@ def covariance(x,y,weights=None,axis=0,centered=1,biased=1,max_pct_missing=100.)
             Set to 0. to mask results if any data is masked.
             Set to 100. to calculate result if any data is not masked
     """
-    if cdms.isVariable(x) : xatt=x.attributes
-    if cdms.isVariable(y) : yatt=y.attributes
+    if cdms2.isVariable(x) : xatt=x.attributes
+    if cdms2.isVariable(y) : yatt=y.attributes
     x,y,weights,axis,ax=__checker(x,y,weights,axis)
     
     cov=__covariance(x,y,weights=weights,centered=centered,biased=biased)
     cov=_treat_missing(cov,x,max_pct_missing=max_pct_missing)
     if not ax is None:
-        cov=cdms.createVariable(cov,axes=ax,id='covariance',copy=0)
+        cov=cdms2.createVariable(cov,axes=ax,id='covariance',copy=0)
         if 'units' in xatt.keys() and 'units' in yatt.keys(): cov.units=xatt['units']+'*'+yatt['units']
     return cov
 
@@ -740,18 +744,18 @@ def variance(x,weights=None,axis=0,centered=1,biased=1,max_pct_missing=100.):
             Set to 0. to mask results if any data is masked.
             Set to 100. to calculate result if any data is not masked
     """
-    if cdms.isVariable(x) : xatt=x.attributes
+    if cdms2.isVariable(x) : xatt=x.attributes
     x,dum,weights,axis,ax=__checker(x,None,weights,axis)
 
     var=__variance(x,weights=weights,centered=centered,biased=biased)
     var=_treat_missing(var,x,max_pct_missing=max_pct_missing)
     if not ax is None:
-        var=cdms.createVariable(var,axes=ax,id='variance',copy=0)
+        var=cdms2.createVariable(var,axes=ax,id='variance',copy=0)
         if 'units' in xatt.keys() : var.units=xatt['units']+'*'+xatt['units']
     return var
 
 def checker(x,weights=None,axis=0,centered=1):
-    if cdms.isVariable(x) : xatt=x.attributes
+    if cdms2.isVariable(x) : xatt=x.attributes
     x,dum,weights,axis,ax=__checker(x,None,weights,axis)
 
     return x,weights,axis,ax
@@ -785,12 +789,12 @@ def std(x,weights=None,axis=0,centered=1,biased=1,max_pct_missing=100.):
             Set to 0. to mask results if any data is masked.
             Set to 100. to calculate result if any data is not masked
     """
-    if cdms.isVariable(x) : xatt=x.attributes
+    if cdms2.isVariable(x) : xatt=x.attributes
     x,dum,weights,axis,ax=__checker(x,None,weights,axis)
     std=__std(x,weights=weights,centered=centered,biased=biased)
     std=_treat_missing(std,x,max_pct_missing=max_pct_missing)
     if not ax is None:
-        std=cdms.createVariable(std,axes=ax,id='standard_deviation',copy=0)
+        std=cdms2.createVariable(std,axes=ax,id='standard_deviation',copy=0)
         if 'units' in xatt.keys() : std.units=xatt['units']
     return std
 
@@ -830,7 +834,7 @@ def correlation(x,y,weights=None,axis=0,centered=1,biased=1,max_pct_missing=100.
     cor=__correlation(x,y,weights=weights,centered=centered,biased=biased)
     cor=_treat_missing(cor,x,max_pct_missing=max_pct_missing)
     if not ax is None:
-        cor=cdms.createVariable(cor,axes=ax,id='correlation',copy=0)
+        cor=cdms2.createVariable(cor,axes=ax,id='correlation',copy=0)
         cor.units='-'
     return cor
 
@@ -865,12 +869,12 @@ def rms(x,y,weights=None,axis=0,centered=0,biased=1,max_pct_missing=100.):
             Set to 0. to mask results if any data is masked.
             Set to 100. to calculate result if any data is not masked
     """
-    if cdms.isVariable(x) : xatt=x.attributes
+    if cdms2.isVariable(x) : xatt=x.attributes
     x,y,weights,axis,ax=__checker(x,y,weights,axis)
     rmsans=__rms(x,y,weights=weights,centered=centered,biased=biased)
     rmsans=_treat_missing(rmsans,x,max_pct_missing=max_pct_missing)
     if not ax is None:
-        rmsans=cdms.createVariable(rmsans,axes=ax,id='RMS_difference',copy=0)
+        rmsans=cdms2.createVariable(rmsans,axes=ax,id='RMS_difference',copy=0)
         if 'units' in xatt.keys(): rms.units=xatt['units']
         
     return rmsans
@@ -911,8 +915,8 @@ def laggedcovariance(x,y,lag=None,axis=0,centered=1,partial=1,noloop=0,max_pct_m
             Set to 0. to mask results if any data is masked.
             Set to 100. to calculate result if any data is not masked
     """
-    if cdms.isVariable(x) : xatt=x.attributes
-    if cdms.isVariable(y) : yatt=y.attributes
+    if cdms2.isVariable(x) : xatt=x.attributes
+    if cdms2.isVariable(y) : yatt=y.attributes
     x,y,w,axis,ax=__checker(x,y,None,axis)
     if lag is None:
         lags=range(x.shape[0])
@@ -927,22 +931,22 @@ def laggedcovariance(x,y,lag=None,axis=0,centered=1,partial=1,noloop=0,max_pct_m
         lags=lag
 
     for k in lags:
-        lcov=MA.array(__laggedcovariance(x,y,lag=k,centered=centered,partial=partial))
+        lcov=numpy.ma.array(__laggedcovariance(x,y,lag=k,centered=centered,partial=partial))
         lcov =_treat_missing(lcov,x,max_pct_missing=max_pct_missing)
         sh=list(lcov.shape)
         sh.insert(0,1)
-        lcov=MA.resize(lcov,sh)
+        lcov=numpy.ma.resize(lcov,sh)
         if k==lags[0]:
             lcovs=lcov
         else:
-            lcovs=MA.concatenate((lcovs,lcov),0)
+            lcovs=numpy.ma.concatenate((lcovs,lcov),0)
             
     #lcovs=_treat_missing(lcovs,x,max_pct_missing=max_pct_missing)
     if not ax is None:
-        newax=cdms.createAxis(lags)
+        newax=cdms2.createAxis(lags)
         newax.id='lag'
         ax.insert(0,newax)
-        lcovs=cdms.createVariable(lcovs,axes=ax,id='lagged_covariance'+str(lag),copy=0)
+        lcovs=cdms2.createVariable(lcovs,axes=ax,id='lagged_covariance'+str(lag),copy=0)
         if 'units' in xatt.keys() and 'units' in yatt.keys(): lcovs.units=xatt['units']+'*'+yatt['units']
     return lcovs
 
@@ -999,20 +1003,20 @@ def laggedcorrelation(x,y,lag=None,axis=0,centered=1,partial=1,biased=1,noloop=0
         lags=lag
         
     for k in lags:
-        lcor=MA.array(__laggedcorrelation(x,y,lag=k,centered=centered,partial=partial,biased=biased))
+        lcor=numpy.ma.array(__laggedcorrelation(x,y,lag=k,centered=centered,partial=partial,biased=biased))
         lcor=_treat_missing(lcor,x,max_pct_missing=max_pct_missing)
         sh=list(lcor.shape)
         sh.insert(0,1)
-        lcor=MA.resize(lcor,sh)
+        lcor=numpy.ma.resize(lcor,sh)
         if k==lags[0]:
             lcors=lcor
         else:
-            lcors=MA.concatenate((lcors,lcor),0)
+            lcors=numpy.ma.concatenate((lcors,lcor),0)
     if not ax is None:
-        newax=cdms.createAxis(lags)
+        newax=cdms2.createAxis(lags)
         newax.id='lag'
         ax.insert(0,newax)
-        lcors=cdms.createVariable(lcors,axes=ax,id='lagged_correlation'+str(lag),copy=0)
+        lcors=cdms2.createVariable(lcors,axes=ax,id='lagged_correlation'+str(lag),copy=0)
         lcors.units='-'
         
     return lcors
@@ -1050,7 +1054,7 @@ def autocovariance(x,lag=None,axis=0,centered=1,partial=1,noloop=0,max_pct_missi
             Set to 0. to mask results if any data is masked.
             Set to 100. to calculate result if any data is not masked
     """
-    if cdms.isVariable(x) : xatt=x.attributes
+    if cdms2.isVariable(x) : xatt=x.attributes
     x,dum,dum,axis,ax=__checker(x,None,None,axis)
     if lag is None:
         lags=range(x.shape[0])
@@ -1065,20 +1069,20 @@ def autocovariance(x,lag=None,axis=0,centered=1,partial=1,noloop=0,max_pct_missi
         lags=lag
 
     for k in lags:
-        acov=MA.array(__autocovariance(x,lag=k,centered=centered,partial=partial))
+        acov=numpy.ma.array(__autocovariance(x,lag=k,centered=centered,partial=partial))
         acov=_treat_missing(acov,x,max_pct_missing=max_pct_missing)
         sh=list(acov.shape)
         sh.insert(0,1)
-        acov=MA.resize(acov,sh)
+        acov=numpy.ma.resize(acov,sh)
         if k==lags[0]:
             acovs=acov
         else:
-            acovs=MA.concatenate((acovs,acov),0)
+            acovs=numpy.ma.concatenate((acovs,acov),0)
     if not ax is None:
-        newax=cdms.createAxis(lags)
+        newax=cdms2.createAxis(lags)
         newax.id='lag'
         ax.insert(0,newax)
-        acovs=cdms.createVariable(acovs,axes=ax,id='autocovariance'+str(lag),copy=0)        
+        acovs=cdms2.createVariable(acovs,axes=ax,id='autocovariance'+str(lag),copy=0)        
         if 'units' in xatt.keys(): acovs.units=xatt['units']+'*'+xatt['units']
     return acovs
 
@@ -1132,20 +1136,20 @@ def autocorrelation(x,lag=None,axis=0,centered=1,partial=1,biased=1,noloop=0,max
         lags=lag
     
     for k in lags:
-        acov=MA.array(__autocorrelation(x,lag=k,centered=centered,partial=partial))
+        acov=numpy.ma.array(__autocorrelation(x,lag=k,centered=centered,partial=partial))
         acov=_treat_missing(acov,x,max_pct_missing=max_pct_missing)
         sh=list(acov.shape)
         sh.insert(0,1)
-        acov=MA.resize(acov,sh)
+        acov=numpy.ma.resize(acov,sh)
         if k==lags[0]:
             acovs=acov
         else:
-            acovs=MA.concatenate((acovs,acov),0)
+            acovs=numpy.ma.concatenate((acovs,acov),0)
     if not ax is None:
-        newax=cdms.createAxis(lags)
+        newax=cdms2.createAxis(lags)
         newax.id='lag'
         ax.insert(0,newax)
-        acovs=cdms.createVariable(acovs,axes=ax,id='autocorrelation'+str(lag),copy=0)
+        acovs=cdms2.createVariable(acovs,axes=ax,id='autocorrelation'+str(lag),copy=0)
         acovs.units='-'
         
     return acovs
@@ -1175,12 +1179,12 @@ def meanabsdiff(x,y,weights=None,axis=0,centered=1,max_pct_missing=100.):
             Set to 0. to mask results if any data is masked.
             Set to 100. to calculate result if any data is not masked
     """
-    if cdms.isVariable(x) : xatt=x.attributes
+    if cdms2.isVariable(x) : xatt=x.attributes
     x,y,weights,axis,ax=__checker(x,y,weights,axis)
     mad=__meanabsdiff(x,y,weights=weights,centered=centered)
     mad=_treat_missing(mad,x,max_pct_missing=max_pct_missing)
     if not ax is None:
-        mad=cdms.createVariable(mad,axes=ax,id='mean_absolute_difference',copy=0)
+        mad=cdms2.createVariable(mad,axes=ax,id='mean_absolute_difference',copy=0)
         if 'units' in xatt.keys(): mad.units=xatt['units']
     return mad
 
@@ -1303,14 +1307,14 @@ def linearregression(y,axis=None,x=None,error=None,probability=None,nointercept=
                   linearregression(y, error=2,probability=1,noslope=1)
                   
 """
-    yisV=cdms.isVariable(y)
+    yisV=cdms2.isVariable(y)
     if yisV : yatt=y.attributes
     if not axis is None and not x is None:
         raise StatisticsError,'Error you cannot pass an indepedent variable and an axis'
     if x is None and axis is None :
         axis=0
     if not axis is None:
-        if not type(axis)==type([]) : ax=cdms.orderparse(str(axis))
+        if not type(axis)==type([]) : ax=cdms2.orderparse(str(axis))
         if len(ax)>1: raise StatisticsError, 'Error only one dim allowed'
         if yisV :
             ax=y.getAxisList()
@@ -1319,16 +1323,16 @@ def linearregression(y,axis=None,x=None,error=None,probability=None,nointercept=
         if yisV :
             ax2=ax.pop(axis[0])
             ax.insert(0,ax2)
-            y=cdms.createVariable(y,axes=ax,id=yid,copy=0)
-            x=cdms.MV.array(ax2[:])
+            y=cdms2.createVariable(y,axes=ax,id=yid,copy=0)
+            x=cdms2.MV2.array(ax2[:])
             x.setAxis(0,ax2)
             y,x,w,axis,axs=__checker(y,x,None,0)
         else:
-            x=MA.arrayrange(y.shape[0])
-            x=MA.resize(x,y.shape)
+            x=numpy.ma.arange(y.shape[0])
+            x=numpy.ma.resize(x,y.shape)
     else:
         y,x,w,axis,axs=__checker(y,x,None,0)
-        ax2=cdms.asVariable(x)
+        ax2=cdms2.asVariable(x)
         try:
             ax2.units=x.units
         except:
@@ -1342,9 +1346,9 @@ def linearregression(y,axis=None,x=None,error=None,probability=None,nointercept=
         val,err,pt1,pt2,pf1,pf2=__linearregression(y,x,error=error,probability=probability,nointercept=nointercept,noslope=noslope)
     if yisV:
         if noslope is None or noslope==0:
-            val[0]=cdms.createVariable(val[0],axes=axs,id='slope',copy=0)
+            val[0]=cdms2.createVariable(val[0],axes=axs,id='slope',copy=0)
         if nointercept is None or nointercept==0:
-            val[-1]=cdms.createVariable(val[-1],axes=axs,id='intercept',copy=0)
+            val[-1]=cdms2.createVariable(val[-1],axes=axs,id='intercept',copy=0)
         if 'units' in yatt.keys():
             for v in val:
                 v.units=yatt['units']+' per '+ax2.units
@@ -1356,7 +1360,7 @@ def linearregression(y,axis=None,x=None,error=None,probability=None,nointercept=
     elif probability is None or probability==0:
         if yisV:
             if noslope is None or noslope==0:
-                err[0]=cdms.createVariable(err[0],axes=axs,id='standard_error',copy=0)
+                err[0]=cdms2.createVariable(err[0],axes=axs,id='standard_error',copy=0)
                 if error==1:
                     setattr(err[0],'long_name','standard error for regression coefficient')
                 elif error==2:
@@ -1365,7 +1369,7 @@ def linearregression(y,axis=None,x=None,error=None,probability=None,nointercept=
                     setattr(err[0],'long_name','standard error for regression coefficient adjusted with y (using centered autocorrelation)')
   
             if nointercept is None or nointercept==0:
-                err[-1]=cdms.createVariable(err[-1],axes=axs,id='standard_error',copy=0)
+                err[-1]=cdms2.createVariable(err[-1],axes=axs,id='standard_error',copy=0)
                 if error==1:
                     setattr(err[-1],'long_name','standard error for regression constant')
                 elif error==2:
@@ -1382,7 +1386,7 @@ def linearregression(y,axis=None,x=None,error=None,probability=None,nointercept=
     else:
         if yisV:
             if noslope is None or noslope==0:
-                err[0]=cdms.createVariable(err[0],axes=axs,id='standard_error',copy=0)
+                err[0]=cdms2.createVariable(err[0],axes=axs,id='standard_error',copy=0)
                 if error==1:
                     setattr(err[0],'long_name','standard error for regression coefficient')
                 elif error==2:
@@ -1391,7 +1395,7 @@ def linearregression(y,axis=None,x=None,error=None,probability=None,nointercept=
                     setattr(err[0],'long_name','standard error for regression coefficient adjusted with y (using centered autocorrelation)')
   
             if nointercept is None or nointercept==0:
-                err[-1]=cdms.createVariable(err[-1],axes=axs,id='standard_error',copy=0)
+                err[-1]=cdms2.createVariable(err[-1],axes=axs,id='standard_error',copy=0)
                 if error==1:
                     setattr(err[-1],'long_name','standard error for regression constant')
                 elif error==2:
@@ -1403,38 +1407,38 @@ def linearregression(y,axis=None,x=None,error=None,probability=None,nointercept=
                     e.units=yatt['units']+' per '+ax2.units
             if noslope is None or noslope==0:
                 if error>1:
-                    pt1[0]=cdms.createVariable(pt1[0],axes=axs,id='p-value',copy=0)
+                    pt1[0]=cdms2.createVariable(pt1[0],axes=axs,id='p-value',copy=0)
                     pt1[0].units='-'
                     pt1[0].long_name='p-value for regression coefficient t-value. Effective sample size adjustment for standard error (seb).'
-                    pt2[0]=cdms.createVariable(pt2[0],axes=axs,id='p-value',copy=0)
+                    pt2[0]=cdms2.createVariable(pt2[0],axes=axs,id='p-value',copy=0)
                     pt2[0].units='-'
                     pt2[0].long_name='p-value for regression coefficient t-value. Effective sample size adjustment for standard error (seb) and critical t-value.'
                 else:
-                    pt1[0]=cdms.createVariable(pt1[0],axes=axs,id='p-value',copy=0)
+                    pt1[0]=cdms2.createVariable(pt1[0],axes=axs,id='p-value',copy=0)
                     pt1[0].units='-'
                     pt1[0].long_name='p-value for regression coefficient t-value. No adjustment for standard error or critical t-value.'
-                pf1[0]=cdms.createVariable(pf1[0],axes=axs,id='p-value',copy=0)
+                pf1[0]=cdms2.createVariable(pf1[0],axes=axs,id='p-value',copy=0)
                 pf1[0].unit='-'
                 pf1[0].long_name='p-value for regression coefficient F-value (one-tailed)'
-                pf2[0]=cdms.createVariable(pf2[0],axes=axs,id='p-value',copy=0)
+                pf2[0]=cdms2.createVariable(pf2[0],axes=axs,id='p-value',copy=0)
                 pf2[0].unit='-'
                 pf2[0].long_name='p-value for regression coefficient F-value (two-tailed)'
             if nointercept is None or nointercept==0:
                 if error>1:
-                    pt1[-1]=cdms.createVariable(pt1[-1],axes=axs,id='p-value',copy=0)
+                    pt1[-1]=cdms2.createVariable(pt1[-1],axes=axs,id='p-value',copy=0)
                     pt1[-1].units='-'
                     pt1[-1].long_name='p-value for regression coefficient t-value. Effective sample size adjustment for standard error (seb).'
-                    pt2[-1]=cdms.createVariable(pt2[-1],axes=axs,id='p-value',copy=0)
+                    pt2[-1]=cdms2.createVariable(pt2[-1],axes=axs,id='p-value',copy=0)
                     pt2[-1].units='-'
                     pt2[-1].long_name='p-value for regression coefficient t-value. Effective sample size adjustment for standard error (seb) and critical t-value.'
                 else:
-                    pt1[-1]=cdms.createVariable(pt1[-1],axes=axs,id='p-value',copy=0)
+                    pt1[-1]=cdms2.createVariable(pt1[-1],axes=axs,id='p-value',copy=0)
                     pt1[-1].units='-'
                     pt1[-1].long_name='p-value for regression coefficient t-value. No adjustment for standard error or critical t-value.'
-                pf1[-1]=cdms.createVariable(pf1[-1],axes=axs,id='p-value',copy=0)
+                pf1[-1]=cdms2.createVariable(pf1[-1],axes=axs,id='p-value',copy=0)
                 pf1[-1].unit='-'
                 pf1[-1].long_name='p-value for regression coefficient F-value (one-tailed)'
-                pf2[-1]=cdms.createVariable(pf2[-1],axes=axs,id='p-value',copy=0)
+                pf2[-1]=cdms2.createVariable(pf2[-1],axes=axs,id='p-value',copy=0)
                 pf2[-1].unit='-'
                 pf2[-1].long_name='p-value for regression coefficient F-value (two-tailed)'
         if len(val)>1:
@@ -1461,23 +1465,28 @@ def geometricmean(x,axis=0,max_pct_missing=100.):
             Set to 0. to mask results if any data is masked.
             Set to 100. to calculate result if any data is not masked
     """
-    if cdms.isVariable(x) : xatt=x.attributes
+    if cdms2.isVariable(x) : xatt=x.attributes
     x,dum,weights,axis,ax=__checker(x,None,None,axis)
     gmean=__geometricmean(x)
     gmean=_treat_missing(gmean,x,max_pct_missing=max_pct_missing)
     if not ax is None:
-        gmean=cdms.createVariable(gmean,axes=ax,id='geometric_mean',copy=0)
+        gmean=cdms2.createVariable(gmean,axes=ax,id='geometric_mean',copy=0)
         if 'units' in xatt.keys() : gmean.units=xatt['units']
     return gmean
 
 def _percentiles(out,percent):
-    out=MA.sort(out,0)
-    ns=MA.count(out,0)
+    if cdms2.isVariable(out):
+        out=MV2.sort(out,axis=0).asma()
+        ns=MV2.count(out,axis=0).asma()
+    else:
+        out=numpy.ma.sort(out,axis=0)
+        ns=numpy.ma.count(out,axis=0)
+
     output=None
     for p in percent:
-        i=Numeric.floor((p/100.)*(ns-1))
+        i=numpy.floor((p/100.)*(ns-1))
         try:
-            i=i.astype(Numeric.Int)
+            i=i.astype(numpy.int)
         except:
             i=int(i)
         ii = i + 1
@@ -1486,29 +1495,32 @@ def _percentiles(out,percent):
             tmp=tmp.filled(1.E20)
         except:
             pass
-        Ai=Numeric.where(Numeric.equal(ns,1), 0., tmp)
+        Ai=numpy.where(numpy.equal(ns,1), 0., tmp)
         tmp=(100.*ii)/(ns-1)
         try:
             tmp=tmp.filled(1.E20)
         except:
             pass
-        Aii=Numeric.where(Numeric.equal(ns,1), 100., tmp)
-        ii=Numeric.where(Numeric.equal(ii,ns),ns-1,ii)
+        Aii=numpy.where(numpy.equal(ns,1), 100., tmp)
+        ii=numpy.where(numpy.equal(ii,ns),ns-1,ii)
+        if numpy.rank(ii)>0:
+            ii=ii.astype(numpy.int)
 ##         tmp = (p-Ai)/(Aii-Ai)*array_indexing.extract(out,ii) + \
 ##              (Aii-p)/(Aii-Ai)*array_indexing.extract(out,i)
+
         tmp = (p-Ai)/(Aii-Ai)*arrayindexing.get(out,ii) + \
              (Aii-p)/(Aii-Ai)*arrayindexing.get(out,i)
         try:
             sh=list(tmp.shape)
             sh.insert(0,1)
-            tmp=MA.reshape(tmp,sh)
+            tmp=numpy.ma.reshape(tmp,sh)
         except:
             pass
         if output is None:
-            output=MA.array(tmp)
-            output=output.astype(out.typecode())
+            output=numpy.ma.array(tmp)
+            output=output.astype(out.dtype.char)
         else:
-            output=MA.concatenate((output,tmp.astype(MA.Float32)),0)
+            output=numpy.ma.concatenate((output,tmp.astype(numpy.float32)),0)
     return output
 
 def percentiles(x,percentiles=[50.],axis=0):
@@ -1528,15 +1540,16 @@ def percentiles(x,percentiles=[50.],axis=0):
             default value = 0. You can pass the name of the dimension or index
             (integer value 0...n) over which you want to compute the statistic.    
     """
-    if cdms.isVariable(x) : xatt=x.attributes
+    if cdms2.isVariable(x) : xatt=x.attributes
     x,dum,weights,axis,ax=__checker(x,None,None,axis)
     p=_percentiles(x,percentiles)
     if not ax is None and ax != []:
-        pax=cdms.createAxis(percentiles)
+        pax=cdms2.createAxis(percentiles)
         pax.id='percentiles'
         pax.units='%'
         ax.insert(0,pax)
-        p=cdms.createVariable(p,axes=ax,id='percentiles',copy=0)
+        p=MV2.array(p)
+        p=cdms2.createVariable(p,axes=ax,id='percentiles',copy=0)
         if 'units' in xatt.keys() : p.units=xatt['units']
     return p
 
@@ -1578,28 +1591,29 @@ def rank(x,axis=0):
     """
 
     # preprocessing
-    if cdms.isVariable(x) :
+    if cdms2.isVariable(x) :
         xatt=x.attributes
         axs=x.getAxisList()
         o=x.getOrder(ids=1)
     x,dum,weights,axis,ax=__checker(x,None,None,axis)
 
     # First figures out indices to sort
-    a0=MA.array(MA.argsort(x.filled(1.E20),axis=0),'i')
+    a0=numpy.ma.array(numpy.ma.argsort(x.filled(1.E20),axis=0),dtype='i')
     n=a0.shape[0]
 
     # initialize output array
-    b=MA.zeros(a0.shape,'f')
+    b=numpy.ma.zeros(a0.shape,dtype='f')
 
     # Get the indices
 ##     print 'Indices are:',a0,x
+    ## Make sure b and a0 are of the right type
     b=array_indexing.rank(b,a0)
-    m=x.mask()
-    if not m is None:
-        b=MV.masked_where(m,b)
+    m=x.mask
+    if not m is numpy.ma.nomask:
+        b=MV2.masked_where(m,b)
     else:
-        b=MV.array(b)
-    n=MV.count(b,0)
+        b=MV2.array(b)
+    n=MV2.count(b,axis=0)
     n.setAxisList(b.getAxisList()[1:])
     b,n=grower(b,n)
     b=100.*b/(n-1)
@@ -1614,7 +1628,7 @@ def rank(x,axis=0):
         # Now figures the other axes to add
         for i in range(len(axis)):
             sh.insert(i,len(axs[axis[i]]))
-        b=MV.reshape(b,sh)
+        b=MV2.reshape(b,sh)
         for i in range(len(ax)):
             b.setAxis(i+len(axis),ax[i])
         for i in range(len(axis)):
@@ -1628,5 +1642,5 @@ def rank(x,axis=0):
         sh=range(b.rank())
         sh[0]=axis[0]
         sh[axis[0]]=0
-        b=MA.transpose(b,sh)
+        b=numpy.ma.transpose(b,sh)
     return b

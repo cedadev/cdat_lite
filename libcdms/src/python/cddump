@@ -1,8 +1,10 @@
 #!/usr/bin/env python
+# Adapted for numpy/ma/cdms2 by convertcdms.py
 
-import cdms
+import cdms2 as cdms
 import sys
 import os
+import numpy
 
 file=sys.argv[1]
 if sys.argv[1]=='-h':
@@ -47,20 +49,20 @@ print
 print 'variables:'
 for v in vars:
     V=f[v]
-    t=V.typecode()
-    if t==cdms.MV.Float:
+    t=V.dtype.char
+    if t=='d':
         t='double'
-    elif t==cdms.MV.Float32:
+    elif t=='f':
         t='float'
-    elif t==cdms.MV.Int0:
+    elif t=='b':
         t='byte'
-    elif t==cdms.MV.Int16:
+    elif t=='h':
         t='short'
-    elif t==cdms.MV.Int32:
+    elif t=='l':
         t='int'
-    elif t==cdms.MV.Int:
+    elif t=='q':
         t='long'
-    elif t==cdms.MV.Complex:
+    elif t=='D':
         t='Complex'
     axs=V.getAxisIds()
     d='('
@@ -85,7 +87,7 @@ if sys.argv[1]=='-v':
     print 'data:'
     for v in vars:
         print '\t'+v+' = ',
-        a=cdms.MV.ravel(f(v)).filled()
+        a=cdms.MV2.ravel(f(v)).filled()
         for val in a[:]:
             print '%.4g,' % val,
         print ';'

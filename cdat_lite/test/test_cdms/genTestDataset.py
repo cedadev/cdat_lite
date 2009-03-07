@@ -1,10 +1,11 @@
 #!/usr/bin/env python
+# Adapted for numpy/ma/cdms2 by convertcdms.py
 
 # u(3,16,32), three separate files
 # v(3,16,32), three separate files
 
-import cdms, Numeric, os, MA
-from MA import masked
+import cdms2 as cdms, numpy.oldnumeric as Numeric, os, numpy.oldnumeric.ma as MA
+from numpy.oldnumeric.ma import masked
 NTIME = 3
 NLAT = 16
 NLON = 32

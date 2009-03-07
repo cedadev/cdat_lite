@@ -1,10 +1,11 @@
+# Adapted for numpy/ma/cdms2 by convertcdms.py
 import types
 import string
-import Numeric
-import MA
-import MV
-import cdms
-import regrid
+import numpy
+import numpy.ma
+import MV2
+import cdms2
+import regrid2
 import cdtime
 import ValidationFunctions
 import exceptions
@@ -15,7 +16,7 @@ class WeightsMakerError(exceptions.Exception):
         self.args=args
 
 class WeightsMaker(object):
-    def __init__(self,source=None,var=None,values=None,actions=[MV.equal,],combiningActions=[MV.multiply,]):
+    def __init__(self,source=None,var=None,values=None,actions=[MV2.equal,],combiningActions=[MV2.multiply,]):
         if type(source)==types.StringType:
             self.file=source
             self.mask=None
@@ -30,7 +31,7 @@ class WeightsMaker(object):
     def get(self,input=None):
         v=self.mask
         if type(self.file)==types.StringType:
-            f=cdms.open(self.file)
+            f=cdms2.open(self.file)
             v=f(self.var,squeeze=1)
             f.close()
 ##         if v is None: return v
@@ -38,12 +39,12 @@ class WeightsMaker(object):
             return v
         else:
 ##             if not v is None:
-##                 m=MV.zeros(v.shape)
+##                 m=MV2.zeros(v.shape)
 ##                 m.setAxisList(v.getAxisList())
 ##             else:
 ##                 # if it is still None that means we didn't define a mask slab
 ##                 # probably all coming from input
-##                 m=MV.zeros(input.shape)
+##                 m=MV2.zeros(input.shape)
 ##                 m.setAxisList(input.getAxisList())                
             for iv in range(len(self.values)):
                 val=self.values[iv]
@@ -64,12 +65,12 @@ class WeightsMaker(object):
     # Representation of Mask object
     def __str__(self):
         s='WeightsMaker Object: '
-        if self.file is None and self.mask is None:
+        if self.file is None and ((self.mask is None) or (self.mask is MV2.nomask)):
             s+='None'
         else:
             if not self.file is None: s+='\nfile:'+str(self.file)+'\nVar:'+str(self.var)
 ##             if not self.data is None: s+='\ndata:'+str(self.data)
-            if not self.mask is None: s+='\nmask:'+str(self.mask)
+            if not ((self.mask is None) or (self.mask is MV2.nomask)): s+='\nmask:'+str(self.mask)
             if not self.values is None:
                 s+='\nvalues: ['
                 for v in self.values:
@@ -157,7 +158,7 @@ class WeightedGridMaker(object):
         self.latitude.first=flat
         self.latitude.delta=dellat
         self.latitude.type=grid_type
-        if isinstance(source,cdms.grid.AbstractGrid):
+        if isinstance(source,cdms2.grid.AbstractGrid):
             self.grid=source
             self.file=None
         elif type(source) == types.StringType:
@@ -195,29 +196,29 @@ class WeightedGridMaker(object):
             if not self.latitude.n is None: # Ok we seem to have grid definition
                 if self.latitude.type == 1: # Gaussian
                     if self.longitude.first is None:
-                        value=cdms.createGaussianGrid(self.latitude.n)
+                        value=cdms2.createGaussianGrid(self.latitude.n)
                     else:
-                        value=cdms.createGaussianGrid(self.latitude.n,self.longitude.first)
+                        value=cdms2.createGaussianGrid(self.latitude.n,self.longitude.first)
                 elif self.latitude.type == 0: # Uniform
-                    value=cdms.createUniformGrid(self.latitude.first,
+                    value=cdms2.createUniformGrid(self.latitude.first,
                                                  self.latitude.n,
                                                  self.latitude.delta,
                                                  self.longitude.first,
                                                  self.longitude.n,
                                                  self.longitude.delta)
                 elif self.latitude.type== 2: # Equalarea
-                    lat=cdms.createEqualAreaAxis(self.latitude.n)
-                    lon=cdms.createUniformLongitude(self.longitude.first,
+                    lat=cdms2.createEqualAreaAxis(self.latitude.n)
+                    lon=cdms2.createUniformLongitude(self.longitude.first,
                                                     self.longitude.n,
                                                     self.longitude.delta)
-                    value=cdms.createGenericGrid(lat[:],lon[:],lat.getBounds(),lon.getBounds())
+                    value=cdms2.createGenericGrid(lat[:],lon[:],lat.getBounds(),lon.getBounds())
             elif not self.file is None:
-                f=cdms.open(self.file)
+                f=cdms2.open(self.file)
                 value=f[self.var].getGrid()
                 ## Ok temporary stuff to try to be able to close the file
                 lat=value.getLatitude()
                 lon=value.getLongitude()
-                value=cdms.createRectGrid(lat,lon)
+                value=cdms2.createRectGrid(lat,lon)
                 f.close()
         return value
     
@@ -275,7 +276,7 @@ class VariableConditioner(object):
             self.weightedGridMaker=WeightedGridMaker()
         elif isinstance(weightedGridMaker,WeightedGridMaker):
             self.weightedGridMaker=weightedGridMaker
-        elif isinstance(weightedGridMaker,cdms.grid.AbstractGrid):
+        elif isinstance(weightedGridMaker,cdms2.grid.AbstractGrid):
             self.weightedGridMaker=WeightedGridMaker()
             self.weightedGridMaker.grid=weightedGridMaker
             
@@ -318,8 +319,8 @@ class VariableConditioner(object):
         frc=None
         if type(value) in [types.TupleType, types.ListType]:
             value,frc=value
-        if isinstance (value,Numeric.ArrayType ) or MA.isMA(value): # Variable defined from array
-            if frc is None: frc=MA.ones(value.shape,typecode=MA.Float32)
+        if isinstance (value,numpy.ndarray ) or numpy.ma.isMA(value): # Variable defined from array
+            if frc is None: frc=numpy.ma.ones(value.shape,dtype=numpy.float32)
             kw={}
             args=[]
             # Add user defined cdmsArguments
@@ -344,7 +345,7 @@ class VariableConditioner(object):
             except:
                 v=value
         else: # Variable comes from a file, need to be retrieved
-            f=cdms.open(self.file)
+            f=cdms2.open(self.file)
             kw={}
             args=[]
             # Add user defined cdmsArguments
@@ -371,19 +372,19 @@ class VariableConditioner(object):
 
         # Create the fractions
         if frc is None:
-            frc=v.mask()
-            if frc is None: #no mask
+            frc=v.mask
+            if frc is numpy.ma.nomask: #no mask
                 # Create a bunch of ones (100%)
-                frc=Numeric.ones(v.shape,Numeric.Float32)
+                frc=numpy.ones(v.shape,numpy.float32)
             else:
                 # Fraction are actually just the opposite of the mask at that stage !
-                frc=frc.astype(MV.Float32) # Sometimes if it is bytes it doesn't work
+                frc=frc.astype(MV2.float32) # Sometimes if it is bytes it doesn't work
                 frc=1.-frc
-                frc=frc.astype(MV.Float32) # no need for double precision here !
+                frc=frc.astype(MV2.float32) # no need for double precision here !
         else:
-            m=v.mask()
-            if not m is None:
-                frc=MV.where(m,0.,frc).filled(0.)
+            m=v.mask
+            if not m is numpy.ma.nomask:
+                frc=MV2.where(m,0.,frc).filled(0.)
         # Now get the associted weights object
         # Note that we pass v in case some of the values are defined as "input"
         # in which case it would use v instead of the weights for weightsing
@@ -396,25 +397,28 @@ class VariableConditioner(object):
             if m.shape != v.shape:
                 raise VariableConditionerError, 'weights and variable have different shapes: weights is '+str(m.shape)+' and grid is '+str(v.shape)
             # make sure they're on the same grid (in case one starts at 0 and one at -180 for example
-            if not m.getGrid() is v.getGrid() : m.regrid(v.getGrid())
+
+            if not m.getGrid() is v.getGrid() :
+                m = m.regrid(v.getGrid())
+            
             # Mask the dataset where the fraction are 0.
-            v   = MV.masked_where(MV.equal(m.filled(0),0.),v)
+            v   = MV2.masked_where(MV2.equal(m.filled(0),0.),v)
             # Update the fractions
             frc=m.filled(0.)
-            m=v.mask()
-            if not m is None:
-                frc=Numeric.where(m,0.,frc)
+            m=v.mask
+            if not m is numpy.ma.nomask:
+                frc=numpy.where(m,0.,frc)
 ##             # Filll the mask with ones, i.e. set fraction to 0 when the mask is masked hahah
-##             frc = Numeric.where(m.filled(1),0.,frc)
+##             frc = numpy.where(m.filled(1),0.,frc)
         # Now get the target grid
         g=self.weightedGridMaker()
         if not g is None: # we do have a target grid to go to !
             # Create the regridder object
-            rf=regrid.Regridder(v.getGrid(),g)
+            rf=regrid2.Regridder(v.getGrid(),g)
             # and regrid passing the weights to use to each grid cell
             # at this point it should be only 0/1
             v,frc=rf(v,mask=1.-frc,returnTuple=1)
-            frc=MV.array(frc)
+            frc=MV2.array(frc)
             frc.setAxisList(v.getAxisList())
             v=v(*args,**kw)
             frc=frc(*args,**kw).filled(0.)
@@ -431,16 +435,19 @@ class VariableConditioner(object):
                 if m.shape != v.shape:
                     raise VariableConditionerError, 'weights and variable have different shapes: weights is '+str(m.shape)+' and grid is '+str(v.shape)
                 # make sure they're on the same grid (in case one starts at 0 and one at -180 for example
-                if not m.getGrid() is v.getGrid() : m.regrid(v.getGrid())
-                v=MV.masked_where(MV.equal(m.filled(0.),0.),v)
+
+                if not m.getGrid() is v.getGrid() :
+                    m = m.regrid(v.getGrid())
+
+                v=MV2.masked_where(MV2.equal(m.filled(0.),0.),v)
                 # weights the fraction where needed
                 frc=m.filled(0.)
-                m=v.mask()
-                if not m is None:
-                    frc=Numeric.where(m,0.,frc)
-##                 frc=Numeric.where(m.filled(1),0.,frc)
-        # Now make the fraction an MV and puts the dim from v on it
-        frc=MV.array(frc)
+                m=v.mask
+                if not m is numpy.ma.nomask:
+                    frc=numpy.where(m,0.,frc)
+##                 frc=numpy.where(m.filled(1),0.,frc)
+        # Now make the fraction an MV2 and puts the dim from v on it
+        frc=MV2.array(frc)
         frc.setAxisList(v.getAxisList())
         # just in case applies the cdmsKeywords again
         # usefull in case your final grid is global
@@ -449,20 +456,20 @@ class VariableConditioner(object):
         frc = frc(*args,**kw) .filled(0.)
         if v.missing_value is None:
             v.missing_value=1.e20
-        v=MV.masked_where(MV.equal(frc,0.),v)
+        v=MV2.masked_where(MV2.equal(frc,0.),v)
         # Now applies the slope and offset if necessary
         if self.slope!=1.:
             v=v*self.slope
         if self.offset!=0.:
             v=v+self.offset
 
-        if not v.mask() is None:
-            if MA.allclose(v.mask(),0.):
-                v._mask=None
+        if not ((v.mask is None) or (v.mask is MV2.nomask)):
+            if numpy.ma.allclose(v.mask,0.):
+                v._mask=numpy.ma.nomask
         # Returns the variable and the fractions or just the variable
         if returnTuple:
-##             if not frc.mask() is None:
-##                 if MA.allclose(frc.mask(),0.):
+##             if not ((frc.mask is None) or (frc.mask is MV2.nomask)):
+##                 if numpy.ma.allclose(frc.mask,0.):
 ##                     frc._mask=None
             return v,frc
         else:
@@ -548,7 +555,7 @@ class VariablesMatcher(object):
             self.weightedGridMaker=WeightedGridMaker()
         elif isinstance(weightedGridMaker,WeightedGridMaker):
             self.weightedGridMaker=weightedGridMaker
-        elif isinstance(weightedGridMaker,cdms.grid.AbstractGrid):
+        elif isinstance(weightedGridMaker,cdms2.grid.AbstractGrid):
             self.weightedGridMaker=weightedGridMaker()
             self.weightedGridMaker.grid=weightedGridMaker
         
@@ -661,11 +668,11 @@ class VariablesMatcher(object):
             d2=d2[0]
             frc1=d1[1]
             d1=d1[0]
-            frc1=MV.array(frc1)
-            frc2=MV.array(frc2)
+            frc1=MV2.array(frc1)
+            frc2=MV2.array(frc2)
         else:
-            frc1=MV.ones(d1.shape,typecode=MV.Float32)
-            frc2=MV.ones(d2.shape,typecode=MV.Float32)
+            frc1=MV2.ones(d1.shape,typecode=MV2.float32)
+            frc2=MV2.ones(d2.shape,typecode=MV2.float32)
         
         frc1.setAxisList(d1.getAxisList())
         frc2.setAxisList(d2.getAxisList())
@@ -686,8 +693,8 @@ class VariablesMatcher(object):
 ##                 frc2 = frc2(time=(t[0],t[1]))
 
 ##         # remember the number of element in d1 to see if we add non dummy dimensions
-##         nd1=MV.count(d1)
-##         nd2=MV.count(d2)
+##         nd1=MV2.count(d1)
+##         nd2=MV2.count(d2)
 
 ##         # Now tries to grow extra dims (like dummy levels, etc...)
 ##         o1=d1.getOrder(ids=1)
@@ -710,7 +717,7 @@ class VariablesMatcher(object):
                 ed=self.EV(returnTuple=1)
                 frced=ed[1]
                 ed=ed[0]
-                frced=MV.array(frced)
+                frced=MV2.array(frced)
                 frced.setAxisList(ed.getAxisList())
 
 ##                 # Gets the common time between d1 and ed
@@ -737,69 +744,69 @@ class VariablesMatcher(object):
                 ed=self.EV(returnTuple=1)
                 frced=ed[1]
                 ed=ed[0]
-                frced=MV.array(frced)
+                frced=MV2.array(frced)
                 frced.setAxisList(ed.getAxisList())
             g=ed.getGrid()
             g1=d1.getGrid()
-            rf=regrid.Regridder(g1,g)
+            rf=regrid2.Regridder(g1,g)
             d1,frc1=rf(d1,mask=1.-frc1.filled(0.),returnTuple=1)
             g2=d2.getGrid()
-            rf=regrid.Regridder(g2,g)
+            rf=regrid2.Regridder(g2,g)
             d2,frc2=rf(d2,mask=1.-frc2.filled(0.),returnTuple=1)
-            frc1=MV.array(frc1)
+            frc1=MV2.array(frc1)
             frc1.setAxisList(d1.getAxisList())
-            frc2=MV.array(frc2)
+            frc2=MV2.array(frc2)
             frc2.setAxisList(d2.getAxisList())
             d1,ed=genutil.grower(d1,ed,singleton=1)
             d2,ed=genutil.grower(d2,ed,singleton=1)
             ed,frced=genutil.grower(ed,frced,singleton=1)
             
-            frc1=MA.where(MA.equal(frc1.filled(0.),0.),0.,frced.filled(0.))           
-            frc2=MA.where(MA.equal(frc2.filled(0.),0.),0.,frced.filled(0.))
+            frc1=numpy.ma.where(numpy.ma.equal(frc1.filled(0.),0.),0.,frced.filled(0.))           
+            frc2=numpy.ma.where(numpy.ma.equal(frc2.filled(0.),0.),0.,frced.filled(0.))
 
-            d1=MV.masked_where(MV.equal(frc1.filled(0.),0.),d1)
-            d2=MV.masked_where(MV.equal(frc2.filled(0.),0.),d2)
+            d1=MV2.masked_where(MV2.equal(frc1.filled(0.),0.),d1)
+            d2=MV2.masked_where(MV2.equal(frc2.filled(0.),0.),d2)
 
         # Final grid ?
         g=self.weightedGridMaker()
         if not g is None:
             g1=d1.getGrid()
             g2=d2.getGrid()
-            rf1=regrid.Regridder(g1,g)
-            rf2=regrid.Regridder(g2,g)
+            rf1=regrid2.Regridder(g1,g)
+            rf2=regrid2.Regridder(g2,g)
             d1,frc1=rf1(d1,mask=1.-frc1.filled(0.),returnTuple=1)
 ##             m=1.-frc2.filled(0.)
             d2,frc2=rf2(d2,mask=1.-frc2.filled(0.),returnTuple=1)
-            frc1=MV.array(frc1)
+            frc1=MV2.array(frc1)
             frc1.setAxisList(d1.getAxisList())
-            frc2=MV.array(frc2)
+            frc2=MV2.array(frc2)
             frc2.setAxisList(d2.getAxisList())
             m=self.weightedGridMaker.weightsMaker(d1)
             if not m is None:
                 d1,m=genutil.grower(d1,m)
                 frc1,m=genutil.grower(frc1,m)
                 frc1=m.filled(0.)
-                d1=MV.masked_where(MV.equal(frc1,0.),d1)
-                m=d1.mask()
+                d1=MV2.masked_where(MV2.equal(frc1,0.),d1)
+                m=d1.mask
                 if not m is None:
-                    frc1=Numeric.where(m,0.,frc1)
+                    frc1=numpy.where(m,0.,frc1)
             m=self.weightedGridMaker.weightsMaker(d2)
             if not m is None:
                 d2,m=genutil.grower(d2,m)
                 frc2,m=genutil.grower(frc2,m)
                 frc2=m.filled(0.)
-                d2=MV.masked_where(MV.equal(frc2,0.),d2)
-                m=d2.mask()
-                if not m is None:
-                    frc2=Numeric.where(m,0.,frc2)
+                d2=MV2.masked_where(MV2.equal(frc2,0.),d2)
+                m=d2.mask
+                if not m is numpy.ma.nomask:
+                    frc2=numpy.where(m,0.,frc2)
         elif d1.getGrid()!=d2.getGrid():
             g1=d1.getGrid()
             g2=d2.getGrid()
-            rf=regrid.Regridder(g2,g1)
+            rf=regrid2.Regridder(g2,g1)
             d2,frc2=rf(d2,mask=1.-frc2.filled(0.),returnTuple=1)
-        frc1=MV.array(frc1)
+        frc1=MV2.array(frc1)
         frc1.setAxisList(d1.getAxisList())
-        frc2=MV.array(frc2)
+        frc2=MV2.array(frc2)
         frc2.setAxisList(d2.getAxisList())
             
         # CdmsArguments or CdmsKeywords
@@ -815,21 +822,21 @@ class VariablesMatcher(object):
             frc1=frc1(**self.cdmsKeywords)
             frc2=frc2(**self.cdmsKeywords)
 
-        d1=MV.masked_where(MV.equal(frc1,0.),d1)
-        d2=MV.masked_where(MV.equal(frc2,0.),d2)
-        if not d1.mask() is None:
-            if MA.allclose(d1.mask(),0.):
-                d1._mask=None
-        if not d2.mask() is None:
-            if MA.allclose(d2.mask(),0.):
-                d2._mask=None
+        d1=MV2.masked_where(MV2.equal(frc1,0.),d1)
+        d2=MV2.masked_where(MV2.equal(frc2,0.),d2)
+        if not ((d1.mask is None) or (d1.mask is MV2.nomask)):
+            if numpy.ma.allclose(d1.mask,0.):
+                d1._mask=numpy.ma.nomask
+        if not ((d2.mask is None) or (d2.mask is MV2.nomask)):
+            if numpy.ma.allclose(d2.mask,0.):
+                d2._mask=numpy.ma.nomask
         if returnTuple:
-            if not frc1.mask() is None:
-                if MA.allclose(frc1.mask(),0.):
-                    frc1._mask=None
-            if not frc2.mask() is None:
-                if MA.allclose(frc2.mask(),0.):
-                    frc2._mask=None
+            if not ((frc1.mask is None) or (frc1.mask is MV2.nomask)):
+                if numpy.ma.allclose(frc1.mask,0.):
+                    frc1._mask=numpy.ma.nomask
+            if not ((frc2.mask is None) or (frc2.mask is MV2.nomask)):
+                if numpy.ma.allclose(frc2.mask,0.):
+                    frc2._mask=numpy.ma.nomask
             return (d1,frc1),(d2,frc2)
         else:
             return d1,d2

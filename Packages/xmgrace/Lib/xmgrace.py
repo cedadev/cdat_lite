@@ -1,3 +1,5 @@
+# Adapted for numpy/ma/cdms2 by convertcdms.py
+import MV2
 import os,signal
 """
 ## XMGR Module 
@@ -2274,41 +2276,44 @@ class init(object):
         # First of all figures out the version of xmgrace
         # if before 5.1.8 no need for -nosafe arg
         nosafe=1
-        try:
-            xmv=os.popen('xmgrace  -version').readlines()
-            for l in xmv:
-                if l[:6]=='Grace-':
-                    ver=l[6:].split('.')
-                    major=int(ver[0])
-                    minor=int(ver[1])
-                    try:
-                        minor_xtra=int(ver[2])
-                    except:
-                        minor_xtra=0
-                    if major+minor/10.<5.1:
-                        nosafe=0
-                    elif major+minor/10.==5.1:
-                        if minor_xtra<8:
+        if self.new_pipe:
+            try:
+                xmv=os.popen('xmgrace  -version').readlines()
+                for l in xmv:
+                    if l[:6]=='Grace-':
+                        ver=l[6:].split('.')
+                        major=int(ver[0])
+                        minor=int(ver[1])
+                        try:
+                            minor_xtra=int(ver[2])
+                        except:
+                            minor_xtra=0
+                        if major+minor/10.<5.1:
                             nosafe=0
-        except Exception,err:
-            print 'Error trying to identify version\nerror:',err
-            pass
-                    
+                        elif major+minor/10.==5.1:
+                            if minor_xtra<8:
+                                nosafe=0
+            except Exception,err:
+                print 'Error trying to identify version\nerror:',err
+                pass
+
+
         cmd = ('-noask',) + cmd 
         if nosafe: cmd = ('-nosafe',) + cmd
         # Don't exit when our child "grace" exits (which it could if
         # the user clicks on `exit'):
         signal.signal(signal.SIGCHLD, signal.SIG_IGN)
-        (fd_r, fd_w) = os.pipe()
+        (self.fd_r, fd_w) = os.pipe()
         if self.pipe_file is None:
-            cmd = cmd + ('-dpipe', `fd_r`)
+            cmd = cmd + ('-dpipe', `self.fd_r`)
         else:
             cmd = cmd + ('-npipe',self.pipe_file)
+
 	# looks like first agr is ignored needs to add a dummy
 	cmd = ('dummy',) + cmd
         if self.new_pipe:
             if self.pipe_file is not None:
-                print 'Opening file pipe:',self.pipe_file
+#                print 'Opening file pipe:',self.pipe_file
                 self.pipe=open(self.pipe_file,'w',1)
             self.pid = os.fork()
             if self.pid == 0:
@@ -2318,7 +2323,7 @@ class init(object):
                     for i in range(OPEN_MAX):
                         # close everything except stdin, stdout, stderr
                         # and the read part of the pipe
-                        if i not in (fd_r,0,1,2):
+                        if i not in (self.fd_r,0,1,2):
                             try:
                                 import os
                                 os.close(i)
@@ -2340,13 +2345,13 @@ class init(object):
                     os._exit(2) # exit child but not parent
 
             # We are the parent -> keep only the writeable side of the pipe
-            os.close(fd_r)
+            os.close(self.fd_r)
             
         # turn the writeable side into a buffered file object:
         if self.pipe_file is None:
             self.pipe = os.fdopen(fd_w, 'w', 0)
         else:
-            print 'Opening file pipe 2:',self.pipe_file
+ #           print 'Opening file pipe 2:',self.pipe_file
             self.pipe=open(self.pipe_file,'w+',1)
 
         self.ininit=0
@@ -2725,7 +2730,7 @@ class init(object):
 	    ln.append('     subtitle size '+str(g.stit.size)+'\n')
 	    ln.append('     subtitle color '+self.col(g.stit.color)+'\n')
 	    def axe(self,ln,ax,nm):
-                import MA
+                import numpy.ma
                 if nm[:3]!='alt' : ln.append('     '+nm+'axes scale '+ax.scale+'\n')
                 if nm[:3]!='alt' : ln.append('     '+nm+'axes invert '+ax.invert+'\n')
 		ln.append('     '+nm+'axis  '+ax.status+'\n')
@@ -2803,7 +2808,7 @@ class init(object):
 ##                     t.spec.loc=[-1.,-0.866,-0.5,0.,0.5,0.866,1.]
 ##                     t.spec.values=['90S','60S','30S','Eq','30N','60N','90N']
                     t.spec.values={-1.:'90S',-0.866:'60S',-0.5:'30S',0.:'Eq',0.5:'30N',0.866:'60N',1.:'90N'}
-                if MA.isMA(t.spec.loc): t.spec.loc=list(t.spec.loc)
+                if numpy.ma.isMA(t.spec.loc): t.spec.loc=list(t.spec.loc)
 		if t.type=='spec' or type(t.spec.loc)==type({}) or type(t.spec.values)==type({}) or (t.spec.loc!=[] and t.spec.values!=[]):
                     if type(t.spec.values)==type({}):
                         mydic=t.spec.values
@@ -2886,9 +2891,9 @@ class init(object):
         return ln
     
     def plot(self,dat,xs=None,G=None,S=None):
-        import MA
-        if MA.isMA(dat):
-            dat=[dat] # if you passed an array alone then put it in a list
+        import numpy
+        if isinstance(dat,numpy.ndarray):
+            dat=[dat,] # if you passed an array alone then put it in a list
             if not xs is None:
                 xs=[xs]
         lister = []
@@ -2900,21 +2905,20 @@ class init(object):
 ##                 self.add_set()
         for idat in range(len(dat)):
             y=dat[idat]
-            if not(MA.isMA(y)):
+            if not isinstance(y,numpy.ma.MaskedArray):
                 # it is not a variable, well we'll make one
-                y=MA.array(y)
+                y=numpy.ma.array(y)
             sh=list(y.shape)
             if xs is None:
                 try:
-                    import cdms
                     x=y.getAxis(-1)
                 except:
-                    x=MA.arrayrange(sh[-1])
+                    x=numpy.ma.arange(sh[-1])
             else:
                 x=xs[idat]
             if len(sh)==1:
                 sh.insert(0,1)
-                y=MA.reshape(y,sh)
+                y=numpy.ma.reshape(y,sh)
             iS=iS+1
             if not G is None:
                 iG=G
@@ -2928,7 +2932,7 @@ class init(object):
                     else:
                         iS=0
             for i in xrange(len(x)):
-                if y.mask() is None :
+                if ((y.mask is None) or (y.mask is MV2.nomask)) :
                     lister.append('G'+str(iG)+'.S'+str(iS)+' point '+str(x[i]) + ', ' + str(y[0,i]) + ' \n')
                     for j in range(1,sh[0]):
                         tmp='G'+str(iG)+\
@@ -2940,7 +2944,7 @@ class init(object):
 ##                              '['+str(i)+']'+\
                         lister.append(tmp)
                 else:
-                    if y.mask()[0,i]==0 :
+                    if y.mask[0,i]==0 :
                         lister.append(
                             'G'+str(iG)+\
                             '.S'+str(iS)+\
@@ -3316,7 +3320,7 @@ class init(object):
                'timestamp','pipe','version',
                '_title','_stitle','_link_page','_linewidth','_linestyle','_color',
                '_pattern','_font','_char_size','_symbol_size','_sformat',
-               '_background_color','_version','_pyversion','_nset','pipe_file','new_pipe',
+               '_background_color','_version','_pyversion','_nset','pipe_file','new_pipe','fd_r',
                ]
 
     def _getversion(self):

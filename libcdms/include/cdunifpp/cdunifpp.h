@@ -26,7 +26,7 @@
 
 /*---------------------------------------------------------*/
 
-#define CDUNIFPP_VERSION "0.12"
+#define CDUNIFPP_VERSION "0.13pre2"
 
 /*---------------------------------------------------------*/
 
@@ -135,6 +135,7 @@ typedef struct pp_dim PPdim;
 typedef struct pp_rec PPrec;
 typedef struct pp_hdr PPhdr;
 typedef struct pp_stashmeta PPstashmeta;
+typedef struct pp_dimnames PPdimnames;
 typedef struct pp_data PPdata;
 typedef struct pp_list PPlist;
 typedef struct pp_listel PPlistel;
@@ -262,8 +263,8 @@ struct pp_file {
   PPlandmask *landmask;
 };
 struct pp_var {
-  int startrec; /* for fieldvar */
-  int endrec;  /* for fieldvar */
+  int firstrecno; /* for fieldvar */
+  int lastrecno;  /* for fieldvar */
   PPdata *data;  /* for dim var */
 
   PPlist *atts;  /* temporary place to store attributes 
@@ -278,16 +279,6 @@ struct pp_var {
  */
 
 /*------------------------------------------------------*/
-
-/* structure for temporary use while scanning fieldvars */
-struct pp_fieldvar {
-  int startrec; /* for fieldvar */
-  int endrec;  /* for fieldvar */
-  PPlist *axes; /* JAK 2005-01-05 */
-  PProtgrid *rotgrid;  /* link to rotated grid, which will 
-			* be used for CF "coordinates" stuff
-			*/
-};
 
 /* metadata which is not contained in the header but looked up 
  * as a function of the stash codes
@@ -311,6 +302,32 @@ struct pp_stashmeta {
    */
   char source[SM_MAX_LEN+1];
 };
+
+/* dimension names (for setting cell methods) */
+struct pp_dimnames {
+  /* we will not be modifying these strings, so declare as const
+   * in order to copy in pointers that are declared const without warnings
+   */
+  const char *x;
+  const char *y;
+  const char *z;
+  const char *t;
+};
+
+/* structure for temporary use while scanning fieldvars */
+struct pp_fieldvar {
+  int firstrecno; /* first record number */
+  int lastrecno; /* last record number */
+  PPrec *firstrec; /* first record */
+  PPlist *axes; /* JAK 2005-01-05 */
+  PProtgrid *rotgrid;  /* link to rotated grid, which will 
+			* be used for CF "coordinates" stuff
+			*/
+  PPdimnames dim_names;
+  PPstashmeta stashmeta;
+  PPhdr *first_header;
+};
+
 
 struct pp_data {
   CuType type;
@@ -760,6 +777,8 @@ struct pp_rec {
   long disklen; /* length on disks (words) -- including padding + before unpacking */
   long datalen; /* data length (words) */ 
 
+  PPlevel *lev;
+  PPtime *time;
   int zindex; /* index on z axis within a variable - used for detecting vars with irreg z,t */
   int tindex; /* index on t axis within a variable - used for detecting vars with irreg z,t */
   int disambig_index; /* index used for splitting variables with irreg z,t into 
@@ -768,6 +787,8 @@ struct pp_rec {
 		       * across the set, but different from sets generated from other
 		       * super-variables
 		       */
+  Freal mean_period; /* period (in days) of time mean 
+			(store here so as to calculate once only) */
 };
 
 
@@ -813,15 +834,19 @@ struct pp_rec {
 
 #define FLT_ERR -1e38
 
-#define CKI(i)  if ((i) < 0) goto err;
-#define CKP(p)  if ((p) == NULL) goto err;
-#define CKF(f)  if ((f) == FLT_ERR) goto err;
-
-/* ERRIF: conditional branch */
-#define ERRIF(i)  if (i) goto err;
-
+#ifdef DEBUG
+#define ERR abort();
+#else
 /* ERR: unconditional branch */
 #define ERR goto err;
+#endif
+
+#define CKI(i)  if ((i) < 0){ ERR }
+#define CKP(p)  if ((p) == NULL){ ERR }
+#define CKF(f)  if ((f) == FLT_ERR){ ERR }
+
+/* ERRIF: conditional branch */
+#define ERRIF(i)  if (i){ ERR }
 
 #define ERRBLK(label,rtn) err: pp_error(label); return (rtn);
 #define ERRBLKI(label) ERRBLK((label),-1);
@@ -838,6 +863,7 @@ CuAtt *pp_att_new(const char *, CuType, long, const void *, PPlist *);
 int pp_add_att(PPlist *, const char *, CuType, long, const void *, PPlist *);
 CuAtt *pp_string_att_new(const char *, const char *, PPlist *);
 int pp_add_string_att(PPlist *, const char *, const char *, PPlist *);
+int pp_add_string_att_if_set(PPlist *, const char *, const char *, PPlist *);
 int pp_copy_and_free_atts(CuFile *, CuVar *, PPlist *, PPlist *);
 
 /* in cdunifpp_axisvals.c: */
@@ -850,6 +876,7 @@ int pp_is_time_mean(Fint);
 int pp_grid_supported(const PPhdr *);
 int pp_axis_regular(const PPextravec, const PPrec *, const PPfile *);
 int pp_is_rotated_grid(const PPhdr *);
+Freal pp_mean_period(const PPtime *);
 Freal pp_time_diff(Fint, const PPdate *, const PPdate *);
 PPcalendartype pp_calendar_type(Fint);
 long long pp_gregorian_to_secs(const PPdate *);
@@ -864,6 +891,8 @@ int pp_check_sizes();
 /* int pp_compare_reals(Freal, Freal); */
 /* int pp_compare_ptrs(const void *, const void *); */
 int pp_compare_records_between_vars(const PPrec *, const PPrec *);
+int pp_compare_mean_periods(const PPrec *, const PPrec *);
+int pp_both_values_in_range(Freal, Freal, Freal, Freal);
 int pp_compare_records_within_var(const PPrec *, const PPrec *);
 int pp_compare_records(const void *, const void *);
 int pp_records_from_different_vars(const PPrec *, const PPrec *);
@@ -918,6 +947,7 @@ int pp_list_add_or_find(PPlist *, void *,
 
 /* in cdunifpp_malloc.c: */
 void *pp_malloc(size_t, PPlist *);
+void *pp_dup(const void *, size_t, PPlist *);
 int pp_free(void *, PPlist *);
 int pp_free_all(PPlist *);
 
@@ -928,6 +958,17 @@ char *pp_ppunit(int);
 
 /* in cdunifpp_process.c: */
 int pp_process(CuFile *);
+int pp_test_skip_var(const PPhdr *, const PPlandmask *);
+int pp_initialise_records(PPrec**, int, PPlist *);
+int pp_set_disambig_index(PPgenaxis *, PPgenaxis *, PPrec **, int, int);
+int pp_var_has_regular_z_t(PPgenaxis *, PPgenaxis *, PPrec **, int);
+int pp_store_dim_names(PPdimnames *, const PPlist *, const CuDim *);
+int pp_get_cell_methods (const PPlist *, const PPhdr *, const CuDim *, char []);
+int pp_append_cell_method(char [], const char *, const char *);
+int pp_var_get_extra_atts(const CuVar *, const PPfieldvar *, const CuDim *, PPlist *, PPlist *);
+int pp_append_string(char *, const char *, int);
+PPlist *pp_get_global_attributes(const char *, const PPfile *, PPlist *);
+int pp_free_tmp_vars(PPlist *, PPlist *, PPlist *, PPlist *, PPlist *, PPlist *);
 
 /* in cdunifpp_read.c: */
 size_t pp_read_words(void *, size_t, PPconvert, const PPfile *);
@@ -983,11 +1024,19 @@ CuType pp_get_var_type(const PPhdr *);
 int pp_var_is_time_mean(const PPhdr *);
 int pp_var_is_time_min(const PPhdr *);
 int pp_var_is_time_max(const PPhdr *);
+int pp_var_is_time_variance(const PPhdr *);
 int pp_var_is_zonal_mean(const PPhdr *);
+int pp_var_is_vertical_mean(const PPhdr *);
 int pp_var_is_missing(const PPhdr *hdr);
 
 /* in cdunifpp_debug.c: */
 void pp_dump_header(const PPhdr *);
+void pp_dump_date(PPdate *);
+void pp_dump_time(PPtime *);
+void pp_dump_list(PPlist *, void (*)(void *));
+void pp_dump_taxis(PPgenaxis *);
+
+
 
 /* in cdunifpp_genaxis.c: */
 /* JAK 2005-01-10 */
@@ -1004,12 +1053,13 @@ PPdata *pp_xsaxis_to_values(const PPxsaxis *, PPlist *);
 int pp_xsaxis_set(PPgenaxis *, const PPrec *, const PPfile *, const PPextravec, PPlist *);
 int pp_axistype(const PPxsaxis *);
 
+PPlevtype pp_zaxis_lev_type(const PPgenaxis *);
 PPlevtype pp_level_type(const PPhdr *);
 int pp_zaxis_set(PPgenaxis *, const PPhdr *);
-int pp_zaxis_add(PPgenaxis *, PPlevel *, int *, PPlist *);
+int pp_zaxis_add(PPgenaxis *, const PPlevel *, int *, PPlist *);
 
 int pp_taxis_set(PPgenaxis *, const PPhdr *);
-int pp_taxis_add(PPgenaxis *, PPtime *, int *,PPlist *);
+int pp_taxis_add(PPgenaxis *, const PPtime *, int *,PPlist *);
 int pp_taxis_is_time_mean(PPgenaxis *);
 
 int pp_regaxis_set(PPgenaxis *, PPaxisregtype, const PPhdr *, PPlist *, PPlist *);
@@ -1017,8 +1067,10 @@ int pp_set_horizontal_axes(PPrec *, PPfile *,
 			   PPgenaxis **, PPgenaxis **, 
 			   PPlist *, PPlist *);
 
-PPgenaxis *pp_var_get_taxis(PPfieldvar *);
-PPgenaxis *pp_var_get_xaxis(PPfieldvar *);
+PPgenaxis *pp_get_taxis_from_list(const PPlist *);
+PPgenaxis *pp_get_zaxis_from_list(const PPlist *);
+PPgenaxis *pp_get_yaxis_from_list(const PPlist *);
+PPgenaxis *pp_get_xaxis_from_list(const PPlist *);
 
 int pp_genaxis_print(const PPgenaxis *, const char *);
 int pp_lev_set(PPlevel *, PPhdr *);

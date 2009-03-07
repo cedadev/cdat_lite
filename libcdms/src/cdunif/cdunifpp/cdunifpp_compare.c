@@ -106,6 +106,12 @@ int pp_compare_records_between_vars(const PPrec *a, const PPrec *b) {
   COMPARE_REALS(BZX);
   COMPARE_REALS(BDX);
   
+  
+  {
+    int cmp = pp_compare_mean_periods(a, b);
+    if (cmp!=0) return cmp;
+  }
+
   /* Disambig index is used to force distinction between variables for records whose headers
    * are the same.  It is initialised to the same value for all records (in fact -1), but may
    * later be set to different values according to some heuristic.
@@ -118,6 +124,48 @@ int pp_compare_records_between_vars(const PPrec *a, const PPrec *b) {
 
   return 0;
 }
+
+
+/* Routine to compare if two PP records have different meaning periods, such
+ * that they should be considered to be part of different variables.  Normally
+ * this will be true if the mean periods differ by more than "delta", but in
+ * the case of Gregorian calendar, we allow some tolerance relating to
+ * climatology data.
+ *
+ * This should only get called if both records have already been checked for
+ * having the same LBTIM and LBPROC.
+ */
+
+int pp_compare_mean_periods(const PPrec *a, const PPrec *b) {
+    
+  int cmp;
+
+  cmp = pp_compare_reals(a->mean_period, b->mean_period);
+  if (cmp == 0) return 0;
+
+  /* if we get here, times differ - but for gregorian cut some slack */
+  if (pp_calendar_type(a->hdr.LBTIM) == gregorian) {
+    if (pp_both_values_in_range(28., 31., 
+				a->mean_period, b->mean_period)  /* monthly */
+	|| pp_both_values_in_range(90., 92.,
+				   a->mean_period, b->mean_period)  /* seasonal */
+	|| pp_both_values_in_range(365., 366.,
+				   a->mean_period, b->mean_period)) /* annual */
+      return 0;
+  }
+
+  return cmp;
+}
+
+/* helper routine for pp_compare_mean_periods - test if both periods are in specified range
+ * note - assumes that low, high are positive
+ */
+int pp_both_values_in_range(Freal low, Freal high, Freal a, Freal b) {
+  Freal low1 = low * (1. - tolerance);
+  Freal high1 = high * (1. + tolerance);
+  return (a >= low1) && (a <= high1) && (b >= low1) & (b <= high1);  
+}
+
 
 
 /* routine to compare two PP records that the calling routine 
@@ -308,7 +356,6 @@ int pp_compare_lists(const PPlist *l1, const PPlist *l2, int (*compfunc)(const v
 int pp_compare_levels(const void *p1, const void *p2) {
   const PPlevel *a = *(PPlevel **)p1;
   const PPlevel *b = *(PPlevel **)p2;
-  int cmp;
 
   /* macros called LCOMPARE_INTS and LCOMPARE_REALS to emphasise difference from those in pp_compare_records */
 

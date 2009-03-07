@@ -1,0 +1,14 @@
+Migrating to CDAT-5.0 full release
+==================================
+
+I have applied a patch to libcdms to unify it with cdat-5.0 (excluding
+cdunifpp which is out of date in the CDAT trunk).  
+
+TODO
+----
+
+Before cdat_lite-5.0-0.3 I should:
+
+ 1. Support "setup.py develop".   This will require rearranging the package layout in "Packages".
+ 2. Support NetCDF4.  I need to investigate what support CDAT-5.0 has and merge.
+ 3. All tests passing.  2 tests are failing at the moment but I'm not sure if this is CDAT's problem or mine.  Some cdms tests aren't ported yet.

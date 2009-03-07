@@ -1,3 +1,5 @@
+import numpy
+# Adapted for numpy/ma/cdms2 by convertcdms.py
 def minmax(*data) :
   """
   Function : minmax
@@ -16,13 +18,12 @@ def minmax(*data) :
   >>> genutil.minmax([[s,s*2],4.,[6.,7.,s]],[5.,-7.,8,(6.,1.)])
   (-7.0, 8.0)
   """
-  import kinds
-  mx=-kinds.default_float_kind.MAX
-  mn=kinds.default_float_kind.MAX
+  mx=numpy.finfo(numpy.float).min
+  mn=numpy.finfo(numpy.float).max
   if len(data)==1 : data=data[0]
   global myfunction
   def myfunction(d,mx,mn):
-    from MA import maximum,minimum,absolute,greater,count
+    from numpy.ma import maximum,minimum,absolute,greater,count
     try:
       if count(d)==0 : return mx,mn
       mx=float(maximum(mx,float(maximum(d))))

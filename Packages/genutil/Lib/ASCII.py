@@ -1,9 +1,10 @@
-import MV,Numeric,cdms,genutil
+# Adapted for numpy/ma/cdms2 by convertcdms.py
+import MV2,numpy,cdms2,genutil
 
 def make_var(lap,id=None,shape=None):
-    lap=MV.array(lap)
+    lap=MV2.array(lap)
     if shape is not None:
-        lap=MV.reshape(lap,shape)
+        lap=MV2.reshape(lap,shape)
     if id is not None:
         lap.id=id
     return lap
@@ -123,17 +124,17 @@ def read_col( text_file ,header=0, cskip=0, cskip_type='columns', axis=False, id
             for i in range(nvars):
                 vars[i].append(float(sp[i]))
     for i in range(nvars):
-        vars[i]=MV.array(vars[i])
+        vars[i]=MV2.array(vars[i])
         if ids!=[None]:
             vars[i].id=ids[i]
     if axis:
         id=vars[0].id
         axval=vars.pop(0).filled()
-        axindices=Numeric.argsort(axval)
-        ax=cdms.createAxis(Numeric.sort(axval))
+        axindices=numpy.argsort(axval)
+        ax=cdms2.createAxis(numpy.sort(axval))
         ax.id=id
         for i in range(nvars-1):
-            tmp=MV.array(genutil.arrayindexing.get(vars[i],axindices))
+            tmp=MV2.array(genutil.arrayindexing.get(vars[i],axindices))
             tmp.id=vars[i].id
             tmp.setAxis(0,ax)
             vars[i]=tmp

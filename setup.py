@@ -3,14 +3,13 @@
 """
 
 
-import sys, os
+import sys, os, shutil
 
 from ez_setup import use_setuptools
 use_setuptools()
 
 from setuptools import setup, Extension
 from setup_util import build_ext, makeExtension
-
 
 NDG_EGG_REPOSITORY = 'http://ndg.nerc.ac.uk/dist/'
 CDAT_LITE_URL = 'http://proj.badc.rl.ac.uk/ndg/wiki/CdatLite'
@@ -27,10 +26,10 @@ CDAT_HOME_URL = 'http://www-pcmdi.llnl.gov/software-portal/cdat'
 #     in <cdat-release>.
 #  3. The cdunifpp version is stated in long_description not in the version.  Any
 #     change to the cdunifpp version naturally triggers a new <cdat-lite-version>.
-cdat_release = '4.3'
+cdat_release = '5.0'
 cdat_tag = ''
-cdunifpp_version = '0.11'
-cdat_lite_version = '0.2.5'
+cdunifpp_version = '0.13pre2'
+cdat_lite_version = '0.3pre1'
 
 
 long_description = """
@@ -51,16 +50,23 @@ Full documentation for CDAT is available from the CDAT homepage
 
 #------------------------------------------------------------------------------
 
-def linkScripts(scripts=['cdscan']):
-    """In order to put cdat scripts in their own package they are symbolically
-    linked into the cdat/scripts directory.
+def copyScripts(scripts=['cdscan', 'cddump']):
+    """In order to put cdat scripts in their own package they are copied
+    into the cdat/scripts directory.
+
     """
     for script in scripts:
-        src = os.path.abspath(os.path.join('libcdms/src/python', script))
+        src = os.path.abspath(os.path.join('Packages/cdms2/Script', script))
+        if not os.path.exists(src):
+            src = os.path.abspath(os.path.join('libcdms/src/python', script))
+            
         dest = os.path.abspath(os.path.join('cdat_lite', 'scripts', script+'.py'))
-        if not os.path.exists(dest):
-            os.symlink(src, dest)
-linkScripts()
+        shutil.copy(src, dest)
+
+    shutil.copy('Packages/cdms2/Script/convertcdms.py',
+                os.path.abspath(os.path.join('cdat_lite', 'scripts')))
+        
+copyScripts()
 
 #------------------------------------------------------------------------------
 
@@ -77,6 +83,34 @@ if sys.version_info[:3] < (2,5):
   
 ==========================================================================
 """)
+
+### This is untested but I think it will be useful when we try installing
+### on suse
+##
+## # Suse 10.0 has a bug that prevents numpy installing properly.  This test
+## # catches the problem and advises a solution
+## try:
+##     import numpy
+## except ImportError, e:
+##     if 'undefined symbol:_gfortran_filename' in str(e):
+##         raise SystemExit("""
+## ==========================================================================
+##  Your numpy installation is broken due to a known problem with libblas on
+##  your system.
+
+##  We recommend you install ATLAS (http://math-atlas.sourceforge.net) and
+##  reinstall numpy with:
+
+##  $ ATLAS=<atlas-home> easy_install -U numpy
+
+##  You may need to remove your current installation of numpy first.
+## ==========================================================================
+## """)
+##     else:
+##         raise e
+import numpy
+
+#------------------------------------------------------------------------------
 
     
 setup(name='cdat_lite',
@@ -103,18 +137,19 @@ setup(name='cdat_lite',
       install_requires = ['setuptools>=0.6c1'],
       zip_safe = False,
       
-      packages = ['unidata', 'cdms', 'cdutil', 'xmgrace', 'genutil',
-                  'PropertiedClasses', 'regrid', 
+      packages = ['unidata', 'cdms2', 'cdutil', 'xmgrace', 'genutil',
+                  'PropertiedClasses', 'regrid2', 'kinds',
                   'cdat_lite', 'cdat_lite.clib', 'cdat_lite.scripts', 'cdat_lite.test'],
-      py_modules = ['MV'],
-      package_dir = {'': 'Packages/cdms',
+      py_modules = ['MV2'],
+      package_dir = {'': 'Packages/cdms2',
                      'unidata': 'Packages/unidata/Lib',
-                     'cdms': 'Packages/cdms/Lib',
+                     'cdms2': 'Packages/cdms2/Lib',
                      'cdutil': 'Packages/cdutil/Lib',
                      'xmgrace': 'Packages/xmgrace/Lib',
                      'genutil': 'Packages/genutil/Lib',
                      'PropertiedClasses': 'Packages/Properties/Lib',
-                     'regrid': 'Packages/regrid/Lib',
+                     'regrid2': 'Packages/regrid2/Lib',
+                     'kinds': 'Packages/kinds/Lib',
                      'cdat_lite': 'cdat_lite',
                      'cdat_lite.scripts': 'cdat_lite/scripts',
                      'cdat_lite.clib': 'cdat_lite/clib',
@@ -124,19 +159,17 @@ setup(name='cdat_lite',
       ext_modules = [
         makeExtension('cdtime'),
         makeExtension('unidata.udunits_wrap', 'unidata'),
-        makeExtension('cdms.Cdunif', 'cdms',
-                      ['Packages/cdms/Src/Cdunifmodule.c']),
-        Extension('cdms._bindex',
-                  ['Packages/cdms/Src/_bindexmodule.c',
-                   'Packages/cdms/Src/bindex.c'],
+        makeExtension('cdms2.Cdunif', 'cdms2'),
+        Extension('cdms2._bindex',
+                  ['Packages/cdms2/Src/_bindexmodule.c',
+                   'Packages/cdms2/Src/bindex.c'],
                   ),
         makeExtension('genutil.array_indexing', 'genutil'),
-        Extension('regrid._regrid', ['Packages/regrid/Src/_regridmodule.c'],
-                  ),
-        Extension('regrid._scrip', ['Packages/regrid/Src/_scripmodule.c',
-                                    'Packages/regrid/Src/regrid.c'],
-                  )
-        ],
+        Extension('regrid2._regrid', ['Packages/regrid2/Src/_regridmodule.c']),
+        Extension('regrid2._scrip', ['Packages/regrid2/Src/_scripmodule.c',
+                                     'Packages/regrid2/Src/regrid.c']),
+        makeExtension('kinds._kinds', 'kinds'),
+      ],
 
       # Since udunits.dat isn't in the Lib directory we use the data_files attribute
       # to install data.
@@ -146,7 +179,9 @@ setup(name='cdat_lite',
       data_files = [('unidata', ['Packages/unidata/Src/udunits.dat'])],
       
       entry_points = {
-        'console_scripts': ['cdscan = cdat_lite.scripts:cdscan_main']
+        'console_scripts': ['cdscan = cdat_lite.scripts:cdscan_main',
+                            'cddump = cdat_lite.scripts:cddump_main',
+                            'convertcdms = cdat_lite.scripts:convertcdms_main']
         },
 
       test_suite = 'nose.collector',

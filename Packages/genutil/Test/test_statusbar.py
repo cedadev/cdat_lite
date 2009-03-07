@@ -1,3 +1,4 @@
+# Adapted for numpy/ma/cdms2 by convertcdms.py
 from genutil import statusbar
 import os,sys,cdutil
 n=100
@@ -17,9 +18,8 @@ except:
     raise "Error simple tk statusbar died...."
 
 
-import cdutil,cdms
-f=cdms.open(os.path.join(sys.prefix,'sample_data','clt.nc'))
-## f=cdms.open('/pcmdi/amip/mo/tas/median-02a/tas_median-02a.nc')
+import cdutil,cdms2 as cdms
+f=cdms.open(os.path.join(cdms.__path__[0],'..','..','..','..','sample_data','clt.nc'))
 s=f('clt')
 cdutil.setTimeBoundsMonthly(s)
 try:

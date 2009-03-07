@@ -1,4 +1,6 @@
-import MA,cdms,MV,genutil
+# Adapted for numpy/ma/cdms2 by convertcdms.py
+# Adapted for numpy/ma/cdms2 by convertcdms.py
+import numpy,cdms2,MV2,genutil
 
 def custom1D(x,filter,axis=0):
     """
@@ -13,16 +15,16 @@ def custom1D(x,filter,axis=0):
             default value = 0. You can pass the name of the dimension or index
             (integer value 0...n) over which you want to compute the statistic.
     """
-    isMV=cdms.isVariable(x)
-    if isMV: xatt=x.attributes
-    filter=MV.array(filter)
-    newx=MV.array(x)
+    isMV2=cdms2.isVariable(x)
+    if isMV2: xatt=x.attributes
+    filter=MV2.array(filter)
+    newx=MV2.array(x)
     initialorder=newx.getOrder(ids=1)
     n=len(filter)
     newx=newx(order=str(axis)+'...')
     sh=list(newx.shape)
     sh[0]=sh[0]-n+1
-    out=MA.zeros(sh,typecode=newx.typecode())
+    out=numpy.ma.zeros(sh,dtype=newx.dtype.char)
     ax=[]
     bnds=[]
     nax=newx.getAxis(0)
@@ -31,8 +33,8 @@ def custom1D(x,filter,axis=0):
         if i==0:
             filter.setAxis(0,sub.getAxis(0))
             filter,sub=genutil.grower(filter,sub)
-        out[i]=MA.average(sub,0,weights=filter)
-        if isMV:
+        out[i]=numpy.ma.average(sub,weights=filter, axis=0)
+        if isMV2:
             a=nax.subAxis(i,i+n)
             try:
                 b=a.getBounds()
@@ -42,15 +44,15 @@ def custom1D(x,filter,axis=0):
                 bnds.append([b1,b2])
             except: # No bounds on this axis
                 bnds=None
-                ax.append(float(MA.average(a[:])))
-    out=MV.array(out,id=newx.id)
-    if isMV:
+                ax.append(float(numpy.ma.average(a[:], axis=0)))
+    out=MV2.array(out,id=newx.id)
+    if isMV2:
         for k in xatt.keys():
             setattr(out,k,xatt[k])
         for i in range(1,len(sh)):
             out.setAxis(i,newx.getAxis(i))
-        if not bnds is None: bnds=MA.array(bnds)
-        ax=cdms.createAxis(ax,bounds=bnds)
+        if not bnds is None: bnds=numpy.ma.array(bnds)
+        ax=cdms2.createAxis(ax,bounds=bnds)
         a=newx.getAxis(0)
         attr=a.attributes
         ax.id=a.id
@@ -59,8 +61,8 @@ def custom1D(x,filter,axis=0):
         out.setAxis(0,ax)
         
     out=out(order=initialorder)
-    if not isMV:
-        out=MA.array(out)
+    if not isMV2:
+        out=numpy.ma.array(out)
     return out
 
 
@@ -93,5 +95,5 @@ def runningaverage(x,N,axis=0):
             default value = 0. You can pass the name of the dimension or index
             (integer value 0...n) over which you want to compute the statistic.
     """
-    filter=MA.ones((N,),typecode='f')
+    filter=numpy.ma.ones((N,),dtype='f')
     return custom1D(x,filter,axis=axis)

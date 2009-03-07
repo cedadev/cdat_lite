@@ -1,9 +1,10 @@
 #!/usr/bin/env python
+# Adapted for numpy/ma/cdms2 by convertcdms.py
 
-import cdms,cdutil,sys,os
+import cdms2 as cdms,cdutil,sys,os
 cdms.setAutoBounds('on')
 
-f = cdms.open(os.path.join(sys.prefix,'sample_data','th_yr.nc'))
+f = cdms.open(os.path.join(cdms.__path__[0],'..','..','..','..','sample_data','th_yr.nc'))
 
 th=f('th',time=slice(-3,None,1))
 t=th.getTime()
