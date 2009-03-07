@@ -1,8 +1,8 @@
 ## Automatically adapted for numpy.oldnumeric Aug 02, 2007 by 
 
 import numpy
-import cdms2 as cdms
-import numpy.oldnumeric as Numeric, _regrid, string, numpy.oldnumeric.ma as MA, copy
+import cdms2
+import  _regrid, string, copy
 from error import RegridError
 
 _debug = 0                              # Set to 1 for debug
@@ -16,7 +16,7 @@ def extractBounds(bounds):
         lower = bounds[:,1]
         upper = bounds[:,0]
 
-    return (lower.astype(Numeric.Float32), upper.astype(Numeric.Float32))
+    return (lower.astype(numpy.float32), upper.astype(numpy.float32))
 
 # Create a regridder. ingrid and outgrid are CDMS AbstractGrid objects.
 class Regridder:
@@ -55,14 +55,14 @@ class Regridder:
         if _debug==1:
             import sys
             sys.stdout = open('debug_regrid.txt','w')
-            print "bsin = ", Numeric.array2string(bsin,precision=3)
-            print "bnin = ", Numeric.array2string(bnin,precision=3)
-            print "bwin = ", Numeric.array2string(bwin,precision=3)
-            print "bein = ", Numeric.array2string(bein,precision=3)
-            print "bsout = ", Numeric.array2string(bsout,precision=3)
-            print "bnout = ", Numeric.array2string(bnout,precision=3)
-            print "bwout = ", Numeric.array2string(bwout,precision=3)
-            print "beout = ", Numeric.array2string(beout,precision=3)
+            print "bsin = ", numpy.array2string(bsin,precision=3)
+            print "bnin = ", numpy.array2string(bnin,precision=3)
+            print "bwin = ", numpy.array2string(bwin,precision=3)
+            print "bein = ", numpy.array2string(bein,precision=3)
+            print "bsout = ", numpy.array2string(bsout,precision=3)
+            print "bnout = ", numpy.array2string(bnout,precision=3)
+            print "bwout = ", numpy.array2string(bwout,precision=3)
+            print "beout = ", numpy.array2string(beout,precision=3)
 
         self.londx, self.lonpt, self.wtlon, self.latdx, self.latpt, self.wtlat = _regrid.maparea( self.nloni, self.nlono, self.nlati, self.nlato, bnin, bnout, bsin, bsout, bein, beout, bwin, bwout )
 
@@ -80,7 +80,7 @@ class Regridder:
         from cdms2.avariable import AbstractVariable
 
         # Compatibility
-        if mask is MA.nomask:
+        if mask is numpy.ma.nomask:
             mask = None
 
         if ar.dtype.type is numpy.bool_:
@@ -101,35 +101,35 @@ class Regridder:
         else:
             inputIsVariable = 0
 
-        # Turn ar into a Numeric array.
-        if MA.isMaskedArray(ar):
-            armiss = ar.fill_value()
+        # Turn ar into a numpy array.
+        if numpy.ma.isMaskedArray(ar):
+            armiss = ar.fill_value
             armask = ar.mask
-            if armask is MA.nomask:
+            if armask is numpy.ma.nomask:
                 armask = None
             else:
-                armask = 1. - armask # Reverse MA convention for rgdarea
-            ar = MA.filled(ar)
+                armask = 1. - armask # Reverse numpy.ma convention for rgdarea
+            ar = numpy.ma.filled(ar)
         elif isinstance(ar, AbstractVariable):
             tempar = ar.getValue(squeeze=0)
             armiss = ar.getMissing()
             armask = tempar.mask
-            if armask is MA.nomask:
+            if armask is numpy.ma.nomask:
                 armask = None
             else:
-                armask = 1. - armask # Reverse MA convention for rgdarea
-            ar = MA.filled(tempar)
-        elif isinstance(ar, Numeric.ArrayType):
+                armask = 1. - armask # Reverse numpy.ma convention for rgdarea
+            ar = numpy.ma.filled(tempar)
+        elif isinstance(ar, numpy.ndarray):
             armask = armiss = None
         else:
-            raise RegridError, "Input array is not a Variable, MA, or Numeric array"
+            raise RegridError, "Input array is not a Variable, numpy.ma, or numpy array"
         
         # If neither mask nor missing value is specified, get them from
         # the input array.
         if mask is None and missing is None:
             missing = armiss
             mask = armask
-        if isinstance(missing, Numeric.ArrayType):
+        if isinstance(missing, numpy.ndarray):
             missing = missing[0]
 
         rank = len(ar.shape)
@@ -192,7 +192,7 @@ class Regridder:
                 assert mask.shape==self.inshape, '2-D mask must be same shape as input grid'
                 inmask = mask
             elif self.inmask is None:
-                inmask = Numeric.ones(self.inshape)
+                inmask = numpy.ones(self.inshape)
             else:
                 inmask = self.inmask
 
@@ -203,9 +203,9 @@ class Regridder:
                     firstslice = ar[0]
                 else:
                     firstslice = ar[0,0]
-                # inmask = Numeric.logical_and( Numeric.greater( Numeric.absolute( firstslice - missing), Numeric.absolute( 0.001*missing)), inmask)
+                # inmask = numpy.logical_and( numpy.greater( numpy.absolute( firstslice - missing), numpy.absolute( 0.001*missing)), inmask)
                 if issubclass(ar.dtype.type, numpy.floating):
-                    inmask = Numeric.where( Numeric.greater( Numeric.absolute( firstslice - missing), Numeric.absolute( 0.001*missing)), inmask, 0)
+                    inmask = numpy.where( numpy.greater( numpy.absolute( firstslice - missing), numpy.absolute( 0.001*missing)), inmask, 0)
 
         # If the user mask was specified and is > 2-D, it overrides the grid mask
         else:
@@ -215,22 +215,22 @@ class Regridder:
             # If armask is derived from the input array, it is probably consistent
             # with the missing value - don't bother recalculating it
             if missing is not None and armask is None:
-                # inmask = Numeric.logical_and( Numeric.greater( Numeric.absolute( ar - missing), Numeric.absolute( 0.001*missing)), inmask)
+                # inmask = numpy.logical_and( numpy.greater( numpy.absolute( ar - missing), numpy.absolute( 0.001*missing)), inmask)
                 if issubclass(ar.dtype.type, numpy.floating):
-                    inmask = Numeric.where( Numeric.greater( Numeric.absolute( ar - missing), Numeric.absolute( 0.001*missing)), inmask, 0)
+                    inmask = numpy.where( numpy.greater( numpy.absolute( ar - missing), numpy.absolute( 0.001*missing)), inmask, 0)
         # Cast the mask to float
-        inmask = inmask.astype(Numeric.Float32)
+        inmask = inmask.astype(numpy.float32)
         if missing is None: missing=1.0e20
 
         # Cast the input array to 32-bit floats, if necessary
-        if ar.dtype.char != Numeric.Float32:
-            ar = ar.astype(Numeric.Float32)
+        if ar.dtype.char != numpy.float32:
+            ar = ar.astype(numpy.float32)
 
         # Malloc return array
         outshape = list(shape)
         outshape[rank-ilat-1] = self.nlato
         outshape[rank-ilon-1] = self.nlono
-        outar = Numeric.zeros(tuple(outshape),Numeric.Float32)
+        outar = numpy.zeros(tuple(outshape),numpy.float32)
 
         # Perform the regridding. The return array has the same shape as the output array, and is the fraction of the zone which overlaps a non-masked zone of the input grid.
         amskout = _regrid.rgdarea(ilon, ilat, itim1, itim2, ntim1, ntim2, nloni, self.nlono, nlati, self.nlato, flag2D, missing, self.londx, self.lonpt, self.wtlon, self.latdx, self.latpt, self.wtlat, inmask, ar, outar)
@@ -239,18 +239,18 @@ class Regridder:
         amskout.shape = outar.shape
 
         # Set the missing data mask of the output array, if any.
-        hasMissing = not MA.alltrue(MA.ravel(amskout))
+        hasMissing = not numpy.ma.alltrue(numpy.ma.ravel(amskout))
         if hasMissing:
-            slabMask = MA.where(MA.equal(amskout, 0), 1, 0)
+            slabMask = numpy.ma.where(numpy.ma.equal(amskout, 0), 1, 0)
         else:
             slabMask = None
 
         # Combine missing data mask and output grid mask
         # Note: slabMask and outmask are Boolean here
         if self.outmask is not None:
-            outmask = Numeric.logical_not(Numeric.resize(self.outmask, outshape))
+            outmask = numpy.logical_not(numpy.resize(self.outmask, outshape))
             if hasMissing:
-                outmask = MA.logical_or(outmask, slabMask)
+                outmask = numpy.ma.logical_or(outmask, slabMask)
         else:
             outmask = slabMask
 
@@ -262,10 +262,10 @@ class Regridder:
                     axislist[i] = self.outlon
                 elif order[i]=='y':
                     axislist[i] = self.outlat
-            result = cdms.createVariable(outar, mask = outmask, fill_value = missing,
+            result = cdms2.createVariable(outar, mask = outmask, fill_value = missing,
                                          axes = axislist, attributes = attrs, id = varid)
         else:
-            result = MA.masked_array(outar, mask = outmask, fill_value = missing)
+            result = numpy.ma.masked_array(outar, mask = outmask, fill_value = missing)
             
         if returnTuple==0:
             return result
@@ -319,13 +319,13 @@ def input_mask(ain, type,  mask, missing = None):
             raise IndexError, 'Data size is out of range'
             return 
          
-        amskin = Numeric.where( Numeric.greater(reduced, 0.9*omit),  0.0, mask)
-        amskin = amskin.astype(Numeric.Float32)
+        amskin = numpy.where( numpy.greater(reduced, 0.9*omit),  0.0, mask)
+        amskin = amskin.astype(numpy.float32)
 
     else:                                                    # 0.0 -> missing in passed mask
 
-        amskin = Numeric.where( Numeric.greater(ain, 0.9*omit),  0.0, mask)
-        amskin = amskin.astype(Numeric.Float32)
+        amskin = numpy.where( numpy.greater(ain, 0.9*omit),  0.0, mask)
+        amskin = amskin.astype(numpy.float32)
 
     return omit, amskin  
 

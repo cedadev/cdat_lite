@@ -1,7 +1,7 @@
 ## Automatically adapted for numpy.oldnumeric Aug 01, 2007 by 
+## Further modified to be pure new numpy June 24th 2008
 
 "Emulation of old cu package"
-import numpy.oldnumeric.ma as MA
 import string, types, sys
 from error import CDMSError
 from dataset import openDataset, createDataset
@@ -70,7 +70,7 @@ class cuDataset:
                 nd = nd + 1
                 result.append('** Dimension ' + str(nd) + ' **')
                 axis = x[0]
-                n = MA.size(axis[:])
+                n = numpy.ma.size(axis[:])
                 numpy.set_printoptions(edgeitems=n)
                 result.append('Name: ' + axis.id)
                 result.append('Units: ' + axis.units)

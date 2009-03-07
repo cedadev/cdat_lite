@@ -4,10 +4,10 @@
 
 import sys
 import getopt
-import cdms2 as cdms
+import cdms2
 from cdms2.grid import lookupArray
 from cdms2.cdmsobj import CdFromObject,CdString,CdScalar,CdFloat,CdDouble,CdShort,CdInt,CdLong
-import numpy.oldnumeric.ma as MA, numpy.oldnumeric as Numeric
+import numpy
 import string
 import cdtime
 import os.path
@@ -198,15 +198,15 @@ def combineKeys(dict, typedict, timeIsLinear=0, referenceDelta = None):
         if timeIsLinear and len(values)!=(epart-spart):
             # Find the bad values
             diffs = values[1:]-values[:-1]
-            badindices = Numeric.compress(Numeric.not_equal(diffs,referenceDelta),range(len(values)))
-            badvalues = Numeric.take(values, badindices)
+            badindices = numpy.compress(numpy.not_equal(diffs,referenceDelta),range(len(values)))
+            badvalues = numpy.take(values, badindices)
             print "Error: Missing values in %s after times: %s. Set delta with the -i option or turn off linear mode with the -j option."%(path,str(badvalues))
             errorOccurred = 1
 
         prevvals = values
         previ = prevj
         
-    fullaxis = MA.concatenate(axislist)
+    fullaxis = numpy.ma.concatenate(axislist)
     return fullaxis, name0, compressPart, coordToInd, firstunits, partition, linCoordToInd, errorOccurred
 
 def copyDict(dict):
@@ -238,7 +238,7 @@ def disambig(name, dict, num, comparator, value):
 
 def compareaxes(axis1, axis2):
     """Return 0 if equal, 1 if not"""
-    return ((len(axis1)!=len(axis2)) or not MA.allclose(axis1[:],axis2[:]))
+    return ((len(axis1)!=len(axis2)) or not numpy.ma.allclose(axis1[:],axis2[:]))
 
 def comparedomains(domain1, domain2):
     """Return 0 if equal, 1 if not"""
@@ -261,7 +261,7 @@ def compareVarDictValues(val1, val2):
 def cleanupAttrs(attrs):
     for attname in attrs.keys():
         attval = attrs[attname]
-        if isinstance(attval, Numeric.ArrayType):
+        if isinstance(attval, numpy.ndarray):
             if len(attval)==1:
                 attrs[attname] = attval[0]
             else:
@@ -314,12 +314,12 @@ def cloneWithLatCheck(axis):
 
     axisvals = origvals = axis[:]
     if axis.isLatitude() and hasattr(axis,"units") and string.lower(axis.units[0:6])=="degree":
-        axisvals = Numeric.maximum(-90.0, Numeric.minimum(90.0,axisvals))
-        if not MA.allclose(axisvals, origvals):
+        axisvals = numpy.maximum(-90.0, numpy.minimum(90.0,axisvals))
+        if not numpy.ma.allclose(axisvals, origvals):
             print "Warning: resetting latitude values: ",origvals," to: ",axisvals
 
     b = axis.getBounds()
-    mycopy = cdms.createAxis(copy.copy(axisvals))
+    mycopy = cdms2.createAxis(copy.copy(axisvals))
     mycopy.id = axis.id
     try:
         mycopy.setBounds(b)
@@ -379,8 +379,8 @@ def main(argv):
             splitOnLevel = 1
             levelstr = string.split(arg,',')
             levellist = map(string.atof, levelstr)
-            levels = Numeric.array(levellist)
-            levels = Numeric.sort(levels)
+            levels = numpy.array(levellist)
+            levels = numpy.sort(levels)
         elif flag=='-m':
             levelid = arg
         elif flag=='-p':
@@ -428,13 +428,13 @@ def main(argv):
     # Generate a list of pathnames for datasets
     dsetfiles = []
     for path in dsetargs:
-        dset = cdms.open(path)
+        dset = cdms2.open(path)
         if not hasattr(dset, 'cdms_filemap'):
             raise RuntimeError,'Dataset must have a cdms_filemap attribute: '+path
         if not hasattr(dset, 'directory'):
             raise RuntimeError,'Dataset must have a directory attribute: '+path
         dsetdirec = dset.directory
-        initfilemap = cdms.dataset.parseFileMap(dset.cdms_filemap)
+        initfilemap = cdms2.dataset.parseFileMap(dset.cdms_filemap)
         for namelist, slicelist in initfilemap:
             for t0, t1, lev0, lev1, path in slicelist:
                 dsetfiles.append(os.path.join(dsetdirec, path))
@@ -457,7 +457,7 @@ def main(argv):
     if templatestr is not None:
         if os.path.isabs(templatestr):
             templatestr = templatestr[dirlen:]
-        templatere, ignore = cdms.cdmsobj.templateToRegex(templatestr)
+        templatere, ignore = cdms2.cdmsobj.templateToRegex(templatestr)
         template = re.compile(templatere+'$')
     else:
         template = None
@@ -476,7 +476,7 @@ def main(argv):
     for extendPath in dsetargs:
         if verbose:
             print extendPath
-        extendDset = cdms.open(extendPath)
+        extendDset = cdms2.open(extendPath)
 
         # Copy the global attribute dictionary if necessary. Note that copy.copy
         # can't be used here, since .attributes is now a 'fake' dictionary.
@@ -492,7 +492,7 @@ def main(argv):
         #
         # levdict : (path, levelid) => (levelarray, levelunits)
         # 
-        initfilemap = cdms.dataset.parseFileMap(extendDset.cdms_filemap)
+        initfilemap = cdms2.dataset.parseFileMap(extendDset.cdms_filemap)
         dsetdirec = extendDset.directory
         for namelist, slicelist in initfilemap:
             for name in namelist:
@@ -607,8 +607,8 @@ def main(argv):
         if verbose:
             print path
         try:
-            f = cdms.open(path)
-        except:
+            f = cdms2.open(path)
+        except Exception,err:
             raise RuntimeError,'Error opening file '+path
 
         # Copy the global attribute dictionary if necessary. Note that copy.copy
@@ -725,10 +725,10 @@ def main(argv):
                     varlev = var.getLevel()
                 if varlev is not None:
                     startlev = varlev[0]
-                    if isinstance(startlev, Numeric.ArrayType):
+                    if isinstance(startlev, numpy.ndarray):
                         startlev = startlev[0]
                     endlev = varlev[-1]
-                    if isinstance(endlev, Numeric.ArrayType):
+                    if isinstance(endlev, numpy.ndarray):
                         endlev = endlev[0]
                     varentry[2] = startlev
                     varentry[3] = endlev
@@ -818,7 +818,7 @@ def main(argv):
     axes2 = []
     for vlist1, axis1, name1, partition1, coordToInd1, units1, opartition1, linCoordToInd1 in axes:
         for vlist2, axis2, name2, partition2, coordToInd2, units2, opartition2, linCoordToInd2 in axes2:
-            if len(axis1)==len(axis2) and name1==name2 and partition1==partition2 and units1==units2 and MA.allclose(axis1,axis2)==1:
+            if len(axis1)==len(axis2) and name1==name2 and partition1==partition2 and units1==units2 and numpy.ma.allclose(axis1,axis2)==1:
                 vlist2.extend(vlist1)
                 break
         else:
@@ -828,20 +828,20 @@ def main(argv):
     for vlist, axis, name, partition, coordToInd, units, opartition, linCoordToInd in axes2:
         # print vlist, coordToInd
         uniqname = disambig(name, axisdict, len(axis), compareaxes, axis)
-        axisobj = cdms.createAxis(axis)
+        axisobj = cdms2.createAxis(axis)
         axisobj.name_in_file = name
         axisobj.id = uniqname
         axisobj.units = units
         if timeIsLinear and axisobj.isTime():
-            axisobj.partition = MA.ravel(MA.array(opartition))
+            axisobj.partition = numpy.ma.ravel(numpy.ma.array(opartition))
             axisobj.length = axisobj.partition[-1]-axisobj.partition[0]
-            mopartition = Numeric.array(opartition)
-            partition_length = Numeric.sum(mopartition[:,1]-mopartition[:,0])
+            mopartition = numpy.array(opartition)
+            partition_length = numpy.sum(mopartition[:,1]-mopartition[:,0])
             if partition_length<axisobj.length:
                 axisobj.partition_length = partition_length
         else:
-            axisobj.partition = MA.ravel(MA.array(partition))
-        # axisobj.reference_partition = str(MA.ravel(MA.array(opartition)))
+            axisobj.partition = numpy.ma.ravel(numpy.ma.array(partition))
+        # axisobj.reference_partition = str(numpy.ma.ravel(numpy.ma.array(opartition)))
         axisdict[uniqname] = axisobj
         for varname in vlist:
             domain, attributes, tcode = vardict[varname]
@@ -898,7 +898,7 @@ def main(argv):
                     illegalvars.append((varname, path1, path2))
     if len(illegalvars)>0:
         raise RuntimeError, "Variable '%s' is duplicated, and is a function of lat or lon: files %s, %s"%illegalvars[0]
-        
+
     if verbose and len(duplicatevars.values())>0:
         print 'Duplicate variables:'
         for varlist in duplicatevars.keys():
@@ -933,10 +933,10 @@ def main(argv):
         else:
             try:
                 node.setData(axis[:])
-            except cdms.cdmsNode.NotMonotonicError:
+            except cdms2.cdmsNode.NotMonotonicError:
                 print 'Warning: Axis values for axis %s are not monotonic:'%axis.id,axis[:]
-                print 'Warning: Resetting axis %s values to:'%axis.id, Numeric.arange(len(axis))
-                node.setData(Numeric.arange(len(axis)))
+                print 'Warning: Resetting axis %s values to:'%axis.id, numpy.arange(len(axis))
+                node.setData(numpy.arange(len(axis)))
         axisattrs = copyDict(axis.attributes)
         cleanupAttrs(axisattrs)
         node.setExternalDict(axisattrs)
@@ -1008,10 +1008,11 @@ if __name__ == '__main__':
         main(argv)
     except CDMSError,e:
         markError(str(e))
-    except:
+    except Exception,err:
         markError("Importing dataset")
- 
-    err = os.system("diff junk.xml test.xml")
-    if err!=0: markError("Comparison with benchmark test.xml")
 
+
+    err = os.system("diff junk.xml test.xml")
+
+    if err!=0: markError("Comparison with benchmark test.xml")
     reportError()

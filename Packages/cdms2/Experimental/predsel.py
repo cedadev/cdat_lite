@@ -1,4 +1,4 @@
-import cdms, MA, Numeric
+import cdms2,numpy
 
 class PredicateComponent (cdms.selectors.SelectorComponent):
     "A component that confines an axis and selects from it with a predicate."
@@ -26,7 +26,7 @@ class PredicateComponent (cdms.selectors.SelectorComponent):
             
     def specify (self, slab, axes, specifications, confined_by, aux):
         for i in range(len(axes)):
-            if cdms.axisMatches(axes[i], self.id):
+            if cdms2.axisMatches(axes[i], self.id):
                if confined_by[i] is None:
                    specifications[i] = self.get_limits(axes[i])
                    confined_by[i] = self
@@ -41,26 +41,26 @@ class PredicateComponent (cdms.selectors.SelectorComponent):
         index = axismap[i]
         fetchedaxes = fetched.getAxisList()
         axis = fetchedaxes[index]
-        m = Numeric.zeros(fetched.shape)
+        m = numpy.zeros(fetched.shape,numpy.int32)
         if index <>0:
-            p = Numeric.arange(MA.rank(fetched))
+            p = numpy.arange(numpy.ma.rank(fetched))
             p[0] = index
             p[index] = 0
-            m = Numeric.transpose(m, p)
+            m = numpy.transpose(m, p)
         for i in range(len(axis)):
            x = self.predicate(axis, i)
            if not x:
               m[i,...] = 1
         if index <> 0:
-           m = Numeric.transpose(m, p)
-        m = MA.mask_or(m, MA.getmask(fetched))
+           m = numpy.transpose(m, p)
+        m = numpy.ma.mask_or(m, numpy.ma.getmask(fetched))
         d = fetched.filled()
-        return cdms.createVariable(d, mask=m, axes=fetchedaxes,
+        return cdms2.createVariable(d, mask=m, axes=fetchedaxes,
                       attributes = fetched.attributes)
                 
 
 if __name__ == "__main__":
-    f=cdms.open('clt.nc')
+    f=cdms2.open('clt.nc')
     def testf (axis, i):
         x = axis[i]
         if x> 10. and x < 20.: 
@@ -72,9 +72,9 @@ if __name__ == "__main__":
         if axis[i] <= 0.0: 
             return 0
         return 1
-    s = cdms.selectors.Selector(PredicateComponent('time', testf))
+    s = cdms2.selectors.Selector(PredicateComponent('time', testf))
     t = f('clt', s, slice(0,1),slice(0,1), squeeze=1)
     northernhemisphere = \
-       cdms.selectors.Selector(PredicateComponent('latitude', test2))
+       cdms2.selectors.Selector(PredicateComponent('latitude', test2))
     w = f('clt', northernhemisphere)
     print w.getLatitude()[:]

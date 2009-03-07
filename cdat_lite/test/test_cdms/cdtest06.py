@@ -1,17 +1,16 @@
+## Automatically adapted for numpy.oldnumeric Aug 01, 2007 by 
+
 #!/usr/bin/env python
-# Adapted for numpy/ma/cdms2 by convertcdms.py
-import numpy.oldnumeric as Numeric
 
-import cdms2 as cdms, numpy.oldnumeric.ma as MA, cdtime, copy, os, sys
+import numpy
+import cdms2, cdtime, copy, os, sys
 from markError import NTIME,NLAT,NLON,x,clearError,markError,reportError
-
 from markError import get_sample_data_dir
-
 clearError()
 
 print 'Test 6: TransientVariables ...',
 
-f = cdms.open(os.path.join(get_sample_data_dir(),'test.xml'))
+f = cdms2.open(os.path.join(get_sample_data_dir(),'test.xml'))
 v = f.variables['v']
 vp = x[1,1:,4:12,8:25]
 vp2 = vp[1,1:-1,1:]
@@ -26,16 +25,16 @@ except ValueError:
 
 vaxis0 = v.getAxis(0)
 axis0 = tv.getAxis(0)
-if not MA.allequal(axis0[:],vaxis0[1:]): markError('getAxis: '+`axis0[:]`)
+if not numpy.ma.allequal(axis0[:],vaxis0[1:]): markError('getAxis: '+`axis0[:]`)
 
 taxis = tv.getTime()
 taxisarray = taxis[:]
 vaxisarray = vaxis0[1:]
-if not MA.allequal(taxisarray,vaxisarray): markError('getTime: '+`taxisarray`)
+if not numpy.ma.allequal(taxisarray,vaxisarray): markError('getTime: '+`taxisarray`)
 
 vaxis1 = v.getAxis(1)
 lataxis = tv.getLatitude()
-if not MA.allequal(lataxis[:],vaxis1[4:12]): markError('getLatitude: '+`lataxis[:]`)
+if not numpy.ma.allequal(lataxis[:],vaxis1[4:12]): markError('getLatitude: '+`lataxis[:]`)
 
 vaxis2  = v.getAxis(2)
 lonaxis = tv.getLongitude()
@@ -43,13 +42,13 @@ lonaxis = tv.getLongitude()
 #
 #  default is 'ccn' -- now it 8:25
 #
-if not MA.allequal(lonaxis[:],vaxis2[8:25]): markError('getLongitude: '+`lonaxis[:]`)
+if not numpy.ma.allequal(lonaxis[:],vaxis2[8:25]): markError('getLongitude: '+`lonaxis[:]`)
 
 tv = v.subRegion((366.,731.,'ccn'),(-42.,42.,'ccn'),(90.,270.))
 missing_value = v.getMissing()
 if missing_value!=-99.9: markError('missing_value: '+`missing_value`)
 
-tmv = tv.fill_value()
+tmv = tv.fill_value
 if tmv!=-99.9: markError('TV missing_value', tmv)
 
 grid = tv.getGrid()
@@ -66,16 +65,16 @@ if len(domain)!=3: markError('domain', domain)
 
 # getRegion of a TV
 tv2 = tv.getRegion(731., (-30.,30.,'ccn'), (101.25, 270.0))
-if not MA.allequal(tv2,vp2): markError('getRegion')
+if not numpy.ma.allequal(tv2,vp2): markError('getRegion')
 
 # Axis get: bounds, calendar, value, isXXX, len, subaxis, typecode
 axis1 = tv.getAxis(1)
 axis2 = tv.getAxis(2)
 bounds = axis1.getBounds()
 if bounds is None: markError('getBounds')
-if axis0.getCalendar()!=cdtime.GregorianCalendar: markError('getCalendar')
+if axis0.getCalendar()!=cdtime.MixedCalendar: markError('getCalendar')
 val = axis1.getValue()
-if not MA.allequal(axis1.getValue(),axis1[:]): markError('getValue')
+if not numpy.ma.allequal(axis1.getValue(),axis1[:]): markError('getValue')
 if not axis0.isTime(): markError('isTime')
 if not axis1.isLatitude(): markError('isLatitude')
 if not axis2.isLongitude(): markError('isLongitude')
@@ -86,8 +85,8 @@ if axis2.isCircular(): markError('isCircular')
 if len(axis2)!=17: markError('Axis length')
 
 saxis = axis2.subAxis(1,-1)
-if not MA.allequal(saxis[:],axis2[1:-1]): markError('subAxis',saxis[:])
-if axis1.dtype.char!=Numeric.Float: markError('Axis typecode')
+if not numpy.ma.allequal(saxis[:],axis2[1:-1]): markError('subAxis',saxis[:])
+if axis1.typecode()!=numpy.sctype2char(numpy.float): markError('Axis typecode')
 if axis2.shape!=(17,): markError('Axis shape')
 
 # Axis set: bounds, calendar
@@ -95,23 +94,23 @@ savebounds = copy.copy(bounds)
 bounds[0,0]=-90.0
 axis1.setBounds(bounds)
 nbounds = axis1.getBounds()
-if not MA.allequal(bounds,nbounds): markError('Axis setBounds')
+if not numpy.ma.allequal(bounds,nbounds): markError('Axis setBounds')
 axis0.setCalendar(cdtime.NoLeapCalendar)
 if axis0.getCalendar()!=cdtime.NoLeapCalendar: markError('setCalendar')
-gaussaxis = cdms.createGaussianAxis(32)
+gaussaxis = cdms2.createGaussianAxis(32)
 try:
-    testaxis = cdms.createGaussianAxis(31)
+    testaxis = cdms2.createGaussianAxis(31)
 except:
     markError('Gaussian axis with odd number of latitudes')
 
 # Grid get: axis, bounds, latitude, longitude, mask, order, type, weights, subgrid, subgridRegion
 a1 = grid.getAxis(1)
-if not MA.allequal(a1[:],axis2[:]): markError('Grid getAxis')
+if not numpy.ma.allequal(a1[:],axis2[:]): markError('Grid getAxis')
 
 bounds[0,0]=savebounds[0,0]
 axis1.setBounds(bounds)
 latbounds,lonbounds = grid.getBounds()
-if not MA.allequal(latbounds,savebounds): markError('Grid getBounds')
+if not numpy.ma.allequal(latbounds,savebounds): markError('Grid getBounds')
 glat = grid.getLatitude()
 glon = grid.getLongitude()
 mask = grid.getMask()
@@ -121,52 +120,52 @@ gtype = grid.getType()
 weights = grid.getWeights()
 subg = grid.subGrid((1,7),(1,15))
 subg2 = grid.subGridRegion((-30.,30.,'ccn'),(101.25,247.5,'ccn'))
-if not MA.allequal(subg.getLongitude()[:], subg2.getLongitude()[:]): markError('subGrid')
+if not numpy.ma.allequal(subg.getLongitude()[:], subg2.getLongitude()[:]): markError('subGrid')
 if grid.shape!=(8,17): markError('Grid shape',grid.shape)
 
 # Grid set: bounds, mask, type
 latbounds[0,0]=-90.0
 grid.setBounds(latbounds,lonbounds)
 nlatb,nlonb = grid.getBounds()
-if not MA.allequal(latbounds,nlatb): markError('Grid setBounds')
+if not numpy.ma.allequal(latbounds,nlatb): markError('Grid setBounds')
 grid.setType('uniform')
 if grid.getType()!='uniform': markError('Grid setType',grid.getType())
 
-yy = MA.reshape(MA.arange(272.0),tv.shape)
+yy = numpy.ma.reshape(numpy.ma.arange(272.0),tv.shape)
 tv.assignValue(yy)
-if not MA.allequal(tv,yy): markError('TV assignValue')
+if not numpy.ma.allequal(tv,yy): markError('TV assignValue')
 tv3 = tv[0:-1]
 if tv3.shape!=(1,8,17): markError('TV slice, negative index',tv3.shape)
 
 # Create a transient variable from scratch
 oldlat = tv.getLatitude()
 oldBounds = oldlat.getBounds()
-newlat = cdms.createAxis(MA.array(oldlat[:]),MA.array(oldBounds))
+newlat = cdms2.createAxis(numpy.ma.array(oldlat[:]),numpy.ma.array(oldBounds))
 b = newlat.getBounds()
 b[0,0]=-48.
 newlat.setBounds(b)
 
-tv4 = cdms.createVariable(tv[:],copy=1,fill_value=255.)
+tv4 = cdms2.createVariable(tv[:],copy=1,fill_value=255.)
 tv4[0,1:4]=20.0
 
 if tv[:,::-1,:].shape != tv.shape: markError("Reversing axis direction")
 
 # Test asVariable
-www = cdms.asVariable(tv4)
+www = cdms2.asVariable(tv4)
 if www is not tv4: markError("asVariable failed, transient case.")
-www = cdms.asVariable (v, 0)
+www = cdms2.asVariable (v, 0)
 if www is not v:   markError("asVariable failed, transient case.")
-www = cdms.asVariable([1.,2.,3.])
-if not cdms.isVariable(www): markError("as/is test failed.")
+www = cdms2.asVariable([1.,2.,3.])
+if not cdms2.isVariable(www): markError("as/is test failed.")
 
 # Check that createAxis allows an axis as an argument
 lon = f.axes['longitude']
-newlon = cdms.createAxis(lon)
-if newlon.dtype.char=='O': markError("createAxis failed: allow axis arg")
+newlon = cdms2.createAxis(lon)
+if newlon.typecode()=='O': markError("createAxis failed: allow axis arg")
 
 # Test take of axis without bounds
 newlat.setBounds(None)
-samp = cdms.axis.take(newlat,(2,4,6))
+samp = cdms2.axis.take(newlat,(2,4,6))
 
 f.close()
 reportError()

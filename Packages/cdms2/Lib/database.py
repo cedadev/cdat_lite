@@ -3,7 +3,7 @@
 from error import CDMSError
 import cdmsobj
 import cdurlparse
-import internattr
+## import internattr
 import copy
 import os
 import re
@@ -167,7 +167,7 @@ class AbstractDatabase(CdmsObj):
     def __repr__(self):
         return "<Database '%s'>"%(self.uri)
 
-internattr.add_internal_attribute(AbstractDatabase, 'uri', 'path')
+## internattr.add_internal_attribute(AbstractDatabase, 'uri', 'path')
 
 # Database implemented via LDAP (Lightweight Directory Access Protocol)
 class LDAPDatabase(AbstractDatabase):
@@ -398,7 +398,7 @@ class LDAPDatabase(AbstractDatabase):
         result = map(lambda x: x.attributes['id'][0], entries)
         return result
 
-internattr.add_internal_attribute(LDAPDatabase, 'netloc', 'db')
+## internattr.add_internal_attribute(LDAPDatabase, 'netloc', 'db')
 
 class AbstractSearchResult:
 

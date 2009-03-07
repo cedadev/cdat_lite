@@ -1,5 +1,5 @@
 #include <Python.h>
-#include "numpy/oldnumeric.h"
+#include "numpy/arrayobject.h"
 
 
 
@@ -531,7 +531,7 @@ extract(self,args)
     }
   n1=array->dimensions[0];
   type_num=array->descr->type_num;
-  result=(PyArrayObject *)(PyArray_FromDims(indices_array->nd,indices_array->dimensions,type_num));
+  result=(PyArrayObject *)(PyArray_SimpleNew(indices_array->nd,indices_array->dimensions,type_num));
   for (dim=0;dim<nloop;dim++)
     {
       ioffset=indices_array->strides[0]*dim;
@@ -547,7 +547,7 @@ extract(self,args)
       else if (type_num==PyArray_UBYTE){
 	ierr=extract_function_uchar(n1,n2,(unsigned char *)array->data,(int *)(indices_array->data+ioffset),(unsigned char *)(result->data+ioffset2));
       }
-      else if (type_num==PyArray_SBYTE){
+      else if (type_num==PyArray_BYTE){
 	ierr=extract_function_schar(n1,n2,(signed char *)array->data,(int *)(indices_array->data+ioffset),(signed char *)(result->data+ioffset2));
       }
       else if (type_num==PyArray_SHORT){
@@ -651,7 +651,12 @@ set(self,args)
   for (dim=0;dim<nloop;dim++)
     {
       aoffset=array_array->strides[0]*dim;
-      ioffset=indices_array->strides[0]*dim;
+      if (indices_array->nd!=0) {
+	ioffset=indices_array->strides[0]*dim;
+      }
+      else {
+	ioffset = 0;
+      }
       ierr=0;
       if (type_num==PyArray_FLOAT){
 	ierr=set_function_float(n1,n2,(float *)array_array->data,(int *)(indices_array->data+ioffset), (float *)(values_array->data+aoffset));
@@ -662,7 +667,7 @@ set(self,args)
       else if (type_num==PyArray_UBYTE){
 	ierr=set_function_uchar(n1,n2,(unsigned char *)array_array->data,(int *)(indices_array->data+ioffset),(unsigned char *)(values_array->data+aoffset));
       }
-      else if (type_num==PyArray_SBYTE){
+      else if (type_num==PyArray_BYTE){
 	ierr=set_function_schar(n1,n2,(signed char *)array_array->data,(int *)(indices_array->data+ioffset),(signed char *)(values_array->data+aoffset));
       }
       else if (type_num==PyArray_SHORT){

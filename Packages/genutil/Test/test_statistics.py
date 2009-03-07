@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # Adapted for numpy/ma/cdms2 by convertcdms.py
 
-import cdms2 as cdms,genutil,os,sys
+import cdms2,genutil,os,sys
 
-f=cdms.open(os.path.join(sys.prefix,'sample_data','clt.nc'))
+f=cdms2.open(os.path.join(cdms2.__path__[0],'..','..','..','..','sample_data','clt.nc'))
 
 u=f('u',time=slice(0,1),level=slice(0,1),squeeze=1)
 v=f('v',time=slice(0,1),plev1=slice(0,1),squeeze=1)

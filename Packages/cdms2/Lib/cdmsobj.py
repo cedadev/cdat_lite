@@ -10,7 +10,7 @@ import re
 import string
 import sys
 import types
-import internattr
+#import internattr
 
 # Data types
 
@@ -437,8 +437,32 @@ def searchPredicate(objlist, predicate, tag=None):
 # Classes
 
 # Generic CDMS object has a tree node, attributes
-class CdmsObj (internattr.InternalAttributesClass):
+class CdmsObj (object):
+##     def __setattr__(self,name,value):
+##         object.__setattr__(self,name,value)
+##         if not name in self.__cdms_internals__ and not name[0]=='_':
+##             self.attributes[name]=value
+## ##             if name == 'shape' :
+## ##                 print self.__class__,name,value
+
+    def _listatts(self):
+        dic={}
+        for nm,val in self.__dict__.items():
+            if nm[0]!='_' and not nm in self.__cdms_internals__:
+                dic[nm]=val
+            if nm == '_units':
+                dic['units']=val
+        return dic
+    def _setatts(self,value):
+        return
+
+    attributes = property(_listatts,_setatts)
+    
+        
     def __init__(self, node = None):
+        if not hasattr(self,'___cdms_internals__'):
+            self.__dict__['___cdms_internals__']=['__cdms_internals__','___cdms_internals__','_node_','parent','attributes','shape']
+        self.attributes={}
         self._node_ = node
         if node is not None:
             # Build an attribute dictionary from the node, 
@@ -469,6 +493,7 @@ class CdmsObj (internattr.InternalAttributesClass):
                             except:
                                 raise RuntimeError,"%s=%s must be an integer"%(attname,attval)
                 adict[attname] = attval
+                self.attributes[attname] = attval
 
 
     def searchone(self, pattern, attname):
@@ -550,7 +575,12 @@ class CdmsObj (internattr.InternalAttributesClass):
             raise CDMSError, "No tree node found"
         self._node_.dump(path,format)
 
-internattr.add_internal_attribute(CdmsObj)
+    def _getinternals(self):
+        return self.___cdms_internals__
+    def _setinternals(self,value):
+        self.___cdms_internals__ = value
+    __cdms_internals__ = property(_getinternals,_setinternals)
+#internattr.add_internal_attribute(CdmsObj)
 
 if __name__ == '__main__':
     x = CdmsObj(None)

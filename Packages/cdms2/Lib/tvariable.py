@@ -1,4 +1,5 @@
 ## Automatically adapted for numpy.oldnumeric Aug 01, 2007 by 
+## Further modified to be pure new numpy June 24th 2008
 
 """
 TransientVariable (created by createVariable)
@@ -6,7 +7,8 @@ is a child of both AbstractVariable and the masked array class.
 Contains also the write part of the old cu interface.
 """
 import types
-import numpy.oldnumeric.ma as MA, numpy.oldnumeric as Numeric, PropertiedClasses
+import typeconv
+import numpy
 from numpy import sctype2char
 from error import CDMSError
 from avariable import AbstractVariable
@@ -16,66 +18,134 @@ from grid import createRectGrid, AbstractRectGrid
 from hgrid import AbstractCurveGrid
 from gengrid import AbstractGenericGrid
 
+
 id_builtin = id                         # built_in gets clobbered by keyword
 
-class TransientVariable(AbstractVariable, MA.array):
+class TransientVariable(AbstractVariable,numpy.ma.MaskedArray):
     "An in-memory variable."
-    count = 0
+    variable_count = 0
+    missing_value = numpy.ma.MaskedArray.fill_value
 
-    def __init__(self, data, typecode=None, copy=0, savespace=0, 
-                 mask=None, fill_value=None, grid=None,
-                 axes=None, attributes=None, id=None, copyaxes=1, dtype=None, order=False):
+    def _getShape(self):
+        return self._data.shape
+
+    shape = property(_getShape,None)
+    def iscontiguous(self):
+        return self.flags['CONTIGUOUS']
+
+    def ascontiguousarray(self):
+        d = numpy.ma.getdata(self)
+        out = numpy.ascontiguousarray(d)
+        m = numpy.ma.getmask(self)
+        if m is not numpy.ma.nomask:
+            m= numpy.ascontiguousarray(m)
+        out = TransientVariable(out,mask=m,attributes=self.attributes)
+        out.setAxisList(self.getAxisList())
+        return out
+
+    def asma(self):
+        return numpy.ma.array(self._data,mask=self._mask)
+    
+    def _update_from(self,obj):
+        numpy.ma.MaskedArray._update_from(self,obj)
+        if not hasattr(self,'___cdms_internals__'):
+            self.__dict__['___cdms_internals__']=['__cdms_internals__','___cdms_internals__','_node_','parent','attributes','shape']
+        if not hasattr(self,'attributes'):
+            self.attributes={}
+        self._grid_ = getattr(obj,'_grid_',None)
+        try:
+            for nm,val in obj.__dict__.items():
+                if nm[0]=='_':
+##                     print nm
+                    pass
+##                     self.__dict__[nm]=val
+                else:
+                    setattr(self,nm,val)
+        except Exception,err:
+            pass
+        id = getattr(self,'id',None)
+        if id is None:
+            TransientVariable.variable_count+=1
+            id = 'variable_'+str(TransientVariable.variable_count)
+            self.id=id
+        self.name = getattr(obj,'name',id)
+        if not hasattr(self,'__domain'):
+            self.initDomain(axes=None)
+
+
+    def __array_finalize__(self,obj):
+        numpy.ma.MaskedArray.__array_finalize__(self,obj)
+        return
+
+    
+    __mul__    = AbstractVariable.__mul__
+    __rmul__   = AbstractVariable.__rmul__
+    __imul__   = AbstractVariable.__imul__
+    __abs__    = AbstractVariable.__abs__
+    __neg__    = AbstractVariable.__neg__
+    __add__    = AbstractVariable.__add__
+    __iadd__   = AbstractVariable.__iadd__
+    __radd__   = AbstractVariable.__radd__
+    __lshift__ = AbstractVariable.__lshift__
+    __rshift__ = AbstractVariable.__rshift__
+    __sub__    = AbstractVariable.__sub__
+    __rsub__   = AbstractVariable.__rsub__    
+    __isub__   = AbstractVariable.__isub__    
+    __div__    = AbstractVariable.__div__
+    __rdiv__   = AbstractVariable.__rdiv__
+    __idiv__   = AbstractVariable.__idiv__
+    __pow__   = AbstractVariable.__pow__
+    __eq__    = AbstractVariable.__eq__
+    __ne__    = AbstractVariable.__ne__
+    __lt__    = AbstractVariable.__lt__
+    __le__    = AbstractVariable.__le__
+    __gt__    = AbstractVariable.__gt__
+    __ge__    = AbstractVariable.__ge__
+    __sqrt__    = AbstractVariable.__sqrt__
+
+    def __init__(self,data, typecode=None, copy=1, savespace=0, 
+                 mask=numpy.ma.nomask, fill_value=None, grid=None,
+                 axes=None, attributes=None, id=None, copyaxes=1, dtype=None, order=False, no_update_from=False,**kargs):
         """createVariable (self, data, typecode=None, copy=0, savespace=0, 
                  mask=None, fill_value=None, grid=None,
                  axes=None, attributes=None, id=None, dtype=None, order=False)
            The savespace argument is ignored, for backward compatibility only.
         """
+
+        
         # Compatibility: assuming old typecode, map to new
         if dtype is None and typecode is not None:
-            dtype = Numeric.typeconv.convtypecode2(typecode)
+            dtype = typeconv.convtypecode2(typecode)
         typecode = sctype2char(dtype)
         if type(data) is types.TupleType:
             data = list(data)
+        
+        AbstractVariable.__init__ (self)
+
         if isinstance(data, AbstractVariable):
             if not isinstance(data, TransientVariable):
                 data = data.subSlice()
-            if attributes is None: attributes = data.attributes
-            if axes is None: axes = map(lambda x: x[0], data.getDomain())
-            if grid is None:
+##             if attributes is None: attributes = data.attributes
+            if axes is None and not no_update_from:
+                axes = map(lambda x: x[0], data.getDomain())
+            if grid is None and not no_update_from:
                 grid = data.getGrid()
                 if (grid is not None) and (not isinstance(grid, AbstractRectGrid)) and (not grid.checkAxes(axes)):
                     grid = grid.reconcile(axes) # Make sure grid and axes are consistent
-        if isinstance(data, MA.array):
-            if fill_value is None: fill_value = data.fill_value()
 
         ncopy = (copy!=0)
-        if mask is None:
-            mask = MA.nomask
 
-        # Handle the case where ar[i:j] returns a single masked value
-        if data is MA.masked:
-            shape = tuple(len(axes)*[1])
-            data = MA.masked.data
-            data.shape = shape
-            mask = MA.masked.mask
-            mask.shape = shape
-            
-        MA.array.__init__(self, data, dtype = dtype,
-                                copy = ncopy,
-                                mask = mask,
-                                fill_value = fill_value,
-                                order = order)
-        AbstractVariable.__init__ (self)
 
         # Initialize the geometry
         if grid is not None:
             copyaxes=0                  # Otherwise grid axes won't match domain.
-        self.initDomain(axes, copyaxes=copyaxes)           # Note: clobbers the grid, so set the grid after.
+        if axes is not None:
+            self.initDomain(axes, copyaxes=copyaxes)           # Note: clobbers the grid, so set the grid after.
         if grid is not None:
             self.setGrid(grid)
  
         # Initialize attributes
-        fv = self.fill_value()
+        fv = self.fill_value
         if attributes is not None:
             for key, value in attributes.items():
                 if key in ['shape','flat','imaginary','real'] or key[0]=='_':
@@ -97,11 +167,68 @@ class TransientVariable(AbstractVariable, MA.array):
             self.id = data.id
 
         if self.id is None:
-            TransientVariable.count = TransientVariable.count + 1
-            self.id = 'variable_' + str(TransientVariable.count)
+            TransientVariable.variable_count = TransientVariable.variable_count + 1
+            self.id = 'variable_' + str(TransientVariable.variable_count)
         self.name = getattr(self, 'name', self.id)
 
-    # typecode = MA.array.typecode
+    def _getmissing(self):
+        return self._missing
+    def _setmissing(self,value):
+        self._missing=value
+
+    missing = property(_getmissing,_setmissing)
+    def __new__(cls, data, typecode=None, copy=0, savespace=0, 
+                 mask=numpy.ma.nomask, fill_value=None, grid=None,
+                 axes=None, attributes=None, id=None, copyaxes=1, dtype=None, order=False,**kargs):
+        """createVariable (self, data, typecode=None, copy=0, savespace=0, 
+                 mask=None, fill_value=None, grid=None,
+                 axes=None, attributes=None, id=None, dtype=None, order=False)
+           The savespace argument is ignored, for backward compatibility only.
+        """
+        # Compatibility: assuming old typecode, map to new
+        if dtype is None and typecode is not None:
+            dtype = typeconv.convtypecode2(typecode)
+        typecode = sctype2char(dtype)
+        if type(data) is types.TupleType:
+            data = list(data)
+        if isinstance(data, AbstractVariable):
+            if not isinstance(data, TransientVariable):
+                data = data.subSlice()
+        if isinstance(data, numpy.ma.MaskedArray):
+            try:
+                if fill_value is None: fill_value = data.fill_value
+            except:
+                pass
+
+        ncopy = (copy!=0)
+        if mask is None:
+            try:
+                mask = data.mask
+            except Exception,err:
+                mask = numpy.ma.nomask
+
+        # Handle the case where ar[i:j] returns a single masked value
+        if data is numpy.ma.masked:
+            #shape = tuple(len(axes)*[1])
+            data = numpy.ma.masked.data
+            #data.shape = shape
+            mask = numpy.ma.masked.mask
+            #mask.shape = shape
+##         if data.getattr('mask',None) is not numpy.ma.nomask:
+##             mask = data.mask
+##         print 'passing:',mask.shape,data.shape,numpy.shape(cls)
+        self = numpy.ma.MaskedArray.__new__(cls, data, dtype = dtype,
+                                      copy = ncopy,
+                                      mask = mask,
+                                      fill_value = fill_value,
+                                      subok = False,
+                                      order = order)
+
+            
+        
+        return self
+
+    # typecode = numpy.ma.array.typecode
     def typecode(self):
         return self.dtype.char
 
@@ -112,7 +239,7 @@ class TransientVariable(AbstractVariable, MA.array):
         return self.filled()
 
     def expertSlice (self, slicelist):
-        return MA.array.__getitem__(self, slicelist)
+        return numpy.ma.MaskedArray.__getitem__(self, slicelist)
 
     def initDomain (self, axes, copyaxes=1):
         # lazy evaluation via getAxis to avoid creating axes that aren't ever used.
@@ -146,7 +273,12 @@ class TransientVariable(AbstractVariable, MA.array):
                 self.setGrid(newgrid)
 
     def getDomain(self):
+##         print 'in getDomain'
+##         print self.rank()
+##         print self.__domain
+##         print self.shape
         for i in range(self.rank()):
+##             print 'domain:',i,len(self.__domain)
             if self.__domain[i] is None:
                 junk = self.getAxis(i)  # will force a fill in
         return self.__domain
@@ -154,9 +286,9 @@ class TransientVariable(AbstractVariable, MA.array):
     def getAxis (self, n):
         if n < 0: n = n + self.rank()
         if self.__domain[n] is None:
-            length = MA.size(self, n)
-            # axis = createAxis(MA.arange(MA.size(self, n), typecode=Numeric.Float))
-            axis = createAxis(MA.arange(MA.size(self, n), dtype=Numeric.float_))
+            length = numpy.ma.size(self, n)
+            # axis = createAxis(numpy.ma.arange(numpy.ma.size(self, n), typecode=numpy.Float))
+            axis = createAxis(numpy.ma.arange(numpy.ma.size(self, n), dtype=numpy.float_))
             axis.id = "axis_" + str(n)
             self.__domain[n] = (axis, 0, length, length)
         return self.__domain[n][0]
@@ -220,7 +352,7 @@ class TransientVariable(AbstractVariable, MA.array):
 
     def astype (self, tc):
         "return self as array of given type."
-        maresult = MA.MaskedArray.astype(self,tc)
+        maresult = numpy.ma.MaskedArray.astype(self,tc)
         return TransientVariable(maresult, copy=0, axes=self.getAxisList(),
                                  attributes=self.attributes, id=self.id, grid=self.getGrid())
 
@@ -240,7 +372,7 @@ class TransientVariable(AbstractVariable, MA.array):
         # Broadcast mask
         if tprep!=[]:
             newshape = tuple(shapeprep + list(mask.shape))
-            bigmask = Numeric.resize(mask, newshape)
+            bigmask = numpy.resize(mask, newshape)
 
             # Generate the tranpose vector
             t = tuple(tprep + list(gridindices))
@@ -250,15 +382,15 @@ class TransientVariable(AbstractVariable, MA.array):
 
             # And reshape to fit the variable
             if tinv!=range(len(tinv)):
-                bigmask = Numeric.transpose(bigmask, tuple(tinv))
+                bigmask = numpy.transpose(bigmask, tuple(tinv))
 
         else:
             bigmask = mask
 
         # Apply the mask to self
         currentmask = self.mask
-        if currentmask is not MA.nomask:
-            bigmask = Numeric.logical_or(currentmask, bigmask)
+        if currentmask is not numpy.ma.nomask:
+            bigmask = numpy.logical_or(currentmask, bigmask)
 
         result = TransientVariable(self, mask=bigmask)
         return result
@@ -285,7 +417,7 @@ class TransientVariable(AbstractVariable, MA.array):
             
         elif field == "values":
             # note -- invalidates grid, may break old code.
-            a = createAxis(MA.filled(value[:]))
+            a = createAxis(numpy.ma.filled(value[:]))
             if hasattr(d, 'units'):
                 a.units = d.units
             a.id = d.id
@@ -304,11 +436,11 @@ class TransientVariable(AbstractVariable, MA.array):
             if value is None:
                d.setBounds(None)
             else:
-               b = MA.filled(value)
-               if MA.rank(b) == 2:
+               b = numpy.ma.filled(value)
+               if numpy.ma.rank(b) == 2:
                    d.setBounds(b)
-               elif MA.rank(b) == 1:
-                   b1 = Numeric.zeros((len(b)-1,2), b.dtype.char)
+               elif numpy.ma.rank(b) == 1:
+                   b1 = numpy.zeros((len(b)-1,2), b.dtype.char)
                    b1[:,0] = b[:-1]
                    b1[:,1] = b[1:]
                    d.setBounds(b1)
@@ -338,10 +470,10 @@ class TransientVariable(AbstractVariable, MA.array):
         return length
 
     def __str__ (self):
-        return MA.array.__str__(self)
+        return numpy.ma.MaskedArray.__str__(self)
 
     def __repr__ (self):
-        return self.id + '\n' + MA.array.__repr__(self) + '\n'
+        return self.id + '\n' + numpy.ma.MaskedArray.__repr__(self) + '\n'
 
     def set_fill_value(self, value):
         "Set missing value attribute and fill value"
@@ -356,8 +488,11 @@ class TransientVariable(AbstractVariable, MA.array):
     def copy(self):
         return self.filled()
 
-PropertiedClasses.set_property(TransientVariable, 'shape', 
-                               nowrite=1, nodelete=1)
+
+
+
+## PropertiedClasses.set_property(TransientVariable, 'shape', 
+##                                nowrite=1, nodelete=1)
 
 createVariable = TransientVariable
 
@@ -383,48 +518,47 @@ def asVariable(s, writeable=1):
     except CDMSError:
         result =  None
     
-    # if result.dtype.char == MA.PyObject:
-    if issubclass(result.dtype.type, Numeric.object_):
+    # if result.dtype.char == numpy.ma.PyObject:
+    if issubclass(result.dtype.type, numpy.object_):
         result = None
     if result is None:
         raise CDMSError, "asVariable could not make a Variable from the input."
     return result
 
 if __name__ == '__main__':
-    import numpy.oldnumeric as Numeric
     for s in [(20,), (4,5)]:
-        x = Numeric.arange(20)
+        x = numpy.arange(20)
         x.shape = s
         t = createVariable(x)
         assert t.shape == s
         assert t.missing_value == t._fill_value
-        assert MA.allclose(x, t)
-        assert t.dtype.char == Numeric.Int
-        assert MA.size(t) == MA.size(x)
-        assert MA.size(t,0) == len(t)
-        assert MA.allclose(t.getAxis(0)[:], MA.arange(MA.size(t,0)))
+        assert numpy.ma.allclose(x, t)
+        assert t.dtype.char == numpy.int
+        assert numpy.ma.size(t) == numpy.ma.size(x)
+        assert numpy.ma.size(t,0) == len(t)
+        assert numpy.ma.allclose(t.getAxis(0)[:], numpy.ma.arange(numpy.ma.size(t,0)))
         t.missing_value = -99
         assert t.missing_value == -99
-        assert t.fill_value() == -99
-    t = createVariable(MA.arange(5), mask=[0,0,0,1,0])
+        assert t.fill_value == -99
+    t = createVariable(numpy.ma.arange(5), mask=[0,0,0,1,0])
     t.set_fill_value (1000)
-    assert t.fill_value() == 1000
+    assert t.fill_value == 1000
     assert t.missing_value == 1000
     t.missing_value = -99
     assert t[2] == 2
-    t[3] = MA.masked
-    assert t[3] is MA.masked
-    f = createVariable(MA.arange(5, typecode=Numeric.Float32), mask=[0,0,0,1,0])
-    f2 = createVariable(MA.arange(5, typecode=Numeric.Float32), mask=[0,0,0,1,0])
-    f[3] = MA.masked
-    assert f[3] is MA.masked
-    assert MA.allclose(2.0, f[2])
+    t[3] = numpy.ma.masked
+    assert t[3] is numpy.ma.masked
+    f = createVariable(numpy.ma.arange(5, typecode=numpy.float32), mask=[0,0,0,1,0])
+    f2 = createVariable(numpy.ma.arange(5, typecode=numpy.float32), mask=[0,0,0,1,0])
+    f[3] = numpy.ma.masked
+    assert f[3] is numpy.ma.masked
+    assert numpy.ma.allclose(2.0, f[2])
     t.setdimattribute(0, 'units', 'cm')
     assert t.getdimattribute(0, 'units') == 'cm'
     t.setdimattribute(0, 'name', 'fudge')
     assert t.getdimattribute(0, 'name') == 'fudge'
     f2b = f2.getdimattribute(0, 'bounds')
     t.setdimattribute(0, 'bounds', f2b)
-    assert MA.allclose(f.getdimattribute(0,'bounds'), f2.getdimattribute(0,'bounds'))
+    assert numpy.ma.allclose(f.getdimattribute(0,'bounds'), f2.getdimattribute(0,'bounds'))
     print "Transient Variable test passed ok."
 

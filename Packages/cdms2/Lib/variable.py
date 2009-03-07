@@ -4,8 +4,7 @@
 DatasetVariable: Dataset-based variables
 """
 from cdms2 import Cdunif
-import numpy.oldnumeric as Numeric
-import numpy.oldnumeric.ma as MA, PropertiedClasses, internattr
+import numpy
 import cdmsNode
 import cdtime
 import copy
@@ -45,6 +44,8 @@ class DatasetVariable(AbstractVariable):
            parent is the containing dataset instance.
         """
         AbstractVariable.__init__ (self, parent, variableNode)
+        val = self.__cdms_internals__ + ['domain','name_in_file']
+        self.___cdms_internals__ = val
         self.id = id
         self.domain = []
         # Get self.name_in_file from the .xml file if present
@@ -56,7 +57,7 @@ class DatasetVariable(AbstractVariable):
         if variableNode is not None:          
             self._numericType_ = cdmsNode.CdToNumericType.get(variableNode.datatype)
         else:
-            self._numericType_ = Numeric.Float
+            self._numericType_ = numpy.float
         assert self.id is not None
         
     def __len__ (self):
@@ -101,12 +102,12 @@ class DatasetVariable(AbstractVariable):
     def __setslice__(self, low, high, value):
         raise CDMSError, WriteNotImplemented
 
-    def _getShape(self, name):
+    def _getShape(self):
         return self.getShape()
 
-    def _getdtype(self, name):
+    def _getdtype(self):
         tc = self.typecode()
-        return Numeric.dtype(tc)
+        return numpy.dtype(tc)
 
     def getShape(self):
         shape=[]
@@ -482,7 +483,7 @@ class DatasetVariable(AbstractVariable):
 
         # If no intersection, return an 'empty' array.
         if partitionSlices is None:
-            return MA.zeros((0,),self._numericType_)
+            return numpy.ma.zeros((0,),self._numericType_)
 
         # Handle rank-0 variables separately
         if self.rank() == 0:
@@ -520,8 +521,8 @@ class DatasetVariable(AbstractVariable):
                 # If the slice is missing, interpose missing data
                 if filename is None:
                     shapelist = map(lenSlice, slicelist)
-                    chunk = MA.zeros(tuple(shapelist),self._numericType_)
-                    chunk[...] = MA.masked
+                    chunk = numpy.ma.zeros(tuple(shapelist),self._numericType_)
+                    chunk[...] = numpy.ma.masked
 
                 # else read the data and close the file
                 else:
@@ -542,7 +543,7 @@ class DatasetVariable(AbstractVariable):
             # as the domain, and var.getitem returns a chunk
             # with singleton dimensions included. This means that
             # npart1 corresponds to the correct dimension of chunk.
-            result = MA.concatenate(resultlist,axis=npart1)
+            result = numpy.ma.concatenate(resultlist,axis=npart1)
             for chunk in resultlist:
                 del(chunk)
 
@@ -558,8 +559,8 @@ class DatasetVariable(AbstractVariable):
                     # If the slice is missing, interpose missing data
                     if filename is None:
                         shapelist = map(lenSlice, slicelist)
-                        chunk = MA.zeros(tuple(shapelist),self._numericType_)
-                        chunk[...] = MA.masked
+                        chunk = numpy.ma.zeros(tuple(shapelist),self._numericType_)
+                        chunk[...] = numpy.ma.masked
 
                     # else read the data and close the file
                     else:
@@ -578,12 +579,12 @@ class DatasetVariable(AbstractVariable):
                 # as the domain, and var.getitem returns a chunk
                 # with singleton dimensions included. This means that
                 # npart1 corresponds to the correct dimension of chunk.
-                bigchunk = MA.concatenate(chunklist,axis=npart2)
+                bigchunk = numpy.ma.concatenate(chunklist,axis=npart2)
                 for chunk in chunklist:
                     del(chunk)
                 resultlist.append(bigchunk)
 
-            result = MA.concatenate(resultlist,axis=npart1)
+            result = numpy.ma.concatenate(resultlist,axis=npart1)
             for bigchunk in resultlist:
                 del(bigchunk)
 
@@ -594,11 +595,16 @@ class DatasetVariable(AbstractVariable):
 
         return result
 
-PropertiedClasses.set_property (DatasetVariable, 'shape', 
-                                  DatasetVariable._getShape, nowrite=1,
-                                  nodelete=1)
-PropertiedClasses.set_property (DatasetVariable, 'dtype', 
-                                  DatasetVariable._getdtype, nowrite=1,
-                                  nodelete=1)
 
-internattr.add_internal_attribute(DatasetVariable, 'domain')
+    shape = property(_getShape,None)
+##     shape = _getShape
+    dtype = property(_getdtype,None)
+    
+## PropertiedClasses.set_property (DatasetVariable, 'shape', 
+##                                   DatasetVariable._getShape, nowrite=1,
+##                                   nodelete=1)
+## PropertiedClasses.set_property (DatasetVariable, 'dtype', 
+##                                   DatasetVariable._getdtype, nowrite=1,
+##                                   nodelete=1)
+
+## internattr.add_internal_attribute(DatasetVariable, 'domain')

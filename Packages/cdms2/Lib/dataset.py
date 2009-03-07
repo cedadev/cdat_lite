@@ -1,17 +1,17 @@
 ## Automatically adapted for numpy.oldnumeric Aug 01, 2007 by 
+## Further modified to be pure new numpy June 24th 2008
 
 """ CDMS dataset and file objects"""
 from error import CDMSError
-import numpy.oldnumeric.ma as MA
 import Cdunif
-import numpy.oldnumeric as Numeric
+import numpy
 import cdmsNode
 import os, sys
 import string
 import urllib
 import cdmsURLopener                    # Import after urllib, to handle errors
 import urlparse
-import internattr
+## import internattr
 import cdmsobj
 import re
 from CDMLParser import CDMLParser
@@ -27,6 +27,7 @@ from fvariable import FileVariable
 from tvariable import asVariable
 from cdmsNode import CdDatatypes
 import convention
+import typeconv
 try:
     import cache
 except ImportError:
@@ -245,6 +246,20 @@ class Dataset(CdmsObj, cuDataset):
         if datasetNode is not None and datasetNode.tag !='dataset':
             raise CDMSError, 'Node is not a dataset node'
         CdmsObj.__init__(self,datasetNode)
+        for v in [ 'datapath',
+                   'variables',
+                   'axes',
+                   'grids',
+                   'xlinks',
+                   'dictdict',
+                   'default_variable_name',
+                   'parent',
+                   'uri',
+                   'mode']:
+            if not v in self.__cdms_internals__:
+                val = self.__cdms_internals__+[v,]
+                self.___cdms_internals__ = val
+                
         cuDataset.__init__(self)
         self.parent = parent
         self.uri = uri
@@ -685,23 +700,32 @@ class Dataset(CdmsObj, cuDataset):
     def __repr__(self):
         return "<Dataset: '%s', URI: '%s', mode: '%s', status: %s>"%(self.id, self.uri, self.mode, self._status_)
 
-internattr.add_internal_attribute (Dataset, 'datapath',
-                                            'variables',
-                                            'axes',
-                                            'grids',
-                                            'xlinks',
-                                            'dictdict',
-                                            'default_variable_name',
-                                            'parent',
-                                            'uri',
-                                            'mode')
+## internattr.add_internal_attribute (Dataset, 'datapath',
+##                                             'variables',
+##                                             'axes',
+##                                             'grids',
+##                                             'xlinks',
+##                                             'dictdict',
+##                                             'default_variable_name',
+##                                             'parent',
+##                                             'uri',
+##                                             'mode')
 
 class CdmsFile(CdmsObj, cuDataset):
-
     def __init__(self, path, mode):
         CdmsObj.__init__(self, None)
         cuDataset.__init__(self)
-
+        value = self.__cdms_internals__+['datapath',
+                                'variables',
+                                'axes',
+                                'grids',
+                                'xlinks',
+                                'dictdict',
+                                'default_variable_name',
+                                'id',
+                                'parent',
+                                'mode']
+        self.___cdms_internals__ = value
         self.id = path
         self._mode_ = mode
         try:
@@ -716,158 +740,167 @@ class CdmsFile(CdmsObj, cuDataset):
         self._gridmap_ = {}
 
         # self.attributes returns the Cdunif file dictionary. 
-        self.replace_external_attributes(self._file_.__dict__)
+##         self.replace_external_attributes(self._file_.__dict__)
+        for att in  self._file_.__dict__.keys():
+            self.__dict__.__setitem__(att,self._file_.__dict__[att])
+            self.attributes[att]=self._file_.__dict__[att]
         self._boundAxis_ = None         # Boundary axis for cell vertices
         if self._mode_=='w':
             self.Conventions = convention.CFConvention.current
         self._status_ = 'open'
         self._convention_ = convention.getDatasetConvention(self)
 
-        # Get lists of 1D and auxiliary coordinate axes
-        coords1d = self._convention_.getAxisIds(self._file_.variables)
-        coordsaux = self._convention_.getAxisAuxIds(self._file_.variables, coords1d)
+        try:
+            # Get lists of 1D and auxiliary coordinate axes
+            coords1d = self._convention_.getAxisIds(self._file_.variables)
+            coordsaux = self._convention_.getAxisAuxIds(self._file_.variables, coords1d)
 
-        # Build variable list
-        for name in self._file_.variables.keys():
-            if name not in coords1d:
-                cdunifvar = self._file_.variables[name]
-                if name in coordsaux:
-                    # Put auxiliary coordinate axes with variables, since there may be
-                    # a dimension with the same name.
-                    if len(cdunifvar.shape)==2:
-                        self.variables[name] = FileAxis2D(self, name, cdunifvar)
+            # Build variable list
+            for name in self._file_.variables.keys():
+                if name not in coords1d:
+                    cdunifvar = self._file_.variables[name]
+                    if name in coordsaux:
+                        # Put auxiliary coordinate axes with variables, since there may be
+                        # a dimension with the same name.
+                        if len(cdunifvar.shape)==2:
+                            self.variables[name] = FileAxis2D(self, name, cdunifvar)
+                        else:
+                            self.variables[name] = FileAuxAxis1D(self, name, cdunifvar)
                     else:
-                        self.variables[name] = FileAuxAxis1D(self, name, cdunifvar)
+                        self.variables[name] = FileVariable(self,name,cdunifvar)
+
+            # Build axis list
+            for name in self._file_.dimensions.keys():
+                if name in coords1d:
+                    cdunifvar = self._file_.variables[name]
                 else:
-                    self.variables[name] = FileVariable(self,name,cdunifvar)
+                    cdunifvar = None
+                self.axes[name] = FileAxis(self,name,cdunifvar)
 
-        # Build axis list
-        for name in self._file_.dimensions.keys():
-            if name in coords1d:
-                cdunifvar = self._file_.variables[name]
-            else:
-                cdunifvar = None
-            self.axes[name] = FileAxis(self,name,cdunifvar)
+            # Attach boundary variables
+            for name in coordsaux:
+                var = self.variables[name]
+                bounds = self._convention_.getVariableBounds(self, var)
+                var.setBounds(bounds)
 
-        # Attach boundary variables
-        for name in coordsaux:
-            var = self.variables[name]
-            bounds = self._convention_.getVariableBounds(self, var)
-            var.setBounds(bounds)
+            self.dictdict = {'variable':self.variables, 'axis':self.axes, 'rectGrid':self.grids, 'curveGrid':self.grids, 'genericGrid':self.grids}
 
-        self.dictdict = {'variable':self.variables, 'axis':self.axes, 'rectGrid':self.grids, 'curveGrid':self.grids, 'genericGrid':self.grids}
+            # Initialize variable domains
+            for var in self.variables.values():
+                var.initDomain(self.axes)
 
-        # Initialize variable domains
-        for var in self.variables.values():
-            var.initDomain(self.axes)
+            # Build grids
+            for var in self.variables.values():
+                # Get grid information for the variable. gridkey has the form
+                # (latname,lonname,order,maskname, abstract_class).
+                gridkey, lat, lon = var.generateGridkey(self._convention_, self.variables)
 
-        # Build grids
-        for var in self.variables.values():
-            # Get grid information for the variable. gridkey has the form
-            # (latname,lonname,order,maskname, abstract_class).
-            gridkey, lat, lon = var.generateGridkey(self._convention_, self.variables)
+                # If the variable is gridded, lookup the grid. If no such grid exists,
+                # create a unique gridname, create the grid, and add to the gridmap.
+                if gridkey is None:
+                    grid = None
+                else:
+                    grid = self._gridmap_.get(gridkey)
+                    if grid is None:
 
-            # If the variable is gridded, lookup the grid. If no such grid exists,
-            # create a unique gridname, create the grid, and add to the gridmap.
-            if gridkey is None:
-                grid = None
-            else:
-                grid = self._gridmap_.get(gridkey)
-                if grid is None:
+                        if hasattr(var,'grid_type'):
+                            gridtype = var.grid_type
+                        else:
+                            gridtype = "generic"
 
-                    if hasattr(var,'grid_type'):
-                        gridtype = var.grid_type
-                    else:
-                        gridtype = "generic"
+                        candidateBasename = None
+                        if gridkey[4] == 'rectGrid':
+                            gridshape = (len(lat),len(lon))
+                        elif gridkey[4] == 'curveGrid':
+                            gridshape = lat.shape
+                        elif gridkey[4] == 'genericGrid':
+                            gridshape = lat.shape
+                            candidateBasename = 'grid_%d'%gridshape
+                        else:
+                            gridshape = (len(lat),len(lon))
 
-                    candidateBasename = None
-                    if gridkey[4] == 'rectGrid':
-                        gridshape = (len(lat),len(lon))
-                    elif gridkey[4] == 'curveGrid':
-                        gridshape = lat.shape
-                    elif gridkey[4] == 'genericGrid':
-                        gridshape = lat.shape
-                        candidateBasename = 'grid_%d'%gridshape
-                    else:
-                        gridshape = (len(lat),len(lon))
+                        if candidateBasename is None:
+                            candidateBasename = 'grid_%dx%d'%gridshape
+                        if not self.grids.has_key(candidateBasename):
+                            gridname = candidateBasename
+                        else:
+                            foundname = 0
+                            for i in range(97,123): # Lower-case letters
+                                candidateName = candidateBasename+'_'+chr(i)
+                                if not self.grids.has_key(candidateName):
+                                    gridname = candidateName
+                                    foundname = 1
+                                    break
 
-                    if candidateBasename is None:
-                        candidateBasename = 'grid_%dx%d'%gridshape
-                    if not self.grids.has_key(candidateBasename):
-                        gridname = candidateBasename
-                    else:
-                        foundname = 0
-                        for i in range(97,123): # Lower-case letters
-                            candidateName = candidateBasename+'_'+chr(i)
-                            if not self.grids.has_key(candidateName):
-                                gridname = candidateName
-                                foundname = 1
-                                break
+                            if not foundname:
+                                print 'Warning: cannot generate a grid for variable', var.id
+                                continue
 
-                        if not foundname:
-                            print 'Warning: cannot generate a grid for variable', var.id
-                            continue
-
-                    # Create the grid
-                    if gridkey[4] == 'rectGrid':
-                        grid = FileRectGrid(self, gridname, lat, lon, gridkey[2], gridtype)
-                    else:
-                        if gridkey[3]!='':
-                            if self.variables.has_key(gridkey[3]):
-                                maskvar = self.variables[gridkey[3]]
+                        # Create the grid
+                        if gridkey[4] == 'rectGrid':
+                            grid = FileRectGrid(self, gridname, lat, lon, gridkey[2], gridtype)
+                        else:
+                            if gridkey[3]!='':
+                                if self.variables.has_key(gridkey[3]):
+                                    maskvar = self.variables[gridkey[3]]
+                                else:
+                                    print 'Warning: mask variable %s not found'%gridkey[3]
+                                    maskvar = None
                             else:
-                                print 'Warning: mask variable %s not found'%gridkey[3]
                                 maskvar = None
-                        else:
-                            maskvar = None
-                        if gridkey[4] == 'curveGrid':
-                            grid = FileCurveGrid(lat, lon, gridname, parent=self, maskvar=maskvar)
-                        else:
-                            grid = FileGenericGrid(lat, lon, gridname, parent=self, maskvar=maskvar)
-                    self.grids[grid.id] = grid
-                    self._gridmap_[gridkey] = grid
+                            if gridkey[4] == 'curveGrid':
+                                grid = FileCurveGrid(lat, lon, gridname, parent=self, maskvar=maskvar)
+                            else:
+                                grid = FileGenericGrid(lat, lon, gridname, parent=self, maskvar=maskvar)
+                        self.grids[grid.id] = grid
+                        self._gridmap_[gridkey] = grid
 
-            # Set the variable grid
-            var.setGrid(grid)
+                # Set the variable grid
+                var.setGrid(grid)
+        except:
+            self.close()
+            raise
 
     # setattr writes external global attributes to the file
     def __setattr__ (self, name, value):
-        s = self.get_property_s(name)
-        if s is not None:
-            print '....handler'
-            s(self, name, value)
-            return
+##         s = self.get_property_s(name)
+##         if s is not None:
+##             print '....handler'
+##             s(self, name, value)
+##             return
         self.__dict__[name] =  value #attributes kept in sync w/file
-        if not self.is_internal_attribute(name):
+        if not name in self.__cdms_internals__ and name[0]!='_':
             setattr(self._file_, name, value)
+            self.attributes[name]=value
 
-    # getattr reads external global attributes from the file
-    def __getattr__ (self, name):
-        g = self.get_property_g(name)
-        if g is not None:
-            return g(self, name)
-        if self.is_internal_attribute(name):
-            try:
-                return self.__dict__[name]
-            except KeyError:
-                raise AttributeError, "%s instance has no attribute %s." % \
-                           (self.__class__.__name__, name)
-        else:
-            return getattr(self._file_,name)
+##     # getattr reads external global attributes from the file
+##     def __getattr__ (self, name):
+## ##         g = self.get_property_g(name)
+## ##         if g is not None:
+## ##             return g(self, name)
+##         if name in self.__cdms_internals__:
+##             try:
+##                 return self.__dict__[name]
+##             except KeyError:
+##                 raise AttributeError, "%s instance has no attribute %s." % \
+##                            (self.__class__.__name__, name)
+##         else:
+##             return getattr(self._file_,name)
 
     # delattr deletes external global attributes in the file
     def __delattr__(self, name):
-        d = self.get_property_d(name)
-        if d is not None:
-            d(self, name)
-            return
+##         d = self.get_property_d(name)
+##         if d is not None:
+##             d(self, name)
+##             return
         try:
             del self.__dict__[name]
         except KeyError:
             raise AttributeError, "%s instance has no attribute %s." % \
                   (self.__class__.__name__, name)
-        if not self.is_internal_attribute(name):
+        if not name in self.__cdms_internals__:
             delattr(self._file_, name)
+            del(self.attributes[name])
 
     def sync(self):
         if self._status_=="closed":
@@ -877,10 +910,11 @@ class CdmsFile(CdmsObj, cuDataset):
     def close(self):
         if self._status_=="closed":
             return
-        for dict in self.dictdict.values():
-            for obj in dict.values():
-                obj.parent = None
-                del obj
+        if hasattr(self, 'dictdict'):
+            for dict in self.dictdict.values():
+                for obj in dict.values():
+                    obj.parent = None
+                    del obj
         self.dictdict = self.variables = self.axes = {}
         self._file_.close()
         self._status_ = 'closed'
@@ -906,7 +940,7 @@ class CdmsFile(CdmsObj, cuDataset):
         if ar is None or unlimited==1:
             cufile.createDimension(name,None)
             if ar is None:
-                typecode = Numeric.Float
+                typecode = numpy.float
             else:
                 typecode = ar.dtype.char
         else:
@@ -914,14 +948,21 @@ class CdmsFile(CdmsObj, cuDataset):
             typecode = ar.dtype.char
 
         # Compatibility: revert to old typecode for cdunif
-        typecode = Numeric.typeconv.oldtypecodes[typecode]
+        typecode = typeconv.oldtypecodes[typecode]
         cuvar = cufile.createVariable(name,typecode,(name,))
 
         # Cdunif should really create this extra dimension info:
         #   (units,typecode,filename,varname_local,dimension_type,ncid)
         cufile.dimensioninfo[name] = ('',typecode,name,'','global',-1)
+
+        # Note: like netCDF-3, cdunif does not support 64-bit integers.
+        # If ar has dtype int64 on a 64-bit machine, cuvar will be a 32-bit int,
+        # and ar must be downcast.
         if ar is not None:
-            cuvar[0:len(ar)] = MA.filled(ar)
+            if ar.dtype.char!='l':
+                cuvar[0:len(ar)] = numpy.ma.filled(ar)
+            else:
+                cuvar[0:len(ar)] = numpy.ma.filled(ar).astype(cuvar.typecode())
         axis = FileAxis(self,name,cuvar)
         self.axes[name] = axis
         return axis
@@ -957,7 +998,7 @@ class CdmsFile(CdmsObj, cuDataset):
                 if len(axis)!=len(newaxis):
                     raise DuplicateAxisError, DuplicateAxis+newname
             elif unlimited==0:
-                if len(axis)!=len(newaxis) or Numeric.alltrue(Numeric.less(Numeric.absolute(newaxis[:]-axis[:]),1.e-5))==0:
+                if len(axis)!=len(newaxis) or numpy.alltrue(numpy.less(numpy.absolute(newaxis[:]-axis[:]),1.e-5))==0:
                     raise DuplicateAxisError, DuplicateAxis+newname
             else:
                 if index is None:
@@ -1045,7 +1086,7 @@ class CdmsFile(CdmsObj, cuDataset):
 
     # Create a variable
     # 'name' is the string name of the Variable
-    # 'datatype' is a CDMS datatype or Numeric typecode
+    # 'datatype' is a CDMS datatype or numpy typecode
     # 'axesOrGrids' is a list of axes, grids. (Note: this should be
     #   generalized to allow subintervals of axes and/or grids)
     # Return a variable object.
@@ -1071,9 +1112,10 @@ class CdmsFile(CdmsObj, cuDataset):
 
         try:
             # Compatibility: revert to old typecode for cdunif
-            numericType = Numeric.typeconv.oldtypecodes[numericType]
+            numericType = typeconv.oldtypecodes[numericType]
             cuvar = cufile.createVariable(name,numericType,tuple(dimensions))
-        except:
+        except Exception,err:
+            print err
             raise CDMSError, "Creating variable "+name
         var = FileVariable(self,name,cuvar)
         var.initDomain(self.axes)
@@ -1332,7 +1374,7 @@ class CdmsFile(CdmsObj, cuDataset):
 
         # Make var an AbstractVariable
         if dtype is None and typecode is not None:
-            dtype = Numeric.typeconv.convtypecode2(typecode)
+            dtype = typeconv.convtypecode2(typecode)
         typecode = dtype
         if typecode is not None and var.dtype.char!=typecode:
             var = var.astype(typecode)
@@ -1349,11 +1391,11 @@ class CdmsFile(CdmsObj, cuDataset):
             v = self.createVariableCopy(var, attributes=attributes, axes=axes, extbounds=extbounds,
                                            id=varid, extend=extend, fill_value=fill_value, index=index)
 
-        # If var has typecode Numeric.Int, and v is created from var, then v will have
-        # typecode Numeric.Int32. (This is a Cdunif 'feature'). This causes a downcast error
-        # for Numeric versions 23+, so make the downcast explicit.
-        if var.typecode()==Numeric.Int and v.typecode()==Numeric.Int32:
-            var = var.astype(Numeric.Int32)
+        # If var has typecode numpy.int, and v is created from var, then v will have
+        # typecode numpy.int32. (This is a Cdunif 'feature'). This causes a downcast error
+        # for numpy versions 23+, so make the downcast explicit.
+        if var.typecode()==numpy.int and v.typecode()==numpy.int32:
+            var = var.astype(numpy.int32)
 
         # Write
         if axes is None:
@@ -1384,7 +1426,7 @@ class CdmsFile(CdmsObj, cuDataset):
             else:
                 isoverlap = 1
             if isoverlap==1:
-                v[index:index+len(vec1)] = var
+                v[index:index+len(vec1)] = var.astype(v.dtype)
                 vec2[index:index+len(vec1)] = vec1[:]
                 if bounds1 is not None:
                     vec2.setBounds(bounds1, persistent=1, index=index)
@@ -1431,13 +1473,13 @@ class CdmsFile(CdmsObj, cuDataset):
         if loc==-1: loc=0
         return "<CDMS "+filerep[loc:-1]+", status: %s>"%self._status_
 
-internattr.add_internal_attribute (CdmsFile, 'datapath',
-                                            'variables',
-                                            'axes',
-                                            'grids',
-                                            'xlinks',
-                                            'dictdict',
-                                            'default_variable_name',
-                                            'id',
-                                            'parent',
-                                            'mode')
+## internattr.add_internal_attribute (CdmsFile, 'datapath',
+##                                             'variables',
+##                                             'axes',
+##                                             'grids',
+##                                             'xlinks',
+##                                             'dictdict',
+##                                             'default_variable_name',
+##                                             'id',
+##                                             'parent',
+##                                             'mode')

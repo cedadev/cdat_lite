@@ -1,9 +1,13 @@
 from distutils.core import setup, Extension
 import os,sys,string
 import numpy
-
-setup (name = "cdat",
-       version='4.0',
+try:
+    import cdat_info
+    Version=cdat_info.Version
+except:
+    Version="???"
+setup (name = "genutil",
+       version=Version,
        author='PCMDI',
        description = "General utilities for scientific computing",
        url = "http://www-pcmdi.llnl.gov/software",

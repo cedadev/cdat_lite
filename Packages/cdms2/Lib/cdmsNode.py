@@ -1,10 +1,10 @@
 ## Automatically adapted for numpy.oldnumeric Aug 01, 2007 by 
+## Further modified to be pure new numpy June 24th 2008
 
 """
 CDMS node classes
 """
-
-import numpy.oldnumeric as Numeric
+import numpy
 from numpy import get_printoptions, set_printoptions, inf
 import CDML
 import cdtime
@@ -37,22 +37,23 @@ CdDatatypes = [CdChar,CdByte,CdShort,CdInt,CdLong,CdFloat,CdDouble,CdString]
 CdScalar = CDML.CdScalar
 CdArray = CDML.CdArray
 
-NumericToCdType = {Numeric.Float32:CdFloat,
-                   Numeric.Float:CdDouble,
-                   Numeric.Int16:CdShort,
-                   Numeric.Int32:CdInt,
-                   Numeric.Int:CdLong,
-                   Numeric.Int8:CdByte,
+NumericToCdType = {numpy.sctype2char(numpy.float32):CdFloat,
+                   numpy.sctype2char(numpy.float):CdDouble,
+                   numpy.sctype2char(numpy.int16):CdShort,
+                   numpy.sctype2char(numpy.int32):CdInt,
+                   numpy.sctype2char(numpy.int):CdLong,
+                   numpy.sctype2char(numpy.intc):CdLong,
+                   numpy.sctype2char(numpy.int8):CdByte,
                    'c':CdChar
                    }
 
 CdToNumericType = {CdChar:'c',
-                   CdByte:Numeric.Int8,
-                   CdShort:Numeric.Int16,
-                   CdInt:Numeric.Int32,
-                   CdLong:Numeric.Int,
-                   CdFloat:Numeric.Float32,
-                   CdDouble:Numeric.Float}
+                   CdByte:numpy.int8,
+                   CdShort:numpy.int16,
+                   CdInt:numpy.int32,
+                   CdLong:numpy.int,
+                   CdFloat:numpy.float32,
+                   CdDouble:numpy.float}
 
 # Grid types
 UnknownGridType = "unknown"
@@ -444,17 +445,17 @@ class VariableNode(CdmsNode):
 class AxisNode(CdmsNode):
 
     # If datatype is None, assume values [0,1,..,length-1]
-    # data is a Numeric array, if specified
+    # data is a numpy array, if specified
     def __init__(self, id, length, datatype=CdLong,data=None):
         assert isinstance(length, IntType), 'Invalid length: '+`length`
         assert type(datatype) is StringType, 'Invalid datatype: '+`datatype`
         assert datatype in CdDatatypes, 'Invalid datatype: '+`datatype`
-        if data is not None: assert isinstance(data, Numeric.ArrayType), 'data must be a 1-D Numeric array'
+        if data is not None: assert isinstance(data, numpy.ndarray), 'data must be a 1-D Numeric array'
         CdmsNode.__init__(self,"axis",id)
         self.datatype = datatype
         self.data = data
         # data representation is CdLinear or CdVector
-        # If vector, self.data is a Numeric array
+        # If vector, self.data is a numpy array
         #   and the content is the array string representation
         # If linear, the linear node is a child node
         #   and the content is empty
@@ -485,7 +486,7 @@ class AxisNode(CdmsNode):
             numlist.append(string.atof(numstring))
         if len(numlist)>0:
             # NB! len(zero-length array) causes IndexError on Linux!
-            dataArray = Numeric.array(numlist,numericType)
+            dataArray = numpy.array(numlist,numericType)
             self.data = dataArray
             self.length = len(self.data)
 
@@ -497,7 +498,7 @@ class AxisNode(CdmsNode):
         for numstring in stringlist:
             if numstring=='': continue
             numlist.append(string.atoi(numstring))
-        dataArray = Numeric.array(numlist,Numeric.Int)
+        dataArray = numpy.array(numlist,numpy.int)
         if len(dataArray)>0:
             self.partition = dataArray
 
@@ -554,14 +555,14 @@ class AxisNode(CdmsNode):
         if self.partition is not None and axis.partition is not None:
             if len(self.partition)!=len(axis.partition):
                 return 0
-            if not Numeric.alltrue(Numeric.equal(self.partition,axis.partition)):
+            if not numpy.alltrue(numpy.equal(self.partition,axis.partition)):
                 return 0
         elif self.partition is not None or axis.partition is not None:
             return 0
         
         if self.dataRepresent == axis.dataRepresent == CdVector:
             try:
-                return Numeric.alltrue(Numeric.equal(self.data,axis.data))
+                return numpy.alltrue(numpy.equal(self.data,axis.data))
             except ValueError:
                 return 0
         elif self.dataRepresent == axis.dataRepresent == CdLinear:
@@ -578,7 +579,7 @@ class AxisNode(CdmsNode):
             return self.equal(axis)
         if self.dataRepresent == axis.dataRepresent == CdVector:
             try:
-                return Numeric.alltrue(Numeric.less_equal(Numeric.absolute(self.data-axis.data),Numeric.absolute(eps*self.data)))
+                return numpy.alltrue(numpy.less_equal(numpy.absolute(self.data-axis.data),numpy.absolute(eps*self.data)))
             except ValueError:
                 return 0
         elif self.dataRepresent == axis.dataRepresent == CdLinear:
@@ -598,9 +599,9 @@ class AxisNode(CdmsNode):
         else:
             first = self.data[:-1]
             second = self.data[1:]
-            if Numeric.alltrue(Numeric.less(first,second)):
+            if numpy.alltrue(numpy.less(first,second)):
                 return CdIncreasing
-            elif Numeric.alltrue(Numeric.greater(first,second)):
+            elif numpy.alltrue(numpy.greater(first,second)):
                 return CdDecreasing
             else:
                 return CdNotMonotonic
@@ -661,10 +662,10 @@ class AxisNode(CdmsNode):
                 if offset is not None:
                     bindex = int(offset/linNode.delta+0.5)
                 if self.partition  is None:
-                    partition = Numeric.array([aindex,aindex+alength,bindex,bindex+blength])
+                    partition = numpy.array([aindex,aindex+alength,bindex,bindex+blength])
                     self.partition_length = alength+blength
                 else:
-                    partition = Numeric.concatenate((self.partition,[bindex,bindex+blength]))
+                    partition = numpy.concatenate((self.partition,[bindex,bindex+blength]))
                     self.partition_length = self.partition_length+blength
                 self.setLinearData(linNode,partition)
                 self.setExternalAttr('partition_length',self.partition_length)
@@ -686,7 +687,7 @@ class AxisNode(CdmsNode):
                 delta = rtime.torel(units1).value
                 ar2 = ar2+delta
 
-        ar = Numeric.concatenate((ar1,ar2))
+        ar = numpy.concatenate((ar1,ar2))
         try:
             self.setData(ar)
         except NotMonotonicError:
@@ -696,10 +697,10 @@ class AxisNode(CdmsNode):
 
         # Extend the partition attribute
         if self.partition  is None:
-            self.partition = Numeric.array([aindex,aindex+alength,bindex,bindex+blength])
+            self.partition = numpy.array([aindex,aindex+alength,bindex,bindex+blength])
             self.partition_length = alength+blength
         else:
-            self.partition = Numeric.concatenate((self.partition,[bindex,bindex+blength]))
+            self.partition = numpy.concatenate((self.partition,[bindex,bindex+blength]))
             self.partition_length = self.partition_length+blength
         self.setExternalAttr('partition',str(self.partition))
         self.setExternalAttr('partition_length',self.partition_length)
@@ -716,8 +717,8 @@ class LinearDataNode(CdmsNode):
     validDeltaTypes = [IntType,FloatType,ListType]
 
     def __init__(self, start, delta, length):
-        assert type(start) in self.validStartTypes, 'Invalid start argument: '+`start`
-        assert type(delta) in self.validDeltaTypes, 'Invalid delta argument: '+`delta`
+        assert isinstance(start, numpy.floating) or isinstance(start, numpy.integer) or (type(start) in self.validStartTypes), 'Invalid start argument: '+`start`
+        assert isinstance(start, numpy.floating) or isinstance(start, numpy.integer) or (type(delta) in self.validDeltaTypes), 'Invalid delta argument: '+`delta`
         assert isinstance(length, IntType), 'Invalid length argument: '+`length`
         CdmsNode.__init__(self,"linear")
         self.delta = delta
@@ -750,7 +751,7 @@ class LinearDataNode(CdmsNode):
     def equalVector(self,ar):
         diff = ar[1:]-ar[:-1]
         try:
-            comp = Numeric.alltrue(Numeric.equal((self.delta)*Numeric.ones(self.length-1),diff))
+            comp = numpy.alltrue(numpy.equal((self.delta)*numpy.ones(self.length-1),diff))
         except ValueError:
             return 0
         return comp
@@ -760,9 +761,9 @@ class LinearDataNode(CdmsNode):
         if eps==0:
             return self.equalVector(ar)
         diff = ar[1:]-ar[:-1]
-        diff2 = self.delta*Numeric.ones(self.length-1)
+        diff2 = self.delta*numpy.ones(self.length-1)
         try:
-            comp = Numeric.alltrue(Numeric.less_equal(Numeric.absolute(diff2-diff),Numeric.absolute(eps*diff2)))
+            comp = numpy.alltrue(numpy.less_equal(numpy.absolute(diff2-diff),numpy.absolute(eps*diff2)))
         except ValueError:
             return 0
         return comp
@@ -788,9 +789,9 @@ class LinearDataNode(CdmsNode):
         if length>1:
             stop = start + (length-0.99)*delta
             if delta==0.0: delta=1.0
-            ar = Numeric.arange(start,stop,delta,numericType)
+            ar = numpy.arange(start,stop,delta,numericType)
         else:
-            ar = Numeric.array([start],numericType)
+            ar = numpy.array([start],numericType)
         return ar
 
     # Concatenate linear arrays, preserving linearity
@@ -923,9 +924,9 @@ class AttrNode(CdmsNode):
     def __init__(self, name, value=None):
         CdmsNode.__init__(self,"attr")
         if not (isinstance(value,IntType)
-                or isinstance(value,Numeric.integer)
+                or isinstance(value,numpy.integer)
                 or isinstance(value,FloatType)
-                or isinstance(value,Numeric.floating)
+                or isinstance(value,numpy.floating)
                 or isinstance(value,StringType)
                 or isinstance(value,NoneType)):
             raise CDMSError, 'Invalid attribute type: '+`value`
@@ -1016,9 +1017,9 @@ class AttrNode(CdmsNode):
         if format: fd.write('\n')
 
 if __name__ == '__main__':
-    # a = Numeric.array([0.,4.,8.,12.,16.,20.,24.,28.])
-    # b = Numeric.array([0.,4.,8.,12.,16.,20.,24.,28.])
-    # c = Numeric.array([0.,4.,8.,12.,16.,20.,24.,28.,32.])
+    # a = numpy.array([0.,4.,8.,12.,16.,20.,24.,28.])
+    # b = numpy.array([0.,4.,8.,12.,16.,20.,24.,28.])
+    # c = numpy.array([0.,4.,8.,12.,16.,20.,24.,28.,32.])
     # aAxis = AxisNode('a',len(a),CdDouble,a)
     # bAxis = AxisNode('b',len(b),CdDouble,b)
     # cAxis = AxisNode('c',len(c),CdDouble,c)
@@ -1037,10 +1038,10 @@ if __name__ == '__main__':
     # print dAxis.equal(eAxis)
     # print dAxis.equal(fAxis)
 
-    # g = Numeric.array([0.,4.,8.,12.,16.,20.,24.,20.])
-    # h = Numeric.array([ 28.,  24.,  20.,  16.,  12.,   8.,   4.,   0.])
+    # g = numpy.array([0.,4.,8.,12.,16.,20.,24.,20.])
+    # h = numpy.array([ 28.,  24.,  20.,  16.,  12.,   8.,   4.,   0.])
     # j = LinearDataNode(0.,-4.,8)
-    # k = Numeric.array([4.])
+    # k = numpy.array([4.])
     # gAxis = AxisNode('g',len(g),CdDouble,g)
     # hAxis = AxisNode('h',len(h),CdDouble,h)
     # jAxis = AxisNode('j',len(j),CdDouble); jAxis.setLinearData(j)
@@ -1056,11 +1057,11 @@ if __name__ == '__main__':
     m = LinearDataNode(1,2,3)
     n = LinearDataNode(11,2,3)
     p = LinearDataNode(15,-4,3)
-    q = Numeric.array([4.,2.,1.])
-    r = Numeric.array([11.,9.,8.])
-    s = Numeric.array([7.])
-    t = Numeric.array([9.])
-    v = Numeric.array([5.])
+    q = numpy.array([4.,2.,1.])
+    r = numpy.array([11.,9.,8.])
+    s = numpy.array([7.])
+    t = numpy.array([9.])
+    v = numpy.array([5.])
 
     mAxis = AxisNode('m',len(m),CdLong); mAxis.setLinearData(m)
     nAxis = AxisNode('n',len(n),CdLong); nAxis.setLinearData(n)

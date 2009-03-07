@@ -1,4 +1,5 @@
 ## Automatically adapted for numpy.oldnumeric Aug 01, 2007 by 
+## Further modified to be pure new numpy June 24th 2008
 
 """
 CDMS Axis objects
@@ -6,7 +7,7 @@ CDMS Axis objects
 _debug = 0
 std_axis_attributes = ['name', 'units', 'length', 'values', 'bounds']
 import string, sys, types, copy
-import numpy, numpy.oldnumeric.ma as MA, numpy.oldnumeric as Numeric, PropertiedClasses
+import numpy
 # import regrid2._regrid
 import cdmsNode
 import cdtime
@@ -14,7 +15,7 @@ import cdmsobj
 from cdmsobj import CdmsObj, Max32int
 from sliceut import reverseSlice, splitSlice, splitSliceExt
 from error import CDMSError
-import internattr
+#import internattr
 from UserList import UserList
 class AliasList (UserList):
     def __init__(self, alist):
@@ -108,7 +109,7 @@ def createGaussianAxis(nlat):
         mid = nlat/2
         lats[mid+1:] = -lats[:mid][::-1]
         
-    latBounds = Numeric.zeros((nlat,2),Numeric.Float)
+    latBounds = numpy.zeros((nlat,2),numpy.float)
     latBounds[:,0] = bnds[:-1]
     latBounds[:,1] = bnds[1:]
     lat = createAxis(lats,latBounds,id="latitude")
@@ -121,7 +122,7 @@ def createEqualAreaAxis(nlat):
     import regrid2._regrid
 
     lats,wts,bnds = regrid2._regrid.gridattr(nlat,'equalarea')
-    latBounds = Numeric.zeros((nlat,2),Numeric.Float)
+    latBounds = numpy.zeros((nlat,2),numpy.float)
     latBounds[:,0] = bnds[:-1]
     latBounds[:,1] = bnds[1:]
     lat = createAxis(lats,latBounds,id="latitude")
@@ -131,7 +132,7 @@ def createEqualAreaAxis(nlat):
 
 # Generate a uniform latitude axis
 def createUniformLatitudeAxis(startLat, nlat, deltaLat):
-    latArray = startLat + deltaLat*Numeric.arange(nlat)
+    latArray = startLat + deltaLat*numpy.arange(nlat)
     lat = createAxis(latArray,id="latitude")
     lat.designateLatitude()
     lat.units = "degrees_north"
@@ -141,7 +142,7 @@ def createUniformLatitudeAxis(startLat, nlat, deltaLat):
 
 # Generate a uniform longitude axis
 def createUniformLongitudeAxis(startLon, nlon, deltaLon):
-    lonArray = startLon + deltaLon*Numeric.arange(nlon)
+    lonArray = startLon + deltaLon*numpy.arange(nlon)
     lon = createAxis(lonArray,id="longitude")
     lon.designateLongitude()
     lon.units = "degrees_east"
@@ -310,7 +311,7 @@ def mapLinearExt(axis, bounds, interval, indicator ='ccn', epsilon=None, stride=
     
     # The intersection is nonempty; use searchsorted to get left/right limits for testing
 
-    ii,jj = Numeric.searchsorted(ar,(x,y))
+    ii,jj = numpy.searchsorted(ar,(x,y))
 
     #
     #  find index range for left (iStart,iEnd) and right (jStart,jEnd)
@@ -525,13 +526,13 @@ def lookupArray(ar,value):
     value >= ar[index], index==0..len(ar)-1
     value < ar[index], index==len(ar)
     """
-    ar = MA.filled(ar)
+    ar = numpy.ma.filled(ar)
     ascending = (ar[0]<ar[-1]) or len(ar)==1
     if ascending:
-        index = Numeric.searchsorted(ar,value)
+        index = numpy.searchsorted(ar,value)
     else:
         revar = ar[::-1]
-        index = Numeric.searchsorted(revar,value)
+        index = numpy.searchsorted(revar,value)
         if index<len(revar) and value==revar[index]:
             index = len(ar)-index-1
         else:
@@ -543,9 +544,9 @@ def lookupArray(ar,value):
 ## def lookupArray(ar,value):
 ##     ascending = (ar[0]<ar[-1])
 ##     if ascending:
-##         index = Numeric.searchsorted(ar,value)
+##         index = numpy.searchsorted(ar,value)
 ##     else:
-##         index = Numeric.searchsorted(ar[::-1],value)
+##         index = numpy.searchsorted(ar[::-1],value)
 ##         index = len(ar)-index-1
 ##     index = max(index,0)
 ##     index = min(index,len(ar))
@@ -557,7 +558,7 @@ def isSubsetVector(vec1, vec2, tol):
     index = lookupArray(vec2,vec1[0])
     if index>(len(vec2)-len(vec1)):
         return (0,-1)                   # vec1 is too large, cannot be a subset
-    issubset = Numeric.alltrue(Numeric.less(Numeric.absolute(vec1-vec2[index:index+len(vec1)]),tol))
+    issubset = numpy.alltrue(numpy.less(numpy.absolute(vec1-vec2[index:index+len(vec1)]),tol))
     if issubset:
         return (issubset,index)
     else:
@@ -577,7 +578,7 @@ def isOverlapVector(vec1, vec2, atol=1.e-8):
     else:
         ar2 = vec2[index:index+len(vec1)]
         ar1 = vec1[:len(ar2)]
-        isoverlap = MA.allclose(ar1, ar2, atol=atol)
+        isoverlap = numpy.ma.allclose(ar1, ar2, atol=atol)
     if isoverlap:
         return (isoverlap,index)
     else:
@@ -585,8 +586,8 @@ def isOverlapVector(vec1, vec2, atol=1.e-8):
 
 def allclose(ax1, ax2, rtol=1.e-5, atol=1.e-8):
     """True if all elements of axes ax1 and ax2 are close,
-    in the sense of MA.allclose."""
-    return ((ax1 is ax2) or MA.allclose(ax1[:],ax2[:],rtol=rtol,atol=atol))
+    in the sense of numpy.ma.allclose."""
+    return ((ax1 is ax2) or numpy.ma.allclose(ax1[:],ax2[:],rtol=rtol,atol=atol))
 
 # AbstractAxis defines the common axis interface. 
 # Concrete axis classes are derived from this class.
@@ -594,6 +595,8 @@ def allclose(ax1, ax2, rtol=1.e-5, atol=1.e-8):
 class AbstractAxis(CdmsObj):
     def __init__ (self, parent, node):
         CdmsObj.__init__ (self, node)
+        val = self.__cdms_internals__ + ['id',]
+        self.___cdms_internals__ = val
         self.parent = parent
         self.id = id
         # Cached data values
@@ -609,12 +612,12 @@ class AbstractAxis(CdmsObj):
     def __len__(self):
         raise CDMSError, MethodNotImplemented
 
-    def _getshape(self, name):
+    def _getshape(self):
         return (len(self),)
 
     def _getdtype(self, name):
         tc = self.typecode()
-        return Numeric.dtype(tc)
+        return numpy.dtype(tc)
 
     def __getitem__(self, key):
         raise CDMSError, MethodNotImplemented
@@ -638,6 +641,7 @@ class AbstractAxis(CdmsObj):
             self.axis = "Y"
         else:
             self.__dict__['axis'] = "Y"
+            self.attributes['axis']="Y"
 
     # Return true iff the axis is a latitude axis
     def isLatitude(self):
@@ -652,6 +656,7 @@ class AbstractAxis(CdmsObj):
             self.axis = "Z"
         else:
             self.__dict__['axis'] = "Z"
+            self.attributes['axis']="Z"
 
     # Return true iff the axis is a level axis
     def isLevel(self):
@@ -672,11 +677,15 @@ class AbstractAxis(CdmsObj):
                 self.topology = 'circular'
         else:
             self.__dict__['axis'] = "X"
+            self.attributes['axis']="X"
             if modulo is None:
                 self.__dict__['topology'] = 'linear'
+                self.attributes['topology'] = 'linear'
             else:
                 self.__dict__['modulo'] = modulo
                 self.__dict__['topology'] = 'circular'
+                self.attributes['modulo'] = modulo
+                self.attributes['topology'] = 'circular'
 
     # Return true iff the axis is a longitude axis
     def isLongitude(self):
@@ -686,13 +695,16 @@ class AbstractAxis(CdmsObj):
 
     # Designate axis as a time axis, and optionally set the calendar
     # If persistent is true, write metadata to the container.
-    def designateTime(self, persistent=0, calendar = cdtime.GregorianCalendar):
+    def designateTime(self, persistent=0, calendar=None):
+        if calendar is None:
+            calendar = cdtime.DefaultCalendar
         if persistent:
             self.axis = "T"
             if calendar is not None:
                 self.setCalendar(calendar, persistent)
         else:
             self.__dict__['axis'] = "T"
+            self.attributes['axis'] = "T"
             if calendar is not None:
                 self.setCalendar(calendar, persistent)
 
@@ -840,6 +852,8 @@ class AbstractAxis(CdmsObj):
         else:
             self.__dict__['topology'] = 'circular'
             self.__dict__['modulo'] = modulo
+            self.attributes['modulo'] = modulo
+            self.attributes['topology'] = 'linear'
 
     def isLinear(self):
         raise CDMSError, MethodNotImplemented
@@ -870,10 +884,12 @@ class AbstractAxis(CdmsObj):
     def setCalendar(self, calendar, persistent=1):
         if persistent:
             self.calendar = calendarToTag.get(calendar, None)
+            self.attributes['calendar']=self.calendar
             if self.calendar is None:
                 raise CDMSError, InvalidCalendar + calendar
         else:
             self.__dict__['calendar'] = calendarToTag.get(calendar, None)
+            self.attributes['calendar']=self.calendar
             if self.__dict__['calendar'] is None:
                 raise CDMSError, InvalidCalendar + calendar
 
@@ -910,7 +926,7 @@ class AbstractAxis(CdmsObj):
         else:
             cycle = 360.0
 
-        if isinstance(cycle, Numeric.ArrayType):
+        if isinstance(cycle, numpy.ndarray):
             cycle = cycle[0]
 
         return(cycle)
@@ -1079,7 +1095,7 @@ class AbstractAxis(CdmsObj):
 
             # calculate the number of cycles to shift to positive side
             
-            nCycleShift=Numeric.floor((xi-ar0)/cycle)
+            nCycleShift=numpy.floor((xi-ar0)/cycle)
             xp = xi - cycle * nCycleShift
             yp = xp + intervalLength
 
@@ -1094,10 +1110,10 @@ class AbstractAxis(CdmsObj):
             if(nCycle >= nCycleMax):
                 raise CDMSError, InvalidNCycles + repr(nCycle)
 
-            self._doubledata_ = Numeric.concatenate(( ar, ar + cycle ))
+            self._doubledata_ = numpy.concatenate(( ar, ar + cycle ))
             k=2
             while(k<nCycle):
-                self._doubledata_ = Numeric.concatenate(( self._doubledata_, ar + k*cycle ) )
+                self._doubledata_ = numpy.concatenate(( self._doubledata_, ar + k*cycle ) )
                 k=k+1
 
             # Map the canonical coordinate interval (xp,yp) in the 'extended' data array
@@ -1163,7 +1179,6 @@ class AbstractAxis(CdmsObj):
         supported for longitude dimensions or those with a modulus attribute.
         """
         fullBounds = self.getBounds()
-
         _debug=0
         _debugprefix="SS__XX subaxis "
         
@@ -1207,14 +1222,14 @@ class AbstractAxis(CdmsObj):
                     if(kk == 0):
                         data = part
                     else:
-                        data = Numeric.concatenate((data,part))
+                        data = numpy.concatenate((data,part))
 
                     if fullBounds is not None:
                         bound = fullBounds[sl] + kk*modulo
                         if (kk == 0):
                             bounds = bound
                         else:
-                            bounds = Numeric.concatenate((bounds,bound))
+                            bounds = numpy.concatenate((bounds,bound))
                     else:
                         bounds = None
                         
@@ -1227,11 +1242,11 @@ class AbstractAxis(CdmsObj):
                 part1 = self[s1]
                 part2 = self[s2]+modulo
                 if(_debug): print "SSSSSSSSSSSSSSS modulo",self[0],self[-1],modulo
-                data = Numeric.concatenate((part1,part2))
+                data = numpy.concatenate((part1,part2))
                 if fullBounds is not None:
                     bounds1 = fullBounds[s1]
                     bounds2 = fullBounds[s2]+modulo
-                    bounds = Numeric.concatenate((bounds1,bounds2))
+                    bounds = numpy.concatenate((bounds1,bounds2))
                 else:
                     bounds = None
             
@@ -1253,6 +1268,7 @@ class AbstractAxis(CdmsObj):
         for attname in self.attributes.keys():
             if attname not in ["datatype", "length","isvar","name_in_file","partition","partition_length"]:
                 setattr(newaxis, attname, getattr(self, attname))
+                newaxis.attributes[attname]=getattr(self,attname)
 
         # Change circular topology to linear if a strict subset was copied
         if hasattr(self,"topology") and self.topology=="circular" and len(newaxis)<len(self):
@@ -1272,9 +1288,15 @@ class AbstractAxis(CdmsObj):
     # Check that a boundary array is valid, raise exception if not. bounds is an array of shape (n,2)
     def validateBounds(self,bounds):
         requiredShape = (len(self),2)
-        if bounds.shape!=requiredShape:
+        requiredShape2 = (len(self)+1,)
+        if bounds.shape!=requiredShape and bounds.shape!=requiredShape2:
             raise CDMSError, InvalidBoundsArray + \
-                 'shape is %s, should be %s'%(`bounds.shape`,`requiredShape`)
+                 'shape is %s, should be %s or %s'%(`bounds.shape`,`requiredShape`,`requiredShape2`)
+        if bounds.shape==requiredShape2: # case of "n+1" bounds
+            bounds2=numpy.zeros(requiredShape)
+            bounds2[:,0]=bounds[:-1]
+            bounds2[:,1]=bounds[1::]
+            bounds=bounds2
         mono = (bounds[0,0]<=bounds[0,1])
         if mono:
             for i in range(bounds.shape[0]):
@@ -1286,6 +1308,7 @@ class AbstractAxis(CdmsObj):
                 if not bounds[i,0]>=self[i]>=bounds[i,1]:
                     raise CDMSError, InvalidBoundsArray + \
 'bounds[%i]=%f is not in the range [%f,%f]'%(i,self[i],bounds[i,1],bounds[i,0])
+        return bounds
 
     # Generate bounds from midpoints. width is the width of the zone if the axis has one value.
     def genGenericBounds(self, width=1.0):
@@ -1293,22 +1316,22 @@ class AbstractAxis(CdmsObj):
             self._data_ = self.getData()
         ar = self._data_
         if len(self)>1:
-            leftPoint = Numeric.array([1.5*ar[0]-0.5*ar[1]])
+            leftPoint = numpy.array([1.5*ar[0]-0.5*ar[1]])
             midArray = (ar[0:-1]+ar[1:])/2.0
-            rightPoint = Numeric.array([1.5*ar[-1]-0.5*ar[-2]])
-            bnds = Numeric.concatenate((leftPoint,midArray,rightPoint))
+            rightPoint = numpy.array([1.5*ar[-1]-0.5*ar[-2]])
+            bnds = numpy.concatenate((leftPoint,midArray,rightPoint))
         else:
             delta = width/2.0
-            bnds = Numeric.array([self[0]-delta,self[0]+delta])
+            bnds = numpy.array([self[0]-delta,self[0]+delta])
 
         # Transform to (n,2) array
-        retbnds = Numeric.zeros((len(ar),2),Numeric.Float)
+        retbnds = numpy.zeros((len(ar),2),numpy.float)
         retbnds[:,0] = bnds[:-1]
         retbnds[:,1] = bnds[1:]
 
         if self.isLatitude():
-            retbnds[0,:] = Numeric.maximum(-90.0, Numeric.minimum(90.0,retbnds[0,:]))
-            retbnds[-1,:] = Numeric.maximum(-90.0, Numeric.minimum(90.0,retbnds[-1,:]))
+            retbnds[0,:] = numpy.maximum(-90.0, numpy.minimum(90.0,retbnds[0,:]))
+            retbnds[-1,:] = numpy.maximum(-90.0, numpy.minimum(90.0,retbnds[-1,:]))
 
         return retbnds
 
@@ -1375,11 +1398,14 @@ class AbstractAxis(CdmsObj):
         "Return true iff coordinate values are implicitly defined."
         return 0
 
-PropertiedClasses.set_property(AbstractAxis, 'shape', 
-                        AbstractAxis._getshape, nowrite=1, nodelete=1)
-PropertiedClasses.set_property(AbstractAxis, 'dtype', 
-                        AbstractAxis._getdtype, nowrite=1, nodelete=1)
-internattr.add_internal_attribute (AbstractAxis, 'id', 'parent')
+    shape = property(_getshape,None)
+    dtype = _getdtype
+
+## PropertiedClasses.set_property(AbstractAxis, 'shape', 
+##                         AbstractAxis._getshape, nowrite=1, nodelete=1)
+## PropertiedClasses.set_property(AbstractAxis, 'dtype', 
+##                         AbstractAxis._getdtype, nowrite=1, nodelete=1)
+## internattr.add_internal_attribute (AbstractAxis, 'id', 'parent')
 
 # One-dimensional coordinate axis in a dataset
 class Axis(AbstractAxis):
@@ -1387,11 +1413,11 @@ class Axis(AbstractAxis):
         if axisNode is not None and axisNode.tag != 'axis':
                raise CDMSError, 'Creating axis, node is not an axis node.'
         AbstractAxis.__init__(self, parent, axisNode)
-
         if axisNode is not None:
             if axisNode.partition is not None:
                 flatpart = axisNode.partition
-                self.__dict__['partition']=Numeric.reshape(flatpart,(len(flatpart)/2,2))
+                self.__dict__['partition']=numpy.reshape(flatpart,(len(flatpart)/2,2))
+                self.attributes['partition']=self.partition
         self.id = axisNode.id
     
     def typecode(self):
@@ -1406,7 +1432,7 @@ class Axis(AbstractAxis):
         if type(key) is types.TupleType and len(key)==1:
             key = key[0]
 
-        if isinstance(key, types.IntType):  # x[i]
+        if isinstance(key, (types.IntType, numpy.int,numpy.int32)):  # x[i]
             if key>=length:
                 raise IndexError, 'index out of bounds'
             else:
@@ -1462,7 +1488,7 @@ class Axis(AbstractAxis):
             boundsName = self.bounds
             try:
                 boundsVar = self.parent.variables[boundsName]
-                boundsArray = MA.filled(boundsVar.getSlice())
+                boundsArray = numpy.ma.filled(boundsVar.getSlice())
             except KeyError:
                 boundsArray = None
 
@@ -1483,12 +1509,12 @@ class Axis(AbstractAxis):
 class TransientAxis(AbstractAxis):
     axis_count = 0
     def __init__(self, data, bounds=None, id=None, attributes=None, copy=0):
+        AbstractAxis.__init__(self, None, None)
         if id is None:
             TransientAxis.axis_count = TransientAxis.axis_count + 1
             id = 'axis_' + str(TransientAxis.axis_count)
         if attributes is None:
             if hasattr(data, 'attributes'): attributes = data.attributes
-        AbstractAxis.__init__(self, None, None)
         if attributes is not None:
             for name, value in attributes.items():
                 if name not in ['missing_value', 'name']:
@@ -1498,25 +1524,25 @@ class TransientAxis(AbstractAxis):
             if copy == 0:
                 self._data_ = data[:]
             else:
-                self._data_ = Numeric.array(data[:])
-        elif isinstance(data, Numeric.ArrayType):
+                self._data_ = numpy.array(data[:])
+        elif isinstance(data, numpy.ndarray):
             if copy == 0:
                 self._data_ = data
             else:
-                self._data_ = Numeric.array(data)
-        elif isinstance(data, MA.MaskedArray):
-            if MA.getmask(data) is not MA.nomask:
+                self._data_ = numpy.array(data)
+        elif isinstance(data, numpy.ma.MaskedArray):
+            if numpy.ma.getmask(data) is not numpy.ma.nomask:
                 raise CDMSError, \
                       'Cannot construct an axis with a missing value.'
-            data = data.raw_data()
+            data = data.data
             if copy == 0:
                 self._data_ = data
             else:
-                self._data_ = Numeric.array(data)
+                self._data_ = numpy.array(data)
         elif data is None:
             self._data_ = None
         else:
-            self._data_ = Numeric.array(data)
+            self._data_ = numpy.array(data)
 
         self._doubledata_ = None
         self.setBounds(bounds)
@@ -1528,10 +1554,10 @@ class TransientAxis(AbstractAxis):
         return self._data_[low:high]
 
     def __setitem__(self, index, value):
-        self._data_[index] = MA.filled(value)
+        self._data_[index] = numpy.ma.filled(value)
 
     def __setslice__(self, low, high, value):
-        self._data_[low:high] = MA.filled(value)
+        self._data_[low:high] = numpy.ma.filled(value)
 
     def __len__(self):
         return len(self._data_)
@@ -1557,15 +1583,21 @@ class TransientAxis(AbstractAxis):
     #
     def setBounds(self, bounds, persistent=0, validate=0, index=None, boundsid=None):
         if bounds is not None:
-            if isinstance(bounds, MA.MaskedArray):
-                bounds = MA.filled(bounds)
+            if isinstance(bounds, numpy.ma.MaskedArray):
+                bounds = numpy.ma.filled(bounds)
             if validate:
-                self.validateBounds(bounds)
+                bounds = self.validateBounds(bounds)
             else:                       # Just do the absolute minimum validation
                 requiredShape = (len(self),2)
-                if bounds.shape!=requiredShape:
+                requiredShape2 = (len(self)+1,)
+                if bounds.shape!=requiredShape and bounds.shape!=requiredShape2:
                     raise CDMSError, InvalidBoundsArray + \
-                         'shape is %s, should be %s'%(`bounds.shape`,`requiredShape`)
+                          'shape is %s, should be %s or %s'%(`bounds.shape`,`requiredShape`,`requiredShape2`)
+                if bounds.shape==requiredShape2: # case of "n+1" bounds
+                    bounds2=numpy.zeros(requiredShape)
+                    bounds2[:,0]=bounds[:-1]
+                    bounds2[:,1]=bounds[1::]
+                    bounds=bounds2
             self._bounds_ = copy.copy(bounds)
         else:
             if (getAutoBounds()==1 or (getAutoBounds()==2 and (self.isLatitude() or self.isLongitude()))):
@@ -1585,8 +1617,8 @@ class TransientVirtualAxis(TransientAxis):
     """
 
     def __init__(self, axisname, axislen):
-        self._virtualLength = axislen # length of the axis
         TransientAxis.__init__(self, None, id=axisname)
+        self._virtualLength = axislen # length of the axis
 
     def __len__(self):
         return self._virtualLength
@@ -1603,7 +1635,7 @@ class TransientVirtualAxis(TransientAxis):
         return TransientVirtualAxis(self.id, len(self))
 
     def getData(self):
-        return Numeric.arange(float(self._virtualLength))
+        return numpy.arange(float(self._virtualLength))
 
     def isCircular(self):
         return 0                        # Circularity doesn't apply to index space.
@@ -1622,20 +1654,25 @@ class TransientVirtualAxis(TransientAxis):
     def __getslice__(self, low, high):
         return self.getData()[low:high]
 
-PropertiedClasses.initialize_property_class (TransientVirtualAxis)
+## PropertiedClasses.initialize_property_class (TransientVirtualAxis)
 
 # One-dimensional coordinate axis in a CdmsFile.
 class FileAxis(AbstractAxis):
-
+    
     def __init__(self, parent, axisname, obj=None):
-        AbstractAxis.__init__ (self, parent, None)  
+        AbstractAxis.__init__ (self, parent, None)
+        val = self.__cdms_internals__ +['name_in_file',]
+        self.___cdms_internals__ = val
         self.id = axisname
         self._obj_ = obj
         # Overshadows file boundary data, if not None
         self._boundsArray_ = None
         (units,typecode,name_in_file,parent_varname,dimtype,ncid) = \
                    parent._file_.dimensioninfo[axisname]
-        self.__dict__['units'] = units
+        self.__dict__['_units'] = units
+        att = self.attributes
+        att['units']=units
+        self.attributes = att
         self.name_in_file = self.id
         if name_in_file:
             self.name_in_file = name_in_file
@@ -1645,6 +1682,9 @@ class FileAxis(AbstractAxis):
                 attval = getattr(self._obj_,attname)
                 if type(attval)!=types.BuiltinFunctionType:
                     self.__dict__[attname]  = attval
+                    att = self.attributes
+                    att[attname]=attval
+                    self.attributes= att
         
     def getData(self):
         if cdmsobj._debug==1:
@@ -1667,8 +1707,9 @@ class FileAxis(AbstractAxis):
                              self.parent._file_.dimensioninfo[self.id]
         return typecode
     
-    def _setunits(self, name, value):
-        self.__dict__['units'] = value
+    def _setunits(self, value):
+        self._units = value
+        self.attributes['units']=value
         if self.parent is None:
             raise CDMSError, FileWasClosed + self.id
         setattr(self._obj_, 'units', value)
@@ -1676,32 +1717,55 @@ class FileAxis(AbstractAxis):
             self.parent._file_.dimensioninfo[self.id]
         self.parent._file_.dimensioninfo[self.id] = \
                   (value,typecode,name_in_file,parent_varname,dimtype,ncid)
+    def _getunits(self):
+        return self._units
 
+    def _delunits(self):
+        del(self._units)
+        del(self.attributes['units'])
+        delattr(self._obj_,'units')
+
+
+    def __getattr__(self,name):
+        if name == 'units':
+            return self._units
+        try:
+            return self.__dict__[name]
+        except:
+            raise AttributeError
     # setattr writes external attributes to the file
     def __setattr__ (self, name, value):
+        if name == 'units':
+            self._setunits(value)
+            return
         if hasattr(self, 'parent') and self.parent is None:
             raise CDMSError, FileWasClosed + self.id
-        s = self.get_property_s (name)
-        if s is not None:
-            s(self, name, value)
-            return
-        if not self.is_internal_attribute(name):
+##         s = self.get_property_s (name)
+##         if s is not None:
+##             s(self, name, value)
+##             return
+        if not name in self.__cdms_internals__ and name[0]!='_':
             setattr(self._obj_, name, value)
+            self.attributes[name]=value
         self.__dict__[name]  = value
 
     # delattr deletes external global attributes in the file
     def __delattr__(self, name):
-        d = self.get_property_d(name)
-        if d is not None:
-            d(self, name)
+##         d = self.get_property_d(name)
+##         if d is not None:
+##             d(self, name)
+##             return
+        if name == "units":
+            self._delunits()
             return
         try:
             del self.__dict__[name]
         except KeyError:
             raise AttributeError, "%s instance has no attribute %s." % \
                   (self.__class__.__name__, name)
-        if not self.is_internal_attribute(name):
+        if not name in self.__cdms_internals__(name):
             delattr(self._obj_, name)
+            del(self.attributes[name])
 
     # Read data
     # If the axis has a related Cdunif variable object, just read that variable
@@ -1761,7 +1825,7 @@ class FileAxis(AbstractAxis):
             raise CDMSError, ReadOnlyAxis + self.id
         if self.parent is None:
             raise CDMSError, FileWasClosed+self.id
-        return apply(self._obj_.setitem,(index,MA.filled(value)))
+        return apply(self._obj_.setitem,(index,numpy.ma.filled(value)))
 
     def __setslice__(self, low, high, value):
         # Hack to prevent netCDF overflow error on 64-bit architectures
@@ -1770,7 +1834,7 @@ class FileAxis(AbstractAxis):
             raise CDMSError, ReadOnlyAxis + self.id
         if self.parent is None:
             raise CDMSError, FileWasClosed+self.id
-        return apply(self._obj_.setslice,(low,high,MA.filled(value)))
+        return apply(self._obj_.setslice,(low,high,numpy.ma.filled(value)))
 
     def __len__(self):
         if self.parent is None:
@@ -1791,8 +1855,8 @@ class FileAxis(AbstractAxis):
     def getBounds(self):
         boundsArray = self.getExplicitBounds()
         try:
-            self.validateBounds(boundsArray)
-        except:
+            boundsArray = self.validateBounds(boundsArray)
+        except Exception,err:
             boundsArray = None
         if boundsArray is None and (getAutoBounds()==1 or (getAutoBounds()==2 and (self.isLatitude() or self.isLongitude()))):
             boundsArray = self.genGenericBounds()
@@ -1806,17 +1870,18 @@ class FileAxis(AbstractAxis):
             if hasattr(self,'bounds'):
                 boundsName = self.bounds
                 try:
-                    boundsVar = self.parent.variables[boundsName]
-                    boundsArray = MA.filled(boundsVar.getSlice())
-                except KeyError:
+                    boundsVar = self.parent[boundsName]
+                    boundsArray = numpy.ma.filled(boundsVar)
+                except KeyError,err:
+                    print err
                     boundsArray = None
-        elif self._boundsArray_:
+        else:
             boundsArray = self._boundsArray_
 
         return boundsArray
 
     # Create and write boundary data variable. An exception is raised
-    # if the bounds are already set. bounds is a Numeric array.
+    # if the bounds are already set. bounds is a numpy array.
     # If persistent==1, write to file, else save in self._boundsArray_
     # For a persistent axis, index=n writes the bounds starting at that
     # index in the extended dimension (default is index=0).
@@ -1826,7 +1891,7 @@ class FileAxis(AbstractAxis):
         if persistent:
             if index is None:
                 if validate:
-                    self.validateBounds(bounds)
+                    bounds = self.validateBounds(bounds)
                 index = 0
 
             # Create the bound axis, if necessary
@@ -1883,12 +1948,11 @@ class FileAxis(AbstractAxis):
             return (self.parent.dimensions[self.id] is None)
         else:
             return False
-
-PropertiedClasses.set_property (FileAxis, 'units', 
-                                acts=FileAxis._setunits,
-                                nodelete=1
-                               )
-internattr.add_internal_attribute(FileAxis, 'name_in_file')
+## PropertiedClasses.set_property (FileAxis, 'units', 
+##                                 acts=FileAxis._setunits,
+##                                 nodelete=1
+##                                )
+## internattr.add_internal_attribute(FileAxis, 'name_in_file')
 
 class FileVirtualAxis(FileAxis):
     """An axis with no explicit representation of data values in the file.
@@ -1901,18 +1965,18 @@ class FileVirtualAxis(FileAxis):
     def __init__(self, parent, axisname, axislen):
         FileAxis.__init__(self, parent, axisname)
         self._virtualLength = axislen # length of the axis
-
+        
     def __len__(self):
         return self._virtualLength
 
     def getData(self):
-        return Numeric.arange(float(self._virtualLength))
+        return numpy.arange(float(self._virtualLength))
 
     def isVirtual(self):
         "Return true iff coordinate values are implicitly defined."
         return 1
 
-PropertiedClasses.initialize_property_class (FileVirtualAxis)
+## PropertiedClasses.initialize_property_class (FileVirtualAxis)
 
 ######## Functions for selecting axes
 def axisMatchAxis (axes, specifications=None, omit=None, order=None):
@@ -1971,7 +2035,7 @@ def axisMatchIndex (axes, specifications=None, omit=None, order=None):
     elif isinstance(specifications, types.FunctionType):
         speclist = [specifications]
     else: # to allow arange, etc.
-        speclist = list(MA.filled(specifications))
+        speclist = list(numpy.ma.filled(specifications))
 
     candidates = []
     for i in range(len(axes)):
@@ -2120,22 +2184,22 @@ def axisMatches(axis, specification):
 def concatenate(axes, id=None, attributes=None):
     """Concatenate the axes, return a transient axis."""
     
-    data = MA.concatenate([ax[:] for ax in axes])
+    data = numpy.ma.concatenate([ax[:] for ax in axes])
     boundsArray = [ax.getBounds() for ax in axes]
     if None in boundsArray:
         bounds = None
     else:
-        bounds = MA.concatenate(boundsArray)
+        bounds = numpy.ma.concatenate(boundsArray)
     return TransientAxis(data, bounds=bounds, id=id, attributes=attributes)
 
 def take(ax, indices):
     """Take values indicated by indices list, return a transient axis."""
 
     # Bug in ma compatibility module
-    data = numpy.core.ma.take(ax[:], indices)
+    data = numpy.ma.take(ax[:], indices)
     abounds = ax.getBounds()
     if abounds is not None:
-        bounds = MA.take(abounds, indices)
+        bounds = numpy.ma.take(abounds, indices, axis=0)
     else:
         bounds = None
     return TransientAxis(data, bounds=bounds, id=ax.id, attributes=ax.attributes)

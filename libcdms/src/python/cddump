@@ -4,6 +4,7 @@
 import cdms2 as cdms
 import sys
 import os
+import numpy
 
 file=sys.argv[1]
 if sys.argv[1]=='-h':
@@ -49,19 +50,19 @@ print 'variables:'
 for v in vars:
     V=f[v]
     t=V.dtype.char
-    if t==cdms.MV2.Float:
+    if t=='d':
         t='double'
-    elif t==cdms.MV2.Float32:
+    elif t=='f':
         t='float'
-    elif t==cdms.MV2.Int0:
+    elif t=='b':
         t='byte'
-    elif t==cdms.MV2.Int16:
+    elif t=='h':
         t='short'
-    elif t==cdms.MV2.Int32:
+    elif t=='l':
         t='int'
-    elif t==cdms.MV2.Int:
+    elif t=='q':
         t='long'
-    elif t==cdms.MV2.Complex:
+    elif t=='D':
         t='Complex'
     axs=V.getAxisIds()
     d='('

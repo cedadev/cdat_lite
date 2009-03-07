@@ -1,4 +1,4 @@
-import cdms, MA, Numeric
+import cdms2, numpy
 # this version is not careful
 class InterpreterComponent (cdms.selectors.SelectorComponent):
     "A component that interpolates to a specific location"
@@ -51,14 +51,14 @@ class InterpreterComponent (cdms.selectors.SelectorComponent):
         f1 = (self.lat - lataxis[0])/(lataxis[1] - lataxis[0])
         f2 = (self.lon - lonaxis[0])/(lonaxis[1] - lonaxis[0])
         print f1, f2
-        f = MA.average(fetched, axis = -1, weights=[1-f2, f2])
-        f = MA.average(f, axis = -1, weights=[1-f1, f1])
-        return cdms.createVariable(f, copy=0, 
+        f = numpy.ma.average(fetched, axis = -1, weights=[1-f2, f2])
+        f = numpy.ma.average(f, axis = -1, weights=[1-f1, f1])
+        return cdms2.createVariable(f, copy=0, 
                axes=fetched.getAxisList(omit=['latitude', 'longitude'])
                )
 
 def at (lat, lon):
-    return cdms.selectors.Selector(InterpreterComponent(lat, lon))
+    return cdms2.selectors.Selector(InterpreterComponent(lat, lon))
 
 if __name__ == "__main__":
     f=cdms.open('clt.nc')

@@ -1,4 +1,5 @@
 ## Automatically adapted for numpy.oldnumeric Aug 01, 2007 by 
+## Further modified to be pure new numpy June 24th 2008
 
 """
 CDMS CoordinateAxis objects
@@ -6,8 +7,8 @@ CDMS CoordinateAxis objects
 import cdmsNode
 import cdtime
 import copy
-import numpy.oldnumeric.ma as MA, numpy.oldnumeric as Numeric, PropertiedClasses
-import internattr
+import numpy
+#import internattr
 import types
 import string
 from cdmsobj import CdmsObj
@@ -98,7 +99,9 @@ class AbstractCoordinateAxis(CdmsObj):
 
     # Designate axis as a time axis, and optionally set the calendar
     # If persistent is true, write metadata to the container.
-    def designateTime(self, persistent=0, calendar = cdtime.GregorianCalendar):
+    def designateTime(self, persistent=0, calendar=None):
+        if calendar is None:
+            calendar = cdtime.DefaultCalendar
         if persistent:
             self.axis = "T"
             if calendar is not None:
@@ -195,8 +198,8 @@ class AbstractCoordinateAxis(CdmsObj):
 
     def setBounds(self, bounds):
         if bounds is not None:
-            if isinstance(bounds, MA.MaskedArray):
-                bounds = MA.filled(bounds)
+            if isinstance(bounds, numpy.ma.MaskedArray):
+                bounds = numpy.ma.filled(bounds)
         self._bounds_ = bounds
 
     # Set the calendar
@@ -287,7 +290,7 @@ class DatasetAxis2D(AbstractAxis2D, DatasetVariable):
         else:
             return "<DatasetAxis2D: %s, file: **CLOSED**>"%self.id
 
-internattr.initialize_internal_attributes(DatasetAxis2D) # Copy internal attrs from parents
+## internattr.initialize_internal_attributes(DatasetAxis2D) Copy internal attrs from parents
 
 # Two-dimensional coordinate axis in a file.
 class FileAxis2D(AbstractAxis2D, FileVariable):
@@ -303,7 +306,7 @@ class FileAxis2D(AbstractAxis2D, FileVariable):
         else:
             return "<FileAxis2D: %s, file: **CLOSED**>"%self.id
 
-internattr.initialize_internal_attributes(FileAxis2D) # Copy internal attrs from parents
+## internattr.initialize_internal_attributes(FileAxis2D) # Copy internal attrs from parents
 
 class TransientAxis2D(AbstractAxis2D, TransientVariable):
 
@@ -321,5 +324,5 @@ class TransientAxis2D(AbstractAxis2D, TransientVariable):
         if axes is not None:
             self.setBounds(bounds)
 
-internattr.initialize_internal_attributes(TransientAxis2D) # Copy internal attrs from parents
+## internattr.initialize_internal_attributes(TransientAxis2D) # Copy internal attrs from parents
 

@@ -2,7 +2,7 @@
 extern "C" {
 #endif
 #include "Python.h"
-#include "numpy/oldnumeric.h"
+#include "numpy/arrayobject.h"
  
 static PyObject *ErrorObject;
 
@@ -57,7 +57,7 @@ static void set_transposed_strides (PyArrayObject* ar)
         ar->strides[itmp] = m1; 
         m1 *= ar->dimensions[itmp]; 
     } 
-    ar->flags &= ~CONTIGUOUS; 
+    ar->flags &= ~NPY_CONTIGUOUS; 
 }
 
 
@@ -75,7 +75,7 @@ transpose_array (char* rname, char* vname, PyArrayObject* ap) {
 
     /* this allocates memory for dimensions and strides (but fills them
            incorrectly), sets up descr, and points data at ap->data. */
-    ret = (PyArrayObject *)PyArray_FromDimsAndData(n, ap->dimensions,
+    ret = (PyArrayObject *)PyArray_SimpleNewFromData(n, ap->dimensions,
                                                     ap->descr->type_num,
                                                     ap->data);
     if (!ret) {
@@ -91,9 +91,9 @@ transpose_array (char* rname, char* vname, PyArrayObject* ap) {
         ret->strides[i] = ap->strides[n - i - 1];
     }
     if (array_really_contiguous(ret)) {
-        ret->flags |= CONTIGUOUS;
+        ret->flags |= NPY_CONTIGUOUS;
     } else {
-        ret->flags &= ~CONTIGUOUS;
+        ret->flags &= ~NPY_CONTIGUOUS;
     }
     return ret;
 }
@@ -102,7 +102,7 @@ static PyArrayObject* make_contiguous(char* rname, char* vname, PyArrayObject* a
 {
 /* return an owned ref to a contiguous version of ap */
     PyArrayObject* result;
-    if (ap->flags & CONTIGUOUS) {
+    if (ap->flags & NPY_CONTIGUOUS) {
         Py_INCREF (ap);
         return ap;
     } else {
@@ -197,7 +197,7 @@ do_array_inout (char* rname, char* vname, PyObject *v,
         set_pyfort_error(rname, vname, "Argument intent(inout) must be of correct type.");
         goto err;
    }
-   if (!(av->flags & CONTIGUOUS))  {
+   if (!(av->flags & NPY_CONTIGUOUS))  {
        set_pyfort_error(rname, vname, "Argument intent(inout) must be contiguous.");
        goto err;
    }
@@ -222,7 +222,7 @@ do_array_create (char* rname, char* vname, enum PyArray_TYPES python_array_type,
     } else {
         for(i=0; i < rank; ++i) dims[i] = extents[i];
     }
-    av = (PyArrayObject*) PyArray_FromDims(rank, dims, python_array_type);
+    av = (PyArrayObject*) PyArray_SimpleNew(rank, dims, python_array_type);
     if (!av) {
         set_pyfort_error(rname, vname, "Could not create array -- too big?");
         goto err;

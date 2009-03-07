@@ -1,15 +1,12 @@
 #!/usr/bin/env python
-# Adapted for numpy/ma/cdms2 by convertcdms.py
 
 # Test extended wraparound
 
 print 'Test 12: Extended wraparound ... ',
 
-import cdms2 as cdms,os,sys
+import cdms2,os,sys
 from markError import clearError,markError,reportError
-
 from markError import get_sample_data_dir
-
 clearError()
 
 def testwrap(lon,coord,index):
@@ -29,14 +26,14 @@ def testwrap(lon,coord,index):
     if result!=index:
         markError("%s ==> %s, not %s"%(`coord`,`result`,`index`))
 
-f = cdms.open(os.path.join(get_sample_data_dir(),'test.xml'))
+f = cdms2.open(os.path.join(get_sample_data_dir(),'test.xml'))
 lon = f['longitude']
 lat = f['latitude']
-rlat = cdms.createAxis(lat[::-1], id='latitude')
+rlat = cdms2.createAxis(lat[::-1], id='latitude')
 rlat.units = 'degrees_north'
 time = f['time']
 time0 = time.subAxis(0,1)
-lev = cdms.createAxis([0.05035, 0.10089999,], id='level')
+lev = cdms2.createAxis([0.05035, 0.10089999,], id='level')
 
 testwrap(lon,(-90,90,'ccn'),(-8,9))
 testwrap(lon,(-90,0,'ccn'),(-8,1))

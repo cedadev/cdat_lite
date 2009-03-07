@@ -31,12 +31,19 @@
  *
  */
 #include <stdio.h>
+#include <string.h>
 #include <ctype.h>
 #include <math.h>
 #include "cdmsint.h"
 
 void cdComp2RelMixed(cdCompTime ct, cdUnitTime unit, cdCompTime basetime, double *reltime);
 void cdRel2CompMixed(double reltime, cdUnitTime unit, cdCompTime basetime, cdCompTime *comptime);
+extern void
+CdDivDelTime(double begEtm, double endEtm, CdDeltaTime delTime, CdTimeType timeType,
+	     long baseYear, long *nDel);
+extern void
+CdAddDelTime(double begEtm, long nDel, CdDeltaTime delTime, CdTimeType timeType,
+	     long baseYear, double *endEtm);
 
 #define CD_DEFAULT_BASEYEAR "1979"	     /* Default base year for relative time (no 'since' clause) */
 #define VALCMP(a,b) ((a)<(b)?-1:(b)<(a)?1:0)
@@ -117,10 +124,10 @@ cdParseRelunits(cdCalenType timetype, char* relunits, cdUnitTime* unit, cdCompTi
 	char basetime_1[CD_MAX_CHARTIME];
 	char basetime_2[CD_MAX_CHARTIME];
 	char basetime[CD_MAX_CHARTIME];
-	double factor;
-	CdTime humantime;
+/* 	double factor; */
+/* 	CdTime humantime; */
 	int nconv;
-	CdTimeType old_timetype;
+/* 	CdTimeType old_timetype; */
 					     /* Parse the relunits */
 	nconv = sscanf(relunits,"%s since %s %s",charunits,basetime_1,basetime_2);
 	if(nconv==EOF || nconv==0){
@@ -239,7 +246,8 @@ cdParseDeltaTime(cdCalenType timetype, char* deltaTime, double* value, cdUnitTim
 void
 cdChar2Comp(cdCalenType timetype, char* chartime, cdCompTime* comptime)
 {
-	double hour, sec;
+/* 	double hour, sec; */
+	double sec;
 	int ihr, imin, nconv;
 	long year;
 	short day;
@@ -382,7 +390,7 @@ cdComp2Rel(cdCalenType timetype, cdCompTime comptime, char* relunits, double* re
 	CdTime humantime;
 	CdTimeType old_timetype;
 	cdUnitTime unit;
-	double base_etm, etm, delta;
+	double base_etm, etm, delta=0.;
 	long ndel, hoursInYear;
 	
 					     /* Parse the relunits */
@@ -398,6 +406,8 @@ cdComp2Rel(cdCalenType timetype, cdCompTime comptime, char* relunits, double* re
 		case cdYear: case cdSeason: case cdMonth:
 			timetype = cdStandard;
 			break;
+		case cdFraction:
+		  break;
 		}
 	}
 	
@@ -435,6 +445,8 @@ cdComp2Rel(cdCalenType timetype, cdCompTime comptime, char* relunits, double* re
 	  case cdYear: case cdSeason: case cdMonth:
 		CdDivDelTime(base_etm, etm, deltime, old_timetype, 1970, &ndel);
 		break;
+	  case cdFraction:
+	        break;
 	}
 
 					     /* Convert to output units */
@@ -460,6 +472,8 @@ cdComp2Rel(cdCalenType timetype, cdCompTime comptime, char* relunits, double* re
 		else			     /* Climatological time is already normalized*/
 			*reltime = (double)ndel;
 		break;
+	  case cdFraction:
+	        break;
 	}
 
 	return;
@@ -483,8 +497,9 @@ cdRel2Comp(cdCalenType timetype, char* relunits, double reltime, cdCompTime* com
 	cdCompTime base_comptime;
 	cdUnitTime unit, baseunits;
 	double base_etm, result_etm;
-	double delta, hour_fraction;
-	long idelta;
+/* 	double delta, hour_fraction; */
+	double delta=0.;
+	long idelta=0;
 
 					     /* Parse the relunits */
 	if(cdParseRelunits(timetype, relunits, &unit, &base_comptime))
@@ -498,6 +513,8 @@ cdRel2Comp(cdCalenType timetype, char* relunits, double reltime, cdCompTime* com
 		case cdYear: case cdSeason: case cdMonth:
 			timetype = cdStandard;
 			break;
+		case cdFraction:
+		  break;
 		}
 	}
 
@@ -534,6 +551,8 @@ cdRel2Comp(cdCalenType timetype, char* relunits, double reltime, cdCompTime* com
 		idelta = (long)(12 * reltime + (reltime<0 ? -1.e-10 : 1.e-10));
 		baseunits = cdMonth;
 		break;
+       	  case cdFraction:
+	        break;
 	}
 
 	deltime.count = 1;
@@ -599,7 +618,8 @@ cdParseAbsunits(char *absunits, cdUnitTime *unit, int *ncompon, cdUnitTime compo
 	char charunits[CD_MAX_ABSUNITS];
 	char format[CD_MAX_ABSUNITS];
 	char *c;
-	int i, iform;
+/* 	int i, iform; */
+	int iform;
 
 	nconv = sscanf(absunits,"%s as %s",charunits,format);
 	if(nconv==EOF || nconv<2){
@@ -752,6 +772,8 @@ cdAbs2Comp(char *absunits, void *abstime, cdType abstimetype, cdCompTime *compti
 			if (unit==cdDay)
 				comptime->hour = 24.0*fraction;
 			break;
+		case cdWeek: case cdSeason:
+		  break;
 		}
 	}
 	*frac = fraction;
@@ -773,7 +795,8 @@ cdComp2Abs(cdCompTime comptime, char *absunits, cdType abstimetype, double frac,
 	cdUnitTime unit;
 	int ncompon;
 	cdUnitTime compon[CD_MAX_ABS_COMPON];
-	double dabstime, fraction;
+/* 	double dabstime, fraction; */
+	double dabstime;
 	long iabstime;
 	int iform;
 
@@ -818,6 +841,8 @@ cdComp2Abs(cdCompTime comptime, char *absunits, cdType abstimetype, double frac,
 			else if(unit==cdMonth)
 				dabstime += frac;
 			break;
+		case cdWeek: case cdSeason:
+		  break;
 		}
 	}
 
@@ -895,7 +920,8 @@ cdDecodeAbsoluteTime(char* units, void* time, cdType abstimetype, cdCompTime* co
 double
 cdToHours(double value, cdUnitTime unit){
 
-	double result;
+/* 	double result; */
+  double result=0.; /*initialize to get rid of warning */
 
 	switch(unit){
 	case cdSecond:
@@ -913,12 +939,15 @@ cdToHours(double value, cdUnitTime unit){
 	case cdWeek:
 		result = 168.0 * value;
 		break;
+	case cdMonth: case cdSeason: case cdYear: case cdFraction:
+	  break;
 	}
 	return result;
 }
 					     /* Value is in hours. Translate to units. */
 double cdFromHours(double value, cdUnitTime unit){
-	double result;
+/* 	double result; */
+  double result=0.; /*initialize to get rid of warning */
 
 	switch(unit){
 	case cdSecond:
@@ -936,6 +965,8 @@ double cdFromHours(double value, cdUnitTime unit){
 	case cdWeek:
 		result = value/168.0;
 		break;
+	case cdMonth: case cdSeason: case cdYear: case cdFraction:
+	  break;
 	}
 	return result;
 }
@@ -984,11 +1015,11 @@ int cdCompCompare(cdCompTime ca, cdCompTime cb){
 
 	int test;
 
-	if (test = VALCMP(ca.year, cb.year))
+	if ((test = VALCMP(ca.year, cb.year)))
 		return test;
-	else if (test = VALCMP(ca.month, cb.month))
+	else if ((test = VALCMP(ca.month, cb.month)))
 		return test;
-	else if (test = VALCMP(ca.day, cb.day))
+	else if ((test = VALCMP(ca.day, cb.day)))
 		return test;
 	else
 		return (test = VALCMP(ca.hour, cb.hour));

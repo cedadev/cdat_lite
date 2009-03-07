@@ -79,6 +79,7 @@ echo "pyprefix" ${PYPREFIX}
 /bin/rm -fr ${PREFIX}/lib/libcdms.a ${PREFIX}/include/cdms
 CDMS_INCLUDE_DRS=`${PYPREFIX}/bin/python -c "import sys, os;sys.path.insert(0,os.path.join('${PREFIX}','lib','python%i.%i' % sys.version_info[:2],'site-packages')) ; import cdat_info;print cdat_info.CDMS_INCLUDE_DRS,"`
 CDMS_INCLUDE_HDF=`${PYPREFIX}/bin/python -c "import sys, os;sys.path.insert(0,os.path.join('${PREFIX}','lib','python%i.%i' % sys.version_info[:2],'site-packages')) ; import cdat_info;print cdat_info.CDMS_INCLUDE_HDF,"`
+CDMS_LIBRARY_HDF5=`${PYPREFIX}/bin/python -c "import sys, os;sys.path.insert(0,os.path.join('${PREFIX}','lib','python%i.%i' % sys.version_info[:2],'site-packages')) ; import cdat_info;print cdat_info.CDMS_LIBRARY_HDF5,"`
 CDMS_INCLUDE_PP=`${PYPREFIX}/bin/python -c "import sys, os;sys.path.insert(0,os.path.join('${PREFIX}','lib','python%i.%i' % sys.version_info[:2],'site-packages')) ; import cdat_info;print cdat_info.CDMS_INCLUDE_PP,"`
 CDMS_INCLUDE_QL=`${PYPREFIX}/bin/python -c "import sys, os;sys.path.insert(0,os.path.join('${PREFIX}','lib','python%i.%i' % sys.version_info[:2],'site-packages')) ; import cdat_info;print cdat_info.CDMS_INCLUDE_QL,"`
 drs_file=`${PYPREFIX}/bin/python -c "import cdat_info;print cdat_info.drs_file,"`
@@ -88,7 +89,7 @@ CDMS_HDF_DIR=`${PYPREFIX}/bin/python -c "import sys, os;sys.path.insert(0,os.pat
 netcdf_include_directory=`${PYPREFIX}/bin/python -c "import sys, os;sys.path.insert(0,os.path.join('${PREFIX}','lib','python%i.%i' % sys.version_info[:2],'site-packages')) ; import cdat_info;print cdat_info.netcdf_include_directory,"`
 netcdf_library_directory=`${PYPREFIX}/bin/python -c "import sys, os;sys.path.insert(0,os.path.join('${PREFIX}','lib','python%i.%i' % sys.version_info[:2],'site-packages')) ; import cdat_info;print cdat_info.netcdf_library_directory,"`
 echo "./configure --enable-dap=${CDMS_INCLUDE_DAP} --enable-drs=${CDMS_INCLUDE_DRS} --enable-hdf=${CDMS_INCLUDE_HDF} --enable-pp=${CDMS_INCLUDE_PP} --enable-ql=${CDMS_INCLUDE_QL} --cache-file=/dev/null --prefix=${PREFIX} --with-nclib=${netcdf_library_directory} --with-ncinc=${netcdf_include_directory} --with-daplib=${CDMS_DAP_DIR}/lib --with-dapinc=${CDMS_DAP_DIR}/include --with-hdfinc=${CDMS_HDF_DIR}/include --with-hdflib=${CDMS_HDF_DIR}/lib" 
-./configure  --enable-dap=${CDMS_INCLUDE_DAP} --enable-drs=${CDMS_INCLUDE_DRS} --enable-hdf=${CDMS_INCLUDE_HDF} --enable-pp=${CDMS_INCLUDE_PP} --enable-ql=${CDMS_INCLUDE_QL} --cache-file=/dev/null --prefix=${PREFIX} --with-nclib=${netcdf_library_directory} --with-ncinc=${netcdf_include_directory} --with-daplib=${CDMS_DAP_DIR}/lib --with-dapinc=${CDMS_DAP_DIR}/include --with-hdfinc=${CDMS_HDF_DIR}/include --with-hdflib=${CDMS_HDF_DIR}/lib || exit 1
+./configure  --enable-dap=${CDMS_INCLUDE_DAP} --enable-drs=${CDMS_INCLUDE_DRS} --enable-hdf=${CDMS_INCLUDE_HDF} --enable-pp=${CDMS_INCLUDE_PP} --enable-ql=${CDMS_INCLUDE_QL} --cache-file=/dev/null --prefix=${PREFIX} --with-nclib=${netcdf_library_directory} --with-ncinc=${netcdf_include_directory} --with-daplib=${CDMS_DAP_DIR}/lib --with-dapinc=${CDMS_DAP_DIR}/include --with-hdfinc=${CDMS_HDF_DIR}/include --with-hdflib=${CDMS_HDF_DIR}/lib --with-hdf5lib=${CDMS_LIBRARY_HDF5} || exit 1
 echo "make ${target}"
 make ${target} || exit 1
 echo "make bininstall"

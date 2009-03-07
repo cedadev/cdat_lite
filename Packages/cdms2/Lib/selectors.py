@@ -1,7 +1,6 @@
-## Automatically adapted for numpy.oldnumeric Aug 01, 2007 by 
 
 """Classes to support easy selection of climate data"""
-import numpy.oldnumeric.ma as MA, string, types, cdtime
+import string, types, cdtime
 from axis import axisMatches
 from error import CDMSError
 from grid import AbstractRectGrid, defaultRegion, setRegionSpecs, LongitudeType, LatitudeType, TimeType, VerticalType
@@ -92,7 +91,7 @@ class Selector:
 
            Options modify the result of the selection. The options and
            their default values are:
-               -- raw = 0: if 1, return an MA only
+               -- raw = 0: if 1, return an numpy.ma only
                -- squeeze = 0:  If 1, eliminate any dimensions of length 1 
                                 from the result.
                -- order = None: If given, is a string such as 

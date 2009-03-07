@@ -10,7 +10,7 @@
 #endif
 
 #include "Python.h"
-#include "numpy/oldnumeric.h"
+#include "numpy/arrayobject.h"
 #include "netcdf.h"
 
 #define _CDUNIF_MODULE
@@ -489,12 +489,12 @@ static int cdvarinq(PyCdunifFileObject *file, int varid, char* name, nc_type* da
  */
 
 int data_types[] = {-1,  /* not used */
-		    PyArray_SBYTE,  /* signed 8-bit int */
-		    PyArray_CHAR,   /* 8-bit character */
-		    PyArray_SHORT,  /* 16-bit signed int */
-		    PyArray_INT,    /* 32-bit signed int */
-		    PyArray_FLOAT,  /* 32-bit IEEE float */
-		    PyArray_DOUBLE  /* 64-bit IEEE float */
+		    NPY_BYTE,  /* signed 8-bit int */
+		    NPY_CHAR,   /* 8-bit character */
+		    NPY_SHORT,  /* 16-bit signed int */
+		    NPY_INT,    /* 32-bit signed int */
+		    NPY_FLOAT,  /* 32-bit IEEE float */
+		    NPY_DOUBLE  /* 64-bit IEEE float */
 };
 
 static char *dimension_types[] = {"error", "global", "local"};
@@ -652,28 +652,28 @@ typecode(int type)
 {
   char t;
   switch(type) {
-  case PyArray_CHAR:
+  case NPY_CHAR:
     t = 'c';
     break;
-  case PyArray_UBYTE:
+  case NPY_UBYTE:
     t = 'b';
     break;
-  case PyArray_SBYTE:
+  case NPY_BYTE:
     t = '1';
     break;
-  case PyArray_SHORT:
+  case NPY_SHORT:
     t = 's';
     break;
-  case PyArray_INT:
+  case NPY_INT:
     t = 'i';
     break;
-  case PyArray_LONG:
+  case NPY_LONG:
     t = 'l';
     break;
-  case PyArray_FLOAT:
+  case NPY_FLOAT:
     t = 'f';
     break;
-  case PyArray_DOUBLE:
+  case NPY_DOUBLE:
     t = 'd';
     break;
   default: t = ' ';
@@ -718,24 +718,24 @@ cdunif_type_from_type(char array_type)
 {
   int type;
   switch(array_type) {
-  case PyArray_CHAR:
+  case NPY_CHAR:
     type = NC_CHAR;
     break;
-  case PyArray_UBYTE:
-  case PyArray_SBYTE:
+  case NPY_UBYTE:
+  case NPY_BYTE:
     type = NC_BYTE;
     break;
-  case PyArray_SHORT:
+  case NPY_SHORT:
     type = NC_SHORT;
     break;
-  case PyArray_INT:
-  case PyArray_LONG:
+  case NPY_INT:
+  case NPY_LONG:
     type = NC_INT;
     break;
-  case PyArray_FLOAT:
+  case NPY_FLOAT:
     type = NC_FLOAT;
     break;
-  case PyArray_DOUBLE:
+  case NPY_DOUBLE:
     type = NC_DOUBLE;
     break;
   default:
@@ -751,6 +751,7 @@ collect_attributes(PyCdunifFileObject *file, int varid, PyObject *attributes, in
   char name[MAX_NC_NAME];
   nc_type type;
   int length;
+  npy_intp plength;
   int py_type;
   int i;
   int fileid;
@@ -764,7 +765,7 @@ collect_attributes(PyCdunifFileObject *file, int varid, PyObject *attributes, in
     release_Cdunif_lock();
     Py_END_ALLOW_THREADS;
     py_type = data_types[type];
-    if (py_type == PyArray_CHAR) {
+    if (py_type == NPY_CHAR) {
       char *s = (char *)malloc((length+1)*sizeof(char));
       if (s != NULL) {
 	PyObject *string;
@@ -783,7 +784,8 @@ collect_attributes(PyCdunifFileObject *file, int varid, PyObject *attributes, in
       }
     }
     else {
-      PyObject *array = PyArray_FromDims(1, &length, py_type);
+      plength = (npy_intp) length;
+      PyObject *array = PyArray_SimpleNew(1, &plength, py_type);
       if (array != NULL) {
 	Py_BEGIN_ALLOW_THREADS;
 	acquire_Cdunif_lock();
@@ -1298,7 +1300,7 @@ PyCdunifFileObject_read_dimension(PyCdunifFileObject *self, PyObject *args){
 	PyObject *tuple, *dimidObj;
 	int dimid;
 	long length;
-	int dimlen;
+	npy_intp dimlen;
 	nc_type nctype;
 	
 	if (!PyArg_ParseTuple(args, "s", &name))
@@ -1330,8 +1332,8 @@ PyCdunifFileObject_read_dimension(PyCdunifFileObject *self, PyObject *args){
 	}
 
 					     /* Get the array */
-	dimlen = length;
-	array = (PyArrayObject *)PyArray_FromDims(1,&dimlen,data_types[nctype]);
+	dimlen = (npy_intp) length;
+	array = (PyArrayObject *)PyArray_SimpleNew(1,&dimlen,data_types[nctype]);
 	if (array != NULL){
 		if (cddimget(self, dimid, array->data)==-1){
 			ncerr = cdgeterr(self);
@@ -1887,7 +1889,7 @@ static PyArrayObject *
 PyCdunifVariable_ReadAsArray(PyCdunifVariableObject *self,
 			     PyCdunifIndex *indices)
 {
-  int *dims;
+  npy_intp *dims;
   PyArrayObject *array;
   int i, d;
   int nitems;
@@ -1902,7 +1904,7 @@ PyCdunifVariable_ReadAsArray(PyCdunifVariableObject *self,
   if (self->nd == 0)
     dims = NULL;
   else {
-    dims = (int *)malloc(self->nd*sizeof(int));
+    dims = (npy_intp *)malloc(self->nd*sizeof(npy_intp));
     if (dims == NULL) {
       free(indices);
       return (PyArrayObject *)PyErr_NoMemory();
@@ -1940,7 +1942,7 @@ PyCdunifVariable_ReadAsArray(PyCdunifVariableObject *self,
       free(indices);
     return NULL;
   }
-  array = (PyArrayObject *)PyArray_FromDims(d, dims, self->type);
+  array = (PyArrayObject *)PyArray_SimpleNew(d, dims, self->type);
   if (array != NULL && nitems > 0) {
     if (self->nd == 0) {
       long zero = 0;
@@ -1997,7 +1999,7 @@ PyCdunifVariable_ReadAsArray(PyCdunifVariableObject *self,
 static PyStringObject *
 PyCdunifVariable_ReadAsString(PyCdunifVariableObject *self)
 {
-  if (self->type != PyArray_CHAR || self->nd != 1) {
+  if (self->type != NPY_CHAR || self->nd != 1) {
     PyErr_SetString(PyExc_IOError, "cdunif: not a string variable");
     return NULL;
   }
@@ -2231,7 +2233,7 @@ PyCdunifVariable_WriteString(PyCdunifVariableObject *self,
 			     PyStringObject *value)
 {
   long len;
-  if (self->type != PyArray_CHAR || self->nd != 1) {
+  if (self->type != NPY_CHAR || self->nd != 1) {
     PyErr_SetString(PyExc_IOError, "cdunif: not a string variable");
     return -1;
   }

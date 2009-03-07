@@ -116,7 +116,7 @@ bininstall:
 	$(INSTALL_PROGRAM) -m 755 src/cdunif/test/cudump $(BINDIR)/cudump
 	$(INSTALL_PROGRAM) -m 755 src/cdunif/test/cuget $(BINDIR)/cuget
 	$(INSTALL_PROGRAM) -m 755 src/cdunif/test/cdfile $(BINDIR)/cdfile
-	$(INSTALL_PROGRAM) -m 755 src/python/cdscan $(BINDIR)/cdscan
+	# $(INSTALL_PROGRAM) -m 755 src/python/cdscan $(BINDIR)/cdscan
 	$(INSTALL_PROGRAM) -m 755 src/python/cddump $(BINDIR)/cddump
 	$(INSTALL_PROGRAM) -m 755 src/python/cdimport $(BINDIR)/cdimport
 
@@ -154,10 +154,10 @@ distinstall:
 	$(INSTALL_PROGRAM) -m 755 cudump $(BINDIR)/cudump
 	$(INSTALL_PROGRAM) -m 755 cuget $(BINDIR)/cuget
 	$(INSTALL_PROGRAM) -m 755 cdfile $(BINDIR)/cdfile
-	/bin/rm -fr $(BINDIR)/cdimport $(BINDIR)/cdscan $(BINDIR)/cddump
+	/bin/rm -fr $(BINDIR)/cdimport $(BINDIR)/cddump
 	/bin/cp src/python/cdimport $(BINDIR)/cdimport
-	/bin/cp src/python/cdscan $(BINDIR)/cdscan
-	/bin/cp src/python/cdscan $(BINDIR)/cddump
+	# /bin/cp src/python/cdscan $(BINDIR)/cdscan
+	/bin/cp src/python/cddump $(BINDIR)/cddump
 
 test:
 	cd src/cdunif/test; $(MAKE) test

@@ -53,8 +53,8 @@ Notes:
         - import cdms => import cdms2 as cdms
         - import regrid => import regrid2 as regrid
         - import MV => import MV2 as MV
-        - import Numeric => import numpy.oldnumeric as Numeric
-        - import MA => import numpy.oldnumeric.ma as MA
+        - import Numeric => import numpy as Numeric
+        - import MA => import numpy.ma as MA
         - import cdms.MV => import cdms2.MV2
         - from cdms import XX => from cdms2 import XX (similarly for regrid, MV, MA, and Numeric)
         - from cdms.XX import YY => from cdms2.XX import YY (similarly for regrid, MV, MA, and Numeric)
@@ -97,6 +97,7 @@ def fromstr(filestr):
     filestr, fromall3 = changeimports(filestr, 'RandomArray', 'numpy.oldnumeric.random_array')
     filestr, fromall3 = changeimports(filestr, 'FFT', 'numpy.oldnumeric.fft')
     filestr, fromall3 = changeimports(filestr, 'MA', 'numpy.oldnumeric.ma')
+    filestr, fromall3 = changeimports(filestr, 'numpy.oldnumeric', 'numpy')
     fromall = fromall1 or fromall2 or fromall3
     filestr = replaceattr(filestr)
     filestr = replaceother(filestr)
@@ -209,6 +210,7 @@ def aggressive_translate(fstr):
     if savestr!=fstr:
         extra = 'import numpy.oldnumeric as Numeric\n'
     fstr = fstr.replace('.mask()', '.mask')
+    fstr = fstr.replace('.raw_data()', '.data')
 
     # MA.XX(..., typecode= => MA.XX(..., dtype=
     fstr = re.sub(r'(MA\..*,\s*)typecode(\s*=)', r'\1dtype\2', fstr)

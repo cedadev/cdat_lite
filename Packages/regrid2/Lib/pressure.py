@@ -1,7 +1,7 @@
 ## Automatically adapted for numpy.oldnumeric Aug 02, 2007 by 
 
-import cdms2 as cdms
-import numpy.oldnumeric as Numeric, copy, numpy.oldnumeric.ma as MA, string, _regrid
+import cdms2
+import numpy, copy, string, _regrid
 from error import RegridError
 
 class PressureRegridder:
@@ -54,7 +54,7 @@ class PressureRegridder:
     def __call__(self, ar, missing=None, order=None, method="log"):
         """
         Call the pressure regridder function.
-        ar is the input array, a variable, masked array, or Numeric array.
+        ar is the input array, a variable, masked array, or numpy array.
         missing is the missing data value, if any. It defaults to the missing/fill value
           defined for the input array, if any.
         order is of the form "tzyx", "tyx", etc.
@@ -75,23 +75,23 @@ class PressureRegridder:
         else:
             inputIsVariable = 0
 
-        # Turn ar into a Numeric array.
-        if MA.isMaskedArray(ar):
-            armiss = ar.fill_value()
-            ar = MA.filled(ar)
+        # Turn ar into a numpy array.
+        if numpy.ma.isMaskedArray(ar):
+            armiss = ar.fill_value
+            ar = numpy.ma.filled(ar)
         elif isinstance(ar, AbstractVariable):
             tempar = ar.getValue(squeeze=0)
             armiss = ar.getMissing()
-            ar = MA.filled(tempar)
-        elif isinstance(ar, Numeric.ArrayType):
+            ar = numpy.ma.filled(tempar)
+        elif isinstance(ar, numpy.ndarray):
             armiss = None
         else:
-            raise RegridError, "Input array is not a Variable, MA, or Numeric array"
+            raise RegridError, "Input array is not a Variable, numpy.ma, or numpy array"
         
         # Set missing value
         if missing is None:
             missing = armiss
-        if isinstance(missing, Numeric.ArrayType):
+        if isinstance(missing, numpy.ndarray):
             missing = missing[0]
 
         rank = len(ar.shape)
@@ -131,10 +131,10 @@ class PressureRegridder:
 
         # Reconstruct the same class as on input
         if inputIsVariable==1:
-            result = cdms.createVariable(outar, fill_value = missing,
+            result = cdms2.createVariable(outar, fill_value = missing,
                                          axes = axislist, attributes = attrs, id = varid)
         else:
-            result = MA.masked_array(outar, fill_value = missing)
+            result = numpy.ma.masked_array(outar, fill_value = missing)
 
         return result
 
@@ -249,7 +249,7 @@ class PressureRegridder:
         # --- Check data type and change to float if necessary ----
 
         if dataIn.dtype.char != 'f':
-            dataIn = dataIn.astype(Numeric.Float32)
+            dataIn = dataIn.astype(numpy.float32)
 
         dataShape = dataIn.shape
         numberDim = len(dataShape)
@@ -291,8 +291,8 @@ class PressureRegridder:
 
             newOrder, inverseOrder = checkorder(positionIn)
 
-            dataIn = Numeric.transpose(dataIn, newOrder)                    # transpose data to standard order (t,z,y,x)
-            dataIn = Numeric.array(dataIn.astype(Numeric.Float32), Numeric.Float32)       # make contiguous 
+            dataIn = numpy.transpose(dataIn, newOrder)                    # transpose data to standard order (t,z,y,x)
+            dataIn = numpy.array(dataIn.astype(numpy.float32), numpy.float32)       # make contiguous 
 
 
         # set dimension sizes and check for consistency 
@@ -324,7 +324,7 @@ class PressureRegridder:
                 outList[i] = self.nlevo
                 break
 
-        dataOut = Numeric.zeros(tuple(outList), Numeric.Float32)                      # memory for aout
+        dataOut = numpy.zeros(tuple(outList), numpy.float32)                      # memory for aout
 
 
         if missingMatch == None:                                                # if no missing do not pass None
@@ -336,8 +336,8 @@ class PressureRegridder:
         if logYes != 'yes':
             logYes = 'no'
 
-        levIn = self.axisIn[:].astype(Numeric.Float64)
-        levOut = self.axisOut[:].astype(Numeric.Float64)
+        levIn = self.axisIn[:].astype(numpy.float64)
+        levOut = self.axisOut[:].astype(numpy.float64)
         _regrid.rgdpressure(self.nlevi, self.nlevo, self.nlat, self.nlon, self.ntime, missingValueIn, missingMatch, logYes, levIn, levOut, dataIn, dataOut)  
 
         if missingMatch == 'none':                                                # if no missing do not pass None
@@ -346,8 +346,8 @@ class PressureRegridder:
             missingValueIn = None
 
         if standardPosition == 0:
-            dataOut = Numeric.transpose(dataOut, inverseOrder)                                   # transpose data to original order
-            dataOut = Numeric.array(dataOut.astype(Numeric.Float32), Numeric.Float32)            # make contiguous 
+            dataOut = numpy.transpose(dataOut, inverseOrder)                                   # transpose data to original order
+            dataOut = numpy.array(dataOut.astype(numpy.float32), numpy.float32)            # make contiguous 
 
         if missingValueOut != None:                # set the missing value in data to missingValueOut
 
@@ -357,11 +357,11 @@ class PressureRegridder:
                 else: 
                     missing = 1.01*missingValueIn
 
-                dataOut = Numeric.where(Numeric.greater(dataOut,missing), missingValueOut, dataOut)
+                dataOut = numpy.where(numpy.greater(dataOut,missing), missingValueOut, dataOut)
 
             elif missingMatch == 'equal': 
                 missing = missingValueIn
-                dataOut = Numeric.where(Numeric.equal(dataOut,missing), missingValueOut, dataOut)
+                dataOut = numpy.where(numpy.equal(dataOut,missing), missingValueOut, dataOut)
 
             elif missingMatch == 'less': 
                 if missingValueIn < 0.0: 
@@ -369,7 +369,7 @@ class PressureRegridder:
                 else: 
                     missing = 1.01*missingValueIn
 
-                dataOut = Numeric.where(Numeric.less(dataOut,missing), missingValueOut, dataOut)
+                dataOut = numpy.where(numpy.less(dataOut,missing), missingValueOut, dataOut)
 
         return dataOut 
 

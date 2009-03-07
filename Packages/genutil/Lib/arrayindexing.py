@@ -1,8 +1,8 @@
 # Adapted for numpy/ma/cdms2 by convertcdms.py
-import numpy.oldnumeric as Numeric
+import numpy
 #from statistics import __checker
 import statistics
-import numpy.oldnumeric.ma as MA,cdms2 as cdms,genutil
+import numpy.ma,cdms2,genutil
 def get(Array,Indices,axis=0):
     """
     Arrayrrayindexing returns Array[Indices], indices are taken along dimension given with axis
@@ -12,13 +12,14 @@ def get(Array,Indices,axis=0):
     Indices accepts negative value ,e.g: -1 is last element
     """
     ## First some checks
-    isma=MA.isMA(Array)
+
+    isma=numpy.ma.isMA(Array)
     if isinstance(Indices,int):
         return Array[Indices]
-    if Indices.dtype.char not in [Numeric.Int,Numeric.Int32,Numeric.Int16]:
+    if Indices.dtype not in [numpy.int,numpy.int32,numpy.int16]:
         raise "Error indices array must be made of integers (try: Indices=Indices.astype('l') first)"
     
-    if cdms.isVariable(Array) :
+    if cdms2.isVariable(Array) :
         xatt=Array.attributes
         id=Array.id
         
@@ -34,15 +35,16 @@ def get(Array,Indices,axis=0):
             raise "Error uncompatible shapes: "+str(Array.shape)+" and "+str(Indices.shape)
 
     m=Array.mask
-    if not isinstance(Indices,int): Indices=Indices.raw_data() # Sometihng happened with masking of y by x mask
-    C=genutil.array_indexing_emulate.extract(Array.raw_data(),Indices)
-    if m is not MA.nomask:
-        M=genutil.array_indexing_emulate.extract(m,Indices)
-        C=MA.masked_where(M,C,copy=0)
+    if not isinstance(Indices,int): Indices=Indices.data.astype('i') # Sometihng happened with masking of y by x mask
+    print Array.data.dtype.char,Indices.dtype.char
+    C=genutil.array_indexing.extract(Array.data,Indices)
+    if m is not numpy.ma.nomask:
+        M=genutil.array_indexing.extract(m.astype('i'),Indices)
+        C=numpy.ma.masked_where(M,C,copy=0)
     elif isma:
-        C=MA.array(C,copy=0,mask=None)
+        C=numpy.ma.array(C,copy=0,mask=None)
     if not ax is None:
-        C=cdms.createVariable(C,axes=ax,id=id,copy=0)
+        C=cdms2.createVariable(C,axes=ax,id=id,copy=0)
         for at in xatt.keys():
             setattr(C,at,xatt[at])
     return C
@@ -56,12 +58,14 @@ def set(Array,Indices,Values,axis=0):
 
     Indices accepts negative value ,e.g: -1 is last element
     """
+##     if numpy.rank(Indices)==0:
+##         Array[Indices]=Values
     ## First some checks
-    #isma=MA.isMA(Array)
-    if Indices.dtype.char not in [Numeric.Int,Numeric.Int32,Numeric.Int16]:
+    #isma=numpy.ma.isMA(Array)
+    if Indices.dtype not in [numpy.int,numpy.int32,numpy.int16]:
         raise "Error indices array must be made of integers (try: Indices=Indices.astype('l') first)"
     
-    if cdms.isVariable(Array) :
+    if cdms2.isVariable(Array) :
         xatt=Array.attributes
         id=Array.id
     if len(Array.shape)!=len(Indices.shape):
@@ -74,20 +78,22 @@ def set(Array,Indices,Values,axis=0):
         if Indices.shape!=Array.shape:
             raise "Error uncompatible shapes: "+str(Array.shape)+" and "+str(Indices.shape)
 
-    m=Array.mask
-    mv=Values.mask
-    Indices=Indices.raw_data() # Sometihng happened with masking of y by x mask
-    genutil.array_indexing_emulate.set(Array.raw_data(),Indices,Values.raw_data())
-    if m is not MA.nomask:
-        if mv is not MA.nomask:
+    m=numpy.ma.getmask(Array)
+    mv=numpy.ma.getmask(Values)
+    if numpy.rank(Indices)>0:
+        Indices=Indices.raw_data() # Something happened with masking of y by x mask
+        Values=Values.raw_data()
+    genutil.array_indexing_emulate.set(Array.raw_data(),Indices.astype('i'),Values)
+    if m is not numpy.ma.nomask:
+        if mv is not numpy.ma.nomask:
             genutil.array_indexing_emulate.set(m,Indices,mv)
-    elif mv is not MA.nomask:
-        m=Numeric.zeros(mv.shape,mv.typcode())
+    elif mv is not numpy.ma.nomask:
+        m=numpy.zeros(mv.shape,mv.typcode())
         genutil.array_indexing_emulate.set(m,Indices,mv)
-        if not MA.allequal(m,0):
-            Array=MA.masked_where(m,Array,copy=0)
+        if not numpy.ma.allequal(m,0):
+            Array=numpy.ma.masked_where(m,Array,copy=0)
     if not ax is None:
-        Array=cdms.createVariable(C,axes=ax,id=id,copy=0)
+        Array=cdms2.createVariable(C,axes=ax,id=id,copy=0)
         for at in xatt.keys():
             setattr(C,at,xatt[at])
     return Array

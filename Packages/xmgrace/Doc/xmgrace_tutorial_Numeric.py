@@ -6,8 +6,6 @@ import numpy
 
 print 'it is recomended to run this file using parser.py or just read it'
 
-import numpy.oldnumeric.ma as MA
-
 TEMPDIR = './'
 
 # First let's create some data
@@ -15,9 +13,9 @@ npoints=50
 X=numpy.arrayrange(npoints,dtype='d')
 X=X/float(npoints)*2.*numpy.pi
 
-Y1=MA.sin(X)
-Y2=MA.cos(X)
-Y3=MA.tan(X)
+Y1=numpy.ma.sin(X)
+Y2=numpy.ma.cos(X)
+Y3=numpy.ma.tan(X)
 
 # Now the real grace thing, plot the 2 on one graph and the diff on another graph
 
@@ -132,25 +130,25 @@ x('kill G1.S1')
 
 # Now the tan is pretty ugly because of extreme let's mask everything
 # that is greater than 1.5 and redraw that
-Y3=MA.masked_greater(Y3,1.5)
+Y3=numpy.ma.masked_greater(Y3,1.5)
 
 # Also we're going to add error bars 10% of the value
 # dx for the sin
-YY1=MA.zeros((2,npoints),dtype='d')
+YY1=numpy.ma.zeros((2,npoints),dtype='d')
 YY1[0]=Y1
 YY1[1]=Y1*.1
 x.Graph[0].Set[0].type='xydx'
 x.Graph[0].Set[0].errorbar.status='on'
 x.Graph[0].Set[0].errorbar.color='red'
 # dy for the cos
-YY2=MA.zeros((2,npoints),dtype='d')
+YY2=numpy.ma.zeros((2,npoints),dtype='d')
 YY2[0]=Y2
 YY2[1]=Y2*.1
 x.Graph[0].Set[1].type='xydy'
 x.Graph[0].Set[1].errorbar.status='on'
 x.Graph[0].Set[1].errorbar.color=x.Graph[0].Set[1].line.color
 # dy and dx for the tan
-YY3=MA.zeros((3,npoints),dtype='d')
+YY3=numpy.ma.zeros((3,npoints),dtype='d')
 YY3[0]=Y3
 YY3[1]=Y3*.1
 YY3[2]=Y3*.1
@@ -161,7 +159,7 @@ x.Graph[1].Set[0].errorbar.color='purple'
 x.plot(YY1,xs=X,G=0,S=0)
 x.plot(YY2,xs=X,G=0,S=1)
 x.plot(YY3,xs=X,G=1,S=0)
-# Now since we are passing lists and not MAs we need to wrap them into a list
+# Now since we are passing lists and not numpy.mas we need to wrap them into a list
 x.plot([zero],xs=[[0.,2.*numpy.pi]],G=1,S=1) 
 # Finally let's save the result
 x.ps(TEMPDIR+'xmgrace_demo_Numeric') # postscript

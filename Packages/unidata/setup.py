@@ -32,7 +32,11 @@ setup (name = "udunits",
 f=open('Src/udunits.dat')
 version=sys.version.split()[0].split('.')
 version=string.join(version[:2],'.')
-f2=open(target_prefix+'/lib/python'+version+'/site-packages/unidata/udunits.dat','w')
+try:
+    f2=open(target_prefix+'/lib/python'+version+'/site-packages/unidata/udunits.dat','w')
+except:
+    f2=open(target_prefix+'/lib64/python'+version+'/site-packages/unidata/udunits.dat','w')
+    
 for l in f.xreadlines():
     f2.write(l)
 f2.close()

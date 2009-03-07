@@ -281,9 +281,10 @@ Cde2h(double etime, CdTimeType timeType, long baseYear, CdTime *htime)
 void
 Cdc2h(char *ctime, CdTimeType timeType, CdTime *htime)
 {
-	int iyear, imon, iday, ihour, imin;
+/* 	int iyear, imon, iday, ihour, imin; */
+	int ihour, imin;
 	double dsec;
-	long baseYear;
+/* 	long baseYear; */
 
 	switch(timeType){
 	  case CdChron: case CdChronNoLeap: case CdChron360:

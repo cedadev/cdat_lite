@@ -6,7 +6,7 @@ import vcs.test.support
 bg=vcs.test.support.bg
 cdms.setAutoBounds('on')
 #f=cdms.open('/pcmdi/obs/mo/ta/rnl_ncep/ta.rnl_ncep.ctl')
-f=cdms.open(os.path.join(sys.prefix,'sample_data','ta_ncep_87-6-88-4.nc'))
+f=cdms.open(os.path.join(cdms.__path__[0],'..','..','..','..','sample_data','ta_ncep_87-6-88-4.nc'))
 
 levels = [1000,700,800]
 try:
@@ -41,5 +41,6 @@ t2= cdtime.componenttime(1988,1)
 t3= cdtime.componenttime(1988,3)
 if s3.getTime().asComponentTime()!=[t1,t2,t3]:
     raise Exception,"Error did not get the right times"
-if s3.getLevel()[:]!=levels:
+test = s3.getLevel()[:]!=levels
+if test.any():
     raise Exception,"Error did not get the right levels"

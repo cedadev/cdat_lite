@@ -1,8 +1,10 @@
 ## Automatically adapted for numpy.oldnumeric Aug 01, 2007 by 
+## Further modified to be pure new numpy June 24th 2008
 
 "CDMS File-based variables."
-import numpy.oldnumeric as Numeric
-import types, numpy.oldnumeric.ma as MA, PropertiedClasses, internattr
+import numpy
+import typeconv
+import types
 from cdmsobj import Max32int
 from variable import DatasetVariable
 from error import CDMSError
@@ -21,6 +23,9 @@ class FileVariable(DatasetVariable):
         if cdunifobj is not None:
             for attname, attval in cdunifobj.__dict__.items():
                 self.__dict__[attname] = attval
+                self.attributes[attname]=attval
+        val = self.__cdms_internals__+['name_in_file',]
+        self.___cdms_internals__ = val
 
     # Initialize the domain
     def initDomain(self, axisdict):
@@ -36,20 +41,20 @@ class FileVariable(DatasetVariable):
     def typecode(self):
         # Compatibility: convert to new typecode
         tc = self._obj_.typecode()
-        tc = Numeric.typeconv.convtypecode2(tc).char
+        tc = typeconv.convtypecode2(tc).char
         return tc
 
     def assignValue(self,data):
         if self.parent is None:
             raise CDMSError, FileClosedWrite+self.id
-        if MA.isMaskedArray(data):
-            saveFill = data.fill_value()
+        if numpy.ma.isMaskedArray(data):
+            saveFill = data.fill_value
             if self.getMissing() is None:
                 self.setMissing(saveFill)
             else:
                 data.set_fill_value(self.getMissing())
-        self._obj_.assignValue(MA.filled(data))
-        if MA.isMaskedArray(data):
+        self._obj_.assignValue(numpy.ma.filled(data))
+        if numpy.ma.isMaskedArray(data):
             data.set_fill_value(saveFill)
 
     def expertSlice (self, initslicelist):
@@ -85,14 +90,14 @@ class FileVariable(DatasetVariable):
     def __setitem__(self, index, value):
         if self.parent is None:
             raise CDMSError, FileClosedWrite+self.id
-        if MA.isMaskedArray(value):
-            saveFill = value.fill_value()
+        if numpy.ma.isMaskedArray(value):
+            saveFill = value.fill_value
             if self.getMissing() is None:
                 self.setMissing(saveFill)
             else:
                 value.set_fill_value(self.getMissing())
-        apply(self._obj_.setitem,(index,MA.filled(value)))
-        if MA.isMaskedArray(value):
+        apply(self._obj_.setitem,(index,numpy.ma.filled(value)))
+        if numpy.ma.isMaskedArray(value):
             value.set_fill_value(saveFill)
 
     def __setslice__(self, low, high, value):
@@ -102,17 +107,17 @@ class FileVariable(DatasetVariable):
         # Hack to prevent netCDF overflow error on 64-bit architectures
         high = min(Max32int, high)
         
-        if MA.isMaskedArray(value):
-            saveFill = value.fill_value()
+        if numpy.ma.isMaskedArray(value):
+            saveFill = value.fill_value
             if self.getMissing() is None:
                 self.setMissing(saveFill)
             else:
                 value.set_fill_value(self.getMissing())
-        apply(self._obj_.setslice,(low,high,MA.filled(value)))
-        if MA.isMaskedArray(value):
+        apply(self._obj_.setslice,(low,high,numpy.ma.filled(value)))
+        if numpy.ma.isMaskedArray(value):
             value.set_fill_value(saveFill)
 
-    def _getShape (self, name):
+    def _getShape (self):
         if self.parent is None:
             raise CDMSError, FileClosed+self.id
         return self._obj_.shape
@@ -121,26 +126,28 @@ class FileVariable(DatasetVariable):
     # Note: __setattr__ is defined at the PropertiedClasses level.
     # This function intercepts the basic set operation, and ensures
     # that the value is propagated to the external file.
-    def _basic_set(self, name, value):
+    def __setattr__(self, name, value):
         if hasattr(self, "parent") and self.parent is None:
             raise CDMSError, FileClosedWrite+self.id
-        if (not self.is_internal_attribute(name)) and (value is not None):
+        if (not name in self.__cdms_internals__) and (value is not None) and (name[0]!='_'):
             try:
                 setattr(self._obj_, name, value)
             except CdunifError:
                 raise CDMSError, "Setting %s.%s=%s"%(self.id,name,`value`)
+            self.attributes[name]=value
         self.__dict__[name] = value
 
     # Delete external file attributes.
     # Note: __delattr__ is defined at the PropertiedClasses level.
     # This function intercepts the basic del operation, and ensures
     # that the delete is propagated to the external file.
-    def _basic_del (self, name):
-        if (not self.is_internal_attribute(name)):
+    def __delattr__(self, name):
+        if (not name in self.__cdms_internals__):
             try:
                 delattr(self._obj_, name)
             except CdunifError:
                 raise CDMSError, "Deleting %s.%s"%(self.id,name)
+            del(self.attributes[name])
         del self.__dict__[name]
 
     def getValue(self, squeeze=1):
@@ -164,9 +171,4 @@ class FileVariable(DatasetVariable):
         else:
             return "<Variable: %s, file: **CLOSED**>"%self.id
 
-PropertiedClasses.set_property (FileVariable, 'shape', 
-                                 FileVariable._getShape, 
-                                 nowrite=1, 
-                                 nodelete=1
-                                 )
-internattr.add_internal_attribute(FileVariable, 'name_in_file')
+    shape = property(_getShape,None)

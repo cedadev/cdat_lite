@@ -37,7 +37,7 @@ class DomainComponent(SelectorComponent):
     def specify(self,slab,axes,specification,confined_by,aux):
         ''' First part: confine the slab within a Domain wide enough to do the exact in post'''
         import string,copy
-        from numpy.oldnumeric.ma import minimum,maximum
+        from numpy.ma import minimum,maximum
         # myconfined is for later, we can't confine a dimension twice with an argument plus a keyword or 2 keywords
         myconfined=[None]*len(axes)
         self.aux=copy.copy(specification)

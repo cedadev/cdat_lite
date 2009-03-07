@@ -2,7 +2,7 @@
 
 #!/usr/bin/env python
 
-import numpy.oldnumeric.ma as MA
+import numpy
 
 errors = []
 
@@ -10,7 +10,7 @@ NTIME = 3
 NLAT = 16
 NLON = 32
 
-x = MA.arange(float(2*NTIME*NLAT*NLON))
+x = numpy.ma.arange(float(2*NTIME*NLAT*NLON))
 x.shape=(2,NTIME,NLAT,NLON)
 
 def clearError():

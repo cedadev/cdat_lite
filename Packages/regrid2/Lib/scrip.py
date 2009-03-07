@@ -1,7 +1,6 @@
 ## Automatically adapted for numpy.oldnumeric Aug 02, 2007 by 
 
-import cdms2 as cdms
-from cdms2 import MV2 as MV
+import cdms2
 import _scrip
 from error import RegridError
 
@@ -20,7 +19,7 @@ class ScripRegridder:
 
     def __call__(self, input):
 
-        import numpy.oldnumeric.ma as MA
+        import numpy.ma
         from cdms2 import isVariable
         from cdms2.tvariable import TransientVariable
 
@@ -51,8 +50,8 @@ class ScripRegridder:
             gridsize = input.shape[-1]
             outgridshape = (reduce(lambda x,y: x*y, self.outputGrid.shape, 1),)
             
-        # If input is an MA, make it Numeric
-        if MA.isMaskedArray(input):
+        # If input is an numpy.ma, make it Numeric
+        if numpy.ma.isMaskedArray(input):
             input = input.filled()
 
         restoreShape = input.shape[:-rank]
@@ -100,8 +99,6 @@ class ConservativeRegridder(ScripRegridder):
     """
 
     def __init__(self, outputGrid, remapMatrix, sourceAddress, destAddress, inputGrid=None, sourceFrac=None, destFrac=None, normalize="fracarea", normal=None, sourceArea=None, destArea=None):
-        from cdms2 import MV2 as MV
-
         if normalize not in ["fracarea", "destarea", "none"]:
             raise RegridError, "Invalid normalization option: %s"%normalize
         ScripRegridder.__init__(self, outputGrid, remapMatrix, sourceAddress, destAddress, inputGrid=inputGrid, sourceFrac=sourceFrac, destFrac=destFrac)
@@ -144,7 +141,7 @@ class BicubicRegridder(ScripRegridder):
         gradLatlon = d(df)/(di)(dj)
         """
 
-        import numpy.oldnumeric.ma as MA
+        import numpy.ma
         from cdms2 import isVariable
         from cdms2.tvariable import TransientVariable
 
@@ -188,8 +185,8 @@ class BicubicRegridder(ScripRegridder):
             gridsize = input.shape[-1]
             outgridshape = (reduce(lambda x,y: x*y, self.outputGrid.shape, 1),)
             
-        # If input is an MA, make it Numeric
-        if MA.isMaskedArray(input):
+        # If input is an numpy.ma, make it Numeric
+        if numpy.ma.isMaskedArray(input):
             input = input.filled()
             gradLat = gradLat.filled()
             gradLon = gradLon.filled()
@@ -240,10 +237,13 @@ def readRegridder(fileobj, mapMethod=None, checkGrid=1):
     and 'repaired' if necessary.
     """
 
-    import string
-
+    if isinstance(fileobj,str):
+        fileobj = cdms2.open(fileobj)
+    elif not isinstance(fileobj,cdms2.dataset.CdmsFile):
+        raise RegridError,"fileobj arguments must be a cdms2 file or a string pointing to a file"
+    
     if mapMethod is None:
-        mapString = string.lower(string.strip(fileobj.map_method))
+        mapString = fileobj.map_method.strip().lower()
         if mapString[0:12]=="conservative":
             mapMethod = "conservative"
         elif mapString[0:8]=="bilinear":

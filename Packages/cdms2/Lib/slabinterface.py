@@ -1,8 +1,8 @@
 ## Automatically adapted for numpy.oldnumeric Aug 01, 2007 by 
+## Further modified to be pure new numpy June 24th 2008
 
 "Read part of the old cu slab interface implemented over CDMS"
-import numpy.oldnumeric.ma as MA
-import numpy.oldnumeric as Numeric
+import numpy
 import string, types, sys
 from error import CDMSError
 from axis import std_axis_attributes
@@ -39,7 +39,7 @@ class Slab:
         result = None
         if name in defaultdict.keys() and not hasattr(self,name):
             if name=='filename':
-                if self.parent is None:
+                if (not hasattr(self,'parent')) or self.parent is None:
                     result = ''
                 else:
                     result = self.parent.id
@@ -116,18 +116,18 @@ class Slab:
         elif field == "weights":
             g = self.getGrid()
             if g is None:
-                return Numeric.ones(len(d))
+                return numpy.ones(len(d))
             if d.isLatitude():
                 return g.getWeights()[0]
             elif d.isLongitude():
                 return g.getWeights()[1]
             else: #should be impossible, actually
-                return Numeric.ones(len(d))
+                return numpy.ones(len(d))
 
         elif field == "bounds":
             b = d.getBounds()
             n = b.shape[0]
-            result = Numeric.zeros(n+1, b.dtype.char)
+            result = numpy.zeros(n+1, b.dtype.char)
             result[0:-1] = b[:,0]
             result[-1] = b[-1,1]
             return result
@@ -184,8 +184,8 @@ class Slab:
 
 def cdms_bounds2cu_bounds (b):
     "Bounds are  len(v) by 2 in cdms but len(v)+1 in cu"
-    cub = MA.zeros(len(b)+1, Numeric.Float32)
-    b1 = b.astype(Numeric.Float32)
+    cub = numpy.ma.zeros(len(b)+1, numpy.float32)
+    b1 = b.astype(numpy.float32)
     if len(b)>1:
         if (b[0,0]<b[0,1]) == (b[0,0]<b[-1,0]):
             cub[0] = b[0,0]
@@ -195,5 +195,5 @@ def cdms_bounds2cu_bounds (b):
             cub[1:] = b[:,0]
     else:
         cub[:] = b[0]
-    return Numeric.array( cub )
+    return numpy.array( cub )
     

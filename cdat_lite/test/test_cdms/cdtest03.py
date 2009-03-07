@@ -1,29 +1,27 @@
+## Automatically adapted for numpy.oldnumeric Aug 01, 2007 by 
+
 #!/usr/bin/env python
-# Adapted for numpy/ma/cdms2 by convertcdms.py
 
-import cdms2 as cdms,numpy.oldnumeric as Numeric
+import cdms2,numpy
 from markError import NTIME,NLAT,NLON,x,clearError,markError,reportError
-
-from markError import get_sample_data_dir
-
 clearError()
 
-print 'Test 3: CdmsFile [Numerics] read/write ...',
+print 'Test 3: CdmsFile [numpys] read/write ...',
 
-time = Numeric.array([0.0,366.0,731.0])
-lat = Numeric.arange(NLAT)*(180./(NLAT-1))-90.
-lon = Numeric.arange(NLON)*(360.0/NLON)
+time = numpy.array([0.0,366.0,731.0])
+lat = numpy.arange(NLAT)*(180./(NLAT-1))-90.
+lon = numpy.arange(NLON)*(360.0/NLON)
 timestr = ['2000','2001','2002']
 u = x[0]
 
-f = cdms.createDataset('readwrite.nc')
-tobj = f.createAxis('time',Numeric.array([time[1]]))
+f = cdms2.createDataset('readwrite.nc')
+tobj = f.createAxis('time',numpy.array([time[1]]))
 tobj.units = 'days since 2000-1-1'
 latobj = f.createAxis('latitude',lat)
 latobj.units = 'degrees_north'
 lonobj = f.createAxis('longitude',lon)
 lonobj.units = 'degrees_east'
-var = f.createVariable('u',cdms.CdDouble,(tobj,latobj,lonobj))
+var = f.createVariable('u',cdms2.CdDouble,(tobj,latobj,lonobj))
 var.units = 'm/s'
 try:
     var[:]=u[0]
@@ -49,12 +47,13 @@ if latobj[NLAT/2]==lat[NLAT/2]: markError("Rewrite axis: %f"%vlat[NLAT/2])
 lat[NLAT/2] = 6.5
 latobj.standard_name = 'Latitude'
 
-p0 = f.createVariable('p0',cdms.CdDouble,())
+p0 = f.createVariable('p0',cdms2.CdDouble,())
 p0.assignValue(-99.9)
 
 f.close()
 #-----------------------------------------------------------
-g = cdms.openDataset('readwrite.nc','r+')
+g = cdms2.openDataset('readwrite.nc','r+')
+con = g.Conventions
 try:
     con = '<not read>'
     con = g.Conventions

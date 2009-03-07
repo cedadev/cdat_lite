@@ -1,11 +1,12 @@
-## Automatically adapted for numpy.oldnumeric Aug 01, 2007 by 
+## Automatically adapted for numpy.oldnumeric Aug 01, 2007 by
+## Further modified to be pure new numpy June 24th 2008
 
 "CDMS Variable objects, abstract interface"
 import numpy
-import numpy.oldnumeric.ma as MA, numpy.oldnumeric as Numeric, internattr
 import types, string, re
 import cdmsNode
 from cdmsobj import CdmsObj
+import cdms2
 from slabinterface import Slab
 from sliceut import *
 from error import CDMSError
@@ -13,15 +14,16 @@ from axis import axisMatchIndex, axisMatchAxis, axisMatches, unspecified, Cdtime
 import selectors
 import copy
 # from regrid2 import Regridder, PressureRegridder, CrossSectionRegridder
-import PropertiedClasses
+#import PropertiedClasses
 from convention import CF1
 from grid import AbstractRectGrid
+#import internattr
 
 InvalidRegion = "Invalid region: "
 OutOfRange = "Coordinate interval is out of range or intersection has no data: "
 NotImplemented = "Child of AbstractVariable failed to implement: "
 
-_numeric_compatibility = False          # Backward compatibility with Numeric behavior
+_numeric_compatibility = False          # Backward compatibility with numpy behavior
                                         # False: return scalars from 0-D slices
                                         #        MV axis=None by default
                                         # True:  return 0-D arrays
@@ -46,6 +48,8 @@ class AbstractVariable(CdmsObj, Slab):
         if variableNode is not None and variableNode.tag !='variable':
             raise CDMSError, 'Node is not a variable node'
         CdmsObj.__init__(self, variableNode)
+        val = self.__cdms_internals__ + ['id','domain']
+        self.___cdms_internals__ = val 
         Slab.__init__(self)
         self.id = None                  # Transient variables key on this to create a default ID
         self.parent = parent
@@ -55,7 +59,7 @@ class AbstractVariable(CdmsObj, Slab):
         # Reminder: children to define self.shape and set self.id
 
     def __array__ (self, t=None, context=None):  #Numeric, ufuncs call this
-        return MA.filled(self.getValue(squeeze=0))
+        return numpy.ma.filled(self.getValue(squeeze=0))
 
     def __call__ (self, *args,  **kwargs):
         "Selection of a subregion using selectors"
@@ -80,34 +84,36 @@ class AbstractVariable(CdmsObj, Slab):
         return len(self.shape)
 
     def _returnArray(self, ar, squeeze, singles=None):
-        # ar is a Numeric array, MA, or scalar, possibly MA.masked.
-        # job is to make sure we return an MA or a scalar.
+        # ar is a Numeric array, numpy.ma, or scalar, possibly numpy.ma.masked.
+        # job is to make sure we return an numpy.ma or a scalar.
         # If singles is not None, squeeze dimension indices in singles
         inf = 1.8e308
-        if MA.isMaskedArray(ar):   #already MA, only need squeeze.
+        if isinstance(ar,cdms2.tvariable.TransientVariable):
+            result = numpy.ma.array(ar._data,mask=ar.mask)
+        elif numpy.ma.isMaskedArray(ar):   #already numpy.ma, only need squeeze.
             result = ar
-        elif isinstance(ar, Numeric.ArrayType):
+        elif isinstance(ar, numpy.ndarray):
             missing = self.getMissing()
             if missing is None:
-                result = MA.masked_array(ar)
+                result = numpy.ma.masked_array(ar)
             elif missing==inf or missing!=missing: # (x!=x) ==> x is NaN
-                result = MA.masked_object(ar, missing, copy=0)
+                result = numpy.ma.masked_object(ar, missing, copy=0)
             elif ar.dtype.char=='c':
                 # umath.equal is not implemented
                 resultmask = (ar==missing)
                 if not resultmask.any():
-                    resultmask = MA.nomask
-                result = MA.masked_array(ar, mask=resultmask, fill_value=missing)
+                    resultmask = numpy.ma.nomask
+                result = numpy.ma.masked_array(ar, mask=resultmask, fill_value=missing)
             else:
-                result = MA.masked_values(ar, missing, copy=0)
-        elif ar is MA.masked:
+                result = numpy.ma.masked_values(ar, missing, copy=0)
+        elif ar is numpy.ma.masked:
             return ar  
         else: # scalar, but it might be the missing value
             missing = self.getMissing()
             if missing is None:
                 return ar #scalar
             else:
-                result = MA.masked_values(ar, missing, copy=0)
+                result = numpy.ma.masked_values(ar, missing, copy=0)
 
         squoze = 0
         if squeeze:
@@ -134,9 +140,9 @@ class AbstractVariable(CdmsObj, Slab):
                    newshape.append(s)
             
         else:
-            n = MA.size(result)
+            n = numpy.ma.size(result)
         if n == 1 and squeeze:
-            return MA.ravel(result)[0] # scalar or masked
+            return numpy.ma.ravel(result)[0] # scalar or masked
         if squoze:
             result.shape = newshape
         return result
@@ -307,9 +313,9 @@ class AbstractVariable(CdmsObj, Slab):
 
     def getMissing(self, asarray=0):
         """Return the missing value as a scalar, or as
-        a Numeric array if asarray==1"""
+        a numpy array if asarray==1"""
         mv = self.missing_value
-        if asarray==0 and isinstance(mv, Numeric.ArrayType):
+        if asarray==0 and isinstance(mv, numpy.ndarray):
             mv = mv[0]
         if type(mv) is types.StringType and self.dtype.char not in ['?','c','O']:
             mv = float(mv)
@@ -320,7 +326,7 @@ class AbstractVariable(CdmsObj, Slab):
 
     def setMissing(self, value):
         """Set the missing value, which may be a scalar,
-        a single-valued Numeric array, or None. The value is
+        a single-valued numpy array, or None. The value is
         cast to the same type as the variable."""
 
         # Check for None first, so that constructors can
@@ -331,21 +337,22 @@ class AbstractVariable(CdmsObj, Slab):
             
         selftype = self.typecode()
         valuetype = type(value)
-        if valuetype is Numeric.ArrayType:
+        if valuetype is numpy.ndarray:
             value = value.astype(selftype).item()
-        elif isinstance(value, Numeric.floating) or isinstance(value, Numeric.integer):
-            value = Numeric.array([value], selftype)
+        elif isinstance(value, numpy.floating) or isinstance(value, numpy.integer):
+            value = numpy.array([value], selftype)
         elif valuetype in [types.FloatType, types.IntType, types.LongType, types.ComplexType]:
             try:
-                value = Numeric.array([value], selftype)
+                value = numpy.array([value], selftype)
             except:                     # Set fill value when ar[i:j] returns a masked value
-                value = Numeric.array([MA.default_fill_value(self)], selftype)
+                value = numpy.array([numpy.ma.default_fill_value(self)], selftype)
         elif valuetype is types.StringType and selftype in ['?','c','O']: # '?' for Boolean and object
             pass
         else:
             raise CDMSError, 'Invalid missing value %s'%`value`
         
-        self._basic_set('missing_value', value)
+        self.missing_value = value
+
 
     def getTime(self):
         "Get the first time dimension, or None if not found"
@@ -447,7 +454,6 @@ class AbstractVariable(CdmsObj, Slab):
             singles = self._single_specs(specs)
         else:
             singles = None
-            
         slicelist = self.specs2slices(speclist,force=1)
         d = self.expertSlice (slicelist)
         squeeze = keys.get ('squeeze', 0)
@@ -462,7 +468,7 @@ class AbstractVariable(CdmsObj, Slab):
                 allaxes = [None]*self.rank()
                 for i in range(self.rank()):
                    slice = slicelist[i]
-                   if squeeze and MA.size(d, i) == 1:
+                   if squeeze and numpy.ma.size(d, i) == 1:
                        continue
                    elif numericSqueeze and i in singles:
                        continue
@@ -491,7 +497,7 @@ class AbstractVariable(CdmsObj, Slab):
         resultArray = self._returnArray(d, squeeze, singles=singles)
         if self.isEncoded():
             resultArray  = self.decode(resultArray)
-            newmissing = resultArray.fill_value()
+            newmissing = resultArray.fill_value
         else:
             newmissing = self.getMissing()
 
@@ -510,7 +516,6 @@ class AbstractVariable(CdmsObj, Slab):
                                      grid = resultgrid,
                                      attributes=self.attributes,
                                      id = self.id)
-                    
             if grid is not None:
                 order2 = grid.getOrder()
                 if order is None:
@@ -523,7 +528,7 @@ class AbstractVariable(CdmsObj, Slab):
             else:
                 return result.getSlice(squeeze=0, raw=1)
 
-        else:               # Return MA for zero rank, so that __cmp__ works.
+        else:               # Return numpy.ma for zero rank, so that __cmp__ works.
             return resultArray
 
     def getSlice (self, *specs, **keys):
@@ -773,7 +778,7 @@ class AbstractVariable(CdmsObj, Slab):
                     result=ar1
                 else:
                     ar2 = self.getSlice(squeeze=0, *slicelist)
-                    result = MA.concatenate((result,ar2),axis=wrapdim)
+                    result = numpy.ma.concatenate((result,ar2),axis=wrapdim)
 
         else:
 
@@ -782,7 +787,7 @@ class AbstractVariable(CdmsObj, Slab):
             ar1 = self.getSlice(squeeze=0, *slicelist)
             slicelist[wrapdim] = wrap2
             ar2 = self.getSlice(squeeze=0, *slicelist)
-            result = MA.concatenate((ar1,ar2),axis=wrapdim)
+            result = numpy.ma.concatenate((ar1,ar2),axis=wrapdim)
 
 
         if raweasy:
@@ -798,7 +803,7 @@ class AbstractVariable(CdmsObj, Slab):
         
         axes = []
         for i in range(self.rank()):
-            if squeeze and MA.size(result, i) == 1: continue
+            if squeeze and numpy.ma.size(result, i) == 1: continue
 
             sl = slicelist[i]
 
@@ -917,7 +922,7 @@ class AbstractVariable(CdmsObj, Slab):
         nsupplied = len(specs)
         if Ellipsis in specs:
             nellipses = 1
-        elif Numeric.NewAxis in specs:
+        elif numpy.newaxis in specs:
             raise CDMSError, 'Sorry, you cannot use NewAxis in this context ' + str(specs)
         else:
             nellipses = 0
@@ -1066,9 +1071,11 @@ class AbstractVariable(CdmsObj, Slab):
                 if indexInterval is None:
                     raise CDMSError, OutOfRange + str(item)
                 newitem = slice(indexInterval[0],indexInterval[1],indexInterval[2])
-            elif isinstance(item, types.IntType) or \
-                 isinstance(item, types.LongType) or \
+            elif isinstance(item, numpy.floating) or \
                  isinstance(item, types.FloatType) or \
+                 isinstance(item, numpy.integer) or \
+                 isinstance(item, types.IntType) or \
+                 isinstance(item, types.LongType) or \
                  isinstance(item, types.StringType) or \
                  type(item) in CdtimeTypes:
                 axis = self.getAxis(i)
@@ -1089,12 +1096,12 @@ class AbstractVariable(CdmsObj, Slab):
 
     def _decodedType(self):
         "The datatype after decoding."
-        if hasattr(self, 'scale_factor') and isinstance(self.scale_factor, Numeric.ArrayType):
+        if hasattr(self, 'scale_factor') and isinstance(self.scale_factor, numpy.ndarray):
             result = self.scale_factor.dtype.char
-        elif hasattr(self, 'add_offset') and isinstance(self.add_offset, Numeric.ArrayType):
+        elif hasattr(self, 'add_offset') and isinstance(self.add_offset, numpy.ndarray):
             result = self.add_offset.dtype.char
         else:
-            result = Numeric.Float32
+            result = numpy.float32
         return result
 
     def isEncoded(self):
@@ -1102,25 +1109,25 @@ class AbstractVariable(CdmsObj, Slab):
         return (hasattr(self,"scale_factor") or hasattr(self,"add_offset"))
 
     def decode(self, ar):
-        "Decode compressed data. ar is a masked array, scalar, or MA.masked"
+        "Decode compressed data. ar is a masked array, scalar, or numpy.ma.masked"
         resulttype = self._decodedType()
         if hasattr(self, 'scale_factor'):
             scale_factor = self.scale_factor
         else:
-            scale_factor = Numeric.array([1.0],resulttype)
+            scale_factor = numpy.array([1.0],resulttype)
             
         if hasattr(self, 'add_offset'):
             add_offset = self.add_offset
         else:
-            add_offset = Numeric.array([0.0],resulttype)
+            add_offset = numpy.array([0.0],resulttype)
             
-        if ar is not MA.masked:
+        if ar is not numpy.ma.masked:
             result = scale_factor*ar + add_offset
-            if isinstance(result,MA.MaskedArray):
+            if isinstance(result,numpy.ma.MaskedArray):
                 result = result.astype(resulttype)
-                MA.set_fill_value(result, MA.default_real_fill_value)
+                numpy.ma.set_fill_value(result, numpy.ma.default_fill_value(0.))
             else:
-                tmp = Numeric.array(result)
+                tmp = numpy.array(result)
                 result = tmp.astype(resulttype)[0]
             return result
         else:
@@ -1144,7 +1151,7 @@ class AbstractVariable(CdmsObj, Slab):
 
         return tuple(result)
 
-    # MA overrides
+    # numpy.ma overrides
 
     def __getitem__(self, key):
         if type(key) is types.TupleType:
@@ -1171,7 +1178,7 @@ class AbstractVariable(CdmsObj, Slab):
     def __neg__(self): 
         return MV.negative(self)
 
-    def __add__(self, other): 
+    def __add__(self, other):
         return MV.add(self, other)
                         
     __radd__ = __add__
@@ -1188,7 +1195,7 @@ class AbstractVariable(CdmsObj, Slab):
     def __rsub__(self, other): 
         return MV.subtract(other, self)
 
-    def __mul__(self, other): 
+    def __mul__(self, other):
         return MV.multiply(self, other)
     
     __rmul__ = __mul__
@@ -1242,9 +1249,10 @@ class AbstractVariable(CdmsObj, Slab):
     def astype (self, tc):
         "return self as array of given type."
         return self.subSlice().astype(tc)
+    
 
-internattr.add_internal_attribute(AbstractVariable, 'id', 'parent')   
-PropertiedClasses.set_property(AbstractVariable, 'missing_value', acts=AbstractVariable._setmissing, nodelete=1)
+## internattr.add_internal_attribute(AbstractVariable, 'id', 'parent')   
+#PropertiedClasses.set_property(AbstractVariable, 'missing_value', acts=AbstractVariable._setmissing, nodelete=1)
 
 __rp = r'\s*([-txyz0-9]{1,1}|\(\s*\w+\s*\)|[.]{3,3})\s*'
 __crp = re.compile(__rp)

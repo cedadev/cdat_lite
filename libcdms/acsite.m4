@@ -102,7 +102,7 @@ AC_DEFUN([PC_OS], [dnl
     #
     case "$OS" in
     unicos)
-	AC_REQUIRE([PC_PROG_CC])
+	AC_REQUIRE([AC_PROG_CC])
 	case "$CC$TARGET$CFLAGS" in
 	*cray-t3*)
 	    OS=unicos-mpp

@@ -689,7 +689,7 @@ def str2rgb(col):
         ky=cols.keys()
         for k in ky:
             c=string.replace(k,' ','')
-            if c==col : return cols[k]
+            if c==col : return list(cols[k])
     return [None,None,None]
             
 def rgb2str(r,g=None,b=None):

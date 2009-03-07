@@ -4,7 +4,7 @@
 
 import sys
 import os
-import Numeric
+import numpy
 try:
     import cdmsNode
     from cdmsNode import NumericToCdType
@@ -322,7 +322,7 @@ def scan(id,path,template=None,directory=None,linearDims=None,matchnames=None,ex
     # Copy global attributes
     for attname in cdfile.attributes.keys():
         attval = cdfile.attributes[attname]
-        if type(attval)==Numeric.ArrayType:
+        if type(attval)==numpy.ndarray:
             attval = attval[0]
         dataset.setExternalAttr(attname,attval)
 
@@ -376,7 +376,7 @@ def scan(id,path,template=None,directory=None,linearDims=None,matchnames=None,ex
             attval = cdobj.attributes[attname]
             if attname=='name_in_file' and attval==cdobj.id:
                 continue
-            if type(attval)==Numeric.ArrayType:
+            if type(attval)==numpy.ndarray:
                 attval = attval[0]
             obj.setExternalAttr(attname, attval)
 

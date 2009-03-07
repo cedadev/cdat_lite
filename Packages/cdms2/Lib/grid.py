@@ -1,9 +1,10 @@
 ## Automatically adapted for numpy.oldnumeric Aug 01, 2007 by 
+## Further modified to be pure new numpy June 24th 2008
 
 """CDMS Grid objects"""
 import types
 from error import CDMSError
-import numpy.oldnumeric as Numeric, PropertiedClasses, internattr
+import numpy #, PropertiedClasses, internattr
 # import regrid2._regrid
 import copy, string, sys
 from cdmsobj import CdmsObj
@@ -39,14 +40,14 @@ def createUniformGrid(startLat, nlat, deltaLat, startLon, nlon, deltaLon, order=
 def createGlobalMeanGrid(grid):
     inlat = grid.getLatitude()
     inlatBounds, inlonBounds = grid.getBounds()
-    outlatArray = Numeric.array([(inlat[0] + inlat[-1])/2.0])
-    outlatBounds = Numeric.array([[inlatBounds[0,0], inlatBounds[-1,1]]])
+    outlatArray = numpy.array([(inlat[0] + inlat[-1])/2.0])
+    outlatBounds = numpy.array([[inlatBounds[0,0], inlatBounds[-1,1]]])
     outlat = createAxis(outlatArray, outlatBounds)
     outlat.units = inlat.units
 
     inlon = grid.getLongitude()
-    outlonArray = Numeric.array([(inlon[0] + inlon[-1])/2.0])
-    outlonBounds = Numeric.array([[inlonBounds[0,0], inlonBounds[-1,1]]])
+    outlonArray = numpy.array([(inlon[0] + inlon[-1])/2.0])
+    outlonBounds = numpy.array([[inlonBounds[0,0], inlonBounds[-1,1]]])
     outlon = createAxis(outlonArray, outlonBounds)
     outlon.units = inlon.units
 
@@ -61,8 +62,8 @@ def createZonalGrid(grid):
     outlat.units = inlat.units
 
     inlon = grid.getLongitude()
-    outlonArray = Numeric.array([(inlon[0] + inlon[-1])/2.0])
-    outlonBounds = Numeric.array([[inlonBounds[0,0], inlonBounds[-1,1]]])
+    outlonArray = numpy.array([(inlon[0] + inlon[-1])/2.0])
+    outlonBounds = numpy.array([[inlonBounds[0,0], inlonBounds[-1,1]]])
     outlon = createAxis(outlonArray, outlonBounds)
     outlon.units = inlon.units
 
@@ -225,6 +226,8 @@ class AbstractRectGrid(AbstractGrid):
 
     def __init__ (self, node):
         AbstractGrid.__init__ (self, node)
+        val = self.__cdms_internals__ + ['id',]
+        self.___cdms_internals__ = val
 
     def listall (self, all=None):
         result = AbstractGrid.listall(self, all)
@@ -236,7 +239,7 @@ class AbstractRectGrid(AbstractGrid):
             result.append(str(self.getWeights()))
         return result
 
-    def _getshape (self, name):
+    def _getshape (self):
         if self._order_ == "yx":
             return (len(self._lataxis_),len(self._lonaxis_))
         else:
@@ -293,10 +296,10 @@ class AbstractRectGrid(AbstractGrid):
     def getWeights(self):
 
         latBounds, lonBounds = self.getBounds()
-        latBounds = (Numeric.pi/180.0) * latBounds
-        latWeights = 0.5 * Numeric.absolute(Numeric.sin(latBounds[:,1]) - Numeric.sin(latBounds[:,0]))
+        latBounds = (numpy.pi/180.0) * latBounds
+        latWeights = 0.5 * numpy.absolute(numpy.sin(latBounds[:,1]) - numpy.sin(latBounds[:,0]))
 
-        lonWeights = Numeric.absolute((lonBounds[:,1] - lonBounds[:,0]))/360.0
+        lonWeights = numpy.absolute((lonBounds[:,1] - lonBounds[:,0]))/360.0
 
         return latWeights, lonWeights
 
@@ -333,7 +336,7 @@ class AbstractRectGrid(AbstractGrid):
 
         maskArray = self.getMask()
         if maskArray is not None:
-            newmask = Numeric.transpose(maskArray)
+            newmask = numpy.transpose(maskArray)
         else:
             newmask = None
 
@@ -350,6 +353,7 @@ class AbstractRectGrid(AbstractGrid):
     def classify(self):
         import regrid2._regrid
 
+        CLOSE_ENOUGH = 1.e-3
         lat = self.getLatitude()
         if len(lat)==1:
             return ('generic',1,0)
@@ -380,30 +384,30 @@ class AbstractRectGrid(AbstractGrid):
 
         # Look for N-S equality
         isoffset = 0
-        if Numeric.alltrue(Numeric.less(Numeric.absolute(latar[:]-gausslatns),1.5e-1)):
+        if numpy.alltrue(numpy.less(numpy.absolute(latar[:]-gausslatns),CLOSE_ENOUGH)):
             actualType = 'gaussian'
 
-        elif Numeric.alltrue(Numeric.less(Numeric.absolute(latar[:]-gausslatsn),1.5e-1)):
+        elif numpy.alltrue(numpy.less(numpy.absolute(latar[:]-gausslatsn),CLOSE_ENOUGH)):
             actualType = 'gaussian'
 
         # Check for zone (offset) variable
-        elif Numeric.alltrue(Numeric.less(Numeric.absolute(latar[:]-bndsplusns[1:-1]),1.5e-1)):
+        elif numpy.alltrue(numpy.less(numpy.absolute(latar[:]-bndsplusns[1:-1]),CLOSE_ENOUGH)):
             actualType = 'gaussian'
             isoffset = 1
             nlats = nlats+1
 
-        elif Numeric.alltrue(Numeric.less(Numeric.absolute(latar[:]-bndsplussn[1:-1]),1.5e-1)):
+        elif numpy.alltrue(numpy.less(numpy.absolute(latar[:]-bndsplussn[1:-1]),CLOSE_ENOUGH)):
             actualType = 'gaussian'
             isoffset = 1
             nlats = nlats+1
 
-        elif Numeric.alltrue(Numeric.less(Numeric.absolute(diffs-diffs[0]),1.e-2)):
+        elif numpy.alltrue(numpy.less(numpy.absolute(diffs-diffs[0]),CLOSE_ENOUGH)):
             actualType = 'uniform'
 
-        elif Numeric.alltrue(Numeric.less(Numeric.absolute(latar[:]-equalareans),1.e-1)):
+        elif numpy.alltrue(numpy.less(numpy.absolute(latar[:]-equalareans),CLOSE_ENOUGH)):
             actualType = 'equalarea'
 
-        elif Numeric.alltrue(Numeric.less(Numeric.absolute(latar[:]-equalareasn),1.e-1)):
+        elif numpy.alltrue(numpy.less(numpy.absolute(latar[:]-equalareasn),CLOSE_ENOUGH)):
             actualType = 'equalarea'
 
         else:
@@ -472,19 +476,19 @@ class AbstractRectGrid(AbstractGrid):
         if gridtype=='gaussian':
             pts, wts, bnds = regrid2._regrid.gridattr(nlats, 'gaussian')
             if ascending: bnds = bnds[::-1]
-            latbnds = Numeric.zeros((len(lat),2),Numeric.Float)
+            latbnds = numpy.zeros((len(lat),2),numpy.float)
             latbnds[:,0] = bnds[:-1]
             latbnds[:,1] = bnds[1:]
-            latbnds[0,:] = Numeric.maximum(-90.0, Numeric.minimum(90.0,latbnds[0,:]))
-            latbnds[-1,:] = Numeric.maximum(-90.0, Numeric.minimum(90.0,latbnds[-1,:]))
+            latbnds[0,:] = numpy.maximum(-90.0, numpy.minimum(90.0,latbnds[0,:]))
+            latbnds[-1,:] = numpy.maximum(-90.0, numpy.minimum(90.0,latbnds[-1,:]))
         elif gridtype=='equalarea':
             pts, wts, bnds = regrid2._regrid.gridattr(nlats, 'equalarea')
             if ascending: bnds = bnds[::-1]
-            latbnds = Numeric.zeros((len(lat),2),Numeric.Float)
+            latbnds = numpy.zeros((len(lat),2),numpy.float)
             latbnds[:,0] = bnds[:-1]
             latbnds[:,1] = bnds[1:]
-            latbnds[0,:] = Numeric.maximum(-90.0, Numeric.minimum(90.0,latbnds[0,:]))
-            latbnds[-1,:] = Numeric.maximum(-90.0, Numeric.minimum(90.0,latbnds[-1,:]))
+            latbnds[0,:] = numpy.maximum(-90.0, numpy.minimum(90.0,latbnds[0,:]))
+            latbnds[-1,:] = numpy.maximum(-90.0, numpy.minimum(90.0,latbnds[-1,:]))
         else:
             latbnds = lat.genGenericBounds()
 
@@ -501,7 +505,7 @@ class AbstractRectGrid(AbstractGrid):
         if len(lon)>1:
             lonbnds = lon.genGenericBounds()
         else:
-            lonbnds = Numeric.array([[lon[0]-180.0, lon[0]+180.0]],Numeric.Float)
+            lonbnds = numpy.array([[lon[0]-180.0, lon[0]+180.0]],numpy.float)
 
         return (latbnds, lonbnds)
 
@@ -519,10 +523,10 @@ class AbstractRectGrid(AbstractGrid):
             ny = len(self._lataxis_)
             nx = len(self._lonaxis_)
             lenmesh = ny*nx
-            mesh = Numeric.zeros((lenmesh,2,4),latbounds.dtype.char)
-            broadlat = Numeric.repeat(latbounds[:,Numeric.NewAxis,:],nx,axis=1)
+            mesh = numpy.zeros((lenmesh,2,4),latbounds.dtype.char)
+            broadlat = numpy.repeat(latbounds[:,numpy.newaxis,:],nx,axis=1)
             broadlat.shape = (lenmesh,2)
-            broadlon = Numeric.repeat(lonbounds[Numeric.NewAxis,:,:],ny,axis=0)
+            broadlon = numpy.repeat(lonbounds[numpy.newaxis,:,:],ny,axis=0)
             broadlon.shape=(lenmesh,2)
             mesh[:,LAT,0] = broadlat[:,0]
             mesh[:,LAT,1] = broadlat[:,0]
@@ -543,9 +547,9 @@ class AbstractRectGrid(AbstractGrid):
         if self._flataxes_ is None:
             alat = self.getLatitude()[:]
             alon = self.getLongitude()[:]
-            alatflat = Numeric.repeat(alat[:,Numeric.NewAxis], len(alon), axis=1)
-            alonflat = Numeric.repeat(alon[Numeric.NewAxis,:], len(alat), axis=0)
-            self._flataxes_ = (Numeric.ravel(alatflat), Numeric.ravel(alonflat))
+            alatflat = numpy.repeat(alat[:,numpy.newaxis], len(alon), axis=1)
+            alonflat = numpy.repeat(alon[numpy.newaxis,:], len(alat), axis=0)
+            self._flataxes_ = (numpy.ravel(alatflat), numpy.ravel(alonflat))
         return self._flataxes_
 
     def size(self):
@@ -577,11 +581,11 @@ class AbstractRectGrid(AbstractGrid):
 
         nlat = len(lat)
         nlon = len(lon)
-        centerLat = Numeric.repeat(lat[:,Numeric.NewAxis], nlon, axis=1)
-        centerLon = Numeric.repeat(lon[Numeric.NewAxis,:], nlat, axis=0)
+        centerLat = numpy.repeat(lat[:,numpy.newaxis], nlon, axis=1)
+        centerLon = numpy.repeat(lon[numpy.newaxis,:], nlat, axis=0)
 
         # Create corner latitudes, ensuring counterclockwise direction
-        clat = Numeric.zeros((nlat, 4), Numeric.Float)
+        clat = numpy.zeros((nlat, 4), numpy.float)
         if (blat[0,0]<= blat[0,1]):
             incr = 1
         else:
@@ -590,10 +594,10 @@ class AbstractRectGrid(AbstractGrid):
         clat[:,1] = blat[:,1-incr]
         clat[:,2] = blat[:,incr]
         clat[:,3] = blat[:,incr]
-        cornerLat = Numeric.repeat(clat[:,Numeric.NewAxis,:], nlon, axis=1)
+        cornerLat = numpy.repeat(clat[:,numpy.newaxis,:], nlon, axis=1)
         
         # Create corner longitudes, ensuring counterclockwise direction
-        clon = Numeric.zeros((nlon, 4), Numeric.Float)
+        clon = numpy.zeros((nlon, 4), numpy.float)
         if (blon[0,0]<= blon[0,1]):
             incr = 1
         else:
@@ -602,7 +606,7 @@ class AbstractRectGrid(AbstractGrid):
         clon[:,1] = blon[:,incr]
         clon[:,2] = blon[:,incr]
         clon[:,3] = blon[:,1-incr]
-        cornerLon = Numeric.repeat(clon[Numeric.NewAxis,:,:], nlat, axis=0)
+        cornerLon = numpy.repeat(clon[numpy.newaxis,:,:], nlat, axis=0)
 
         iaxis = TransientVirtualAxis("i",nlat)
         jaxis = TransientVirtualAxis("j",nlon)
@@ -620,13 +624,14 @@ class AbstractRectGrid(AbstractGrid):
         gengrid = curvegrid.toGenericGrid(gridid=gridid)
         return gengrid
 
+    shape = property(_getshape,None)
+   
+## PropertiedClasses.set_property (AbstractRectGrid, 'shape', 
+##                                 AbstractRectGrid._getshape, 
+##                                 nowrite=1,
+##                                 nodelete=1)
 
-PropertiedClasses.set_property (AbstractRectGrid, 'shape', 
-                                AbstractRectGrid._getshape, 
-                                nowrite=1,
-                                nodelete=1)
-
-internattr.add_internal_attribute (AbstractRectGrid, 'id', 'parent')
+## internattr.add_internal_attribute (AbstractRectGrid, 'id', 'parent')
 
 class RectGrid(AbstractRectGrid):
 
@@ -654,7 +659,7 @@ class RectGrid(AbstractRectGrid):
     
     def getMask(self):
         if self._maskVar_ is None:
-            # return Numeric.ones(self.shape)
+            # return numpy.ones(self.shape)
             return None
         else:
             return self._maskVar_[:]
@@ -662,7 +667,7 @@ class RectGrid(AbstractRectGrid):
     def getMaskVar(self):
         return self._maskVar_
 
-internattr.add_internal_attribute(RectGrid)
+## internattr.add_internal_attribute(RectGrid)
 
 class FileRectGrid(AbstractRectGrid):
 
@@ -677,7 +682,7 @@ class FileRectGrid(AbstractRectGrid):
         self._order_ = order
         self.setType(gridtype)
         self._maskVar_ = maskobj        # FileVariable of mask
-        self.setMask(tempMask)    # Numeric array, which overrides the permanent mask
+        self.setMask(tempMask)    # numpy array, which overrides the permanent mask
 
     # Set bounds. If persistent==1, write to file, else just shadow any file boundaries.
     def setBounds(self, latBounds, lonBounds, persistent=0):
@@ -689,7 +694,7 @@ class FileRectGrid(AbstractRectGrid):
         if self._tempMask_ is not None:
             return self._tempMask_
         elif self._maskVar_ is None:
-            # return Numeric.ones(self.shape)
+            # return numpy.ones(self.shape)
             return None
         else:
             return self._maskVar_[:]
@@ -701,14 +706,14 @@ class FileRectGrid(AbstractRectGrid):
         if mask is None:
             self._tempMask_ = None
         else:
-            assert type(mask)==Numeric.ArrayType, 'Mask must be a Numeric array'
+            assert type(mask)==numpy.ndarray, 'Mask must be a numpy array'
             assert mask.shape==self.shape,'Mask must have shape %s'%`self.shape`
             self._tempMask_ = copy.copy(mask)
 
     def getMaskVar(self):
         return self._maskVar_
 
-internattr.add_internal_attribute(FileRectGrid)
+## internattr.add_internal_attribute(FileRectGrid)
 
 # In-memory rectilinear grid
 class TransientRectGrid(AbstractRectGrid):
@@ -727,11 +732,11 @@ class TransientRectGrid(AbstractRectGrid):
             raise CDMSError, 'Grid order must be "yx" or "xy"'
         self._order_ = order
         self.setType(gridtype)
-        self.setMask(maskarray)        # Numeric mask array
+        self.setMask(maskarray)        # numpy mask array
 
     def getMask(self):
         if self._maskArray_ is None:
-            # return Numeric.ones(self.shape)
+            # return numpy.ones(self.shape)
             return None
         else:
             return self._maskArray_
@@ -740,8 +745,8 @@ class TransientRectGrid(AbstractRectGrid):
     # with persistent versions, is ignored.
     def setMask(self,mask, persistent=0):
         if mask is not None:
-            if type(mask)!=Numeric.ArrayType:
-               raise CDMSError, 'Mask must be a Numeric array'
+            if type(mask)!=numpy.ndarray:
+               raise CDMSError, 'Mask must be a numpy array'
             if mask.shape != self.shape:
                raise CDMSError, 'Mask must have shape %s'%`self.shape`
         self._maskArray_ = copy.copy(mask)
@@ -750,7 +755,7 @@ class TransientRectGrid(AbstractRectGrid):
         self._lataxis_.setBounds(latBounds)
         self._lonaxis_.setBounds(lonBounds)
 
-internattr.add_internal_attribute(TransientRectGrid)
+## internattr.add_internal_attribute(TransientRectGrid)
 
 def writeScripGrid(path, grid, gridTitle=None):
     """Write a grid to a SCRIP grid file.

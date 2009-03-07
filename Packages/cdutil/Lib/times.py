@@ -1,7 +1,7 @@
 # Adapted for numpy/ma/cdms2 by convertcdms.py
-import numpy.oldnumeric as Numeric
-from cdms2 import MV2 as MV
-import cdms2 as cdms,cdtime,string,types,numpy.oldnumeric.ma as MA,numpy.oldnumeric as Numeric,sys
+import numpy
+import MV2
+import cdms2,cdtime,string,types,numpy.ma,sys
 
 def centroid(msk,bounds,coords=None):
     ''' Computes the centroid of a bunch of point
@@ -19,21 +19,27 @@ def centroid(msk,bounds,coords=None):
     sh=msk.shape
     mean=float(bounds[1]+bounds[0])/2.
     if coords is None:
-        coords=msk.getAxis(0).getBounds() # if MV then gets the bounds from there
+        coords=msk.getAxis(0).getBounds() # if MV2 then gets the bounds from there
     n=len(coords)
-    mask=MA.getmask(msk)
+    mask=numpy.ma.getmask(msk)
     if mask is None:
-        msk=Numeric.zeros(msk.shape,Numeric.Float)
+        msk=numpy.zeros(msk.shape,numpy.float)
     else:
-        msk=mask.astype(Numeric.Float)
+        msk=mask.astype(numpy.float)
     sw=0.
     for i in range(n):
         w=float(coords[i][1]-coords[i][0]) # width
-        sw=sw+w*(1.-msk[i])
+        if isinstance(msk,numpy.ndarray):
+            sw=sw+w*(1.-msk[i])
+        else:
+            sw=sw+w*(1.-msk)
         c=float(coords[i][0]+coords[i][1])/2.-mean # location
         w=w*c/float(bounds[1]-bounds[0]) # factor to multiply by plus normalization
-        msk[i]=(1.-msk[i])*w
-    msk=MA.sum(msk, axis=0) # sums it
+        if isinstance(msk,numpy.ndarray):
+            msk[i]=(1.-msk[i])*w
+        else:
+            msk = (1.-msk)*w
+    msk=numpy.ma.sum(msk, axis=0) # sums it
     sw=sw/2.
     msk=msk/sw
     return msk
@@ -51,19 +57,19 @@ def cyclicalcentroid(s,bounds,coords=None):
       cyclecentroid : slab is same shape than s but without the 1st dim
     '''
     if coords is None:
-        coords=s.getAxis(0).getBounds() # if MV then gets the bounds from there
+        coords=s.getAxis(0).getBounds() # if MV2 then gets the bounds from there
     n=len(coords)
     length=float(bounds[1]-bounds[0])
-    nax=Numeric.zeros((n,2),Numeric.Float)
+    nax=numpy.zeros((n,2),numpy.float)
     for i in range(n):
-        nax[i][0]=coords[i][0]/length*2.*Numeric.pi
-        nax[i][1]=coords[i][1]/length*2.*Numeric.pi
+        nax[i][0]=coords[i][0]/length*2.*numpy.pi
+        nax[i][1]=coords[i][1]/length*2.*numpy.pi
     # Places the point evenly around the axis
     # Compute the centroid on x and y
-    xc=centroid(s,[0,2.*Numeric.pi],Numeric.cos(nax))
-    yc=centroid(s,[0,2.*Numeric.pi],Numeric.sin(nax))
+    xc=centroid(s,[0,2.*numpy.pi],numpy.cos(nax))
+    yc=centroid(s,[0,2.*numpy.pi],numpy.sin(nax))
     # compute the new centroid
-    return Numeric.sqrt(xc*xc+yc*yc)/Numeric.sqrt(2.)
+    return numpy.sqrt(xc*xc+yc*yc)/numpy.sqrt(2.)
 
 def getMonthString(my_list):
     '''Given a list of month creates the string representing the sequence'''
@@ -147,6 +153,13 @@ def mergeTime(ds,statusbar=1):
     a slab merging all the slab of ds
     order is the order of the first slab
     '''
+    allNone = True
+    for s in ds:
+        if s is not None:
+            allNone = False
+            break
+    if allNone:
+        return None
     # first determine the number of slabs
     nslab=len(ds)
     order0=None
@@ -185,10 +198,10 @@ def mergeTime(ds,statusbar=1):
     # Now create the big array that will be the merged
     sh=list(ds[0].shape)
     sh[0]=nt
-    out=MA.zeros(tuple(sh),MV.Float)
+    out=numpy.ma.zeros(tuple(sh),MV2.float)
     # bounds array
-    bnds=Numeric.zeros((nt,2),MV.Float)
-    fvals=Numeric.zeros((nt),MV.Float)
+    bnds=numpy.zeros((nt,2),MV2.float)
+    fvals=numpy.zeros((nt),MV2.float)
     if not statusbar is None:
         import genutil
         prev=0
@@ -205,7 +218,7 @@ def mergeTime(ds,statusbar=1):
         try:  # In order to speeed up, raise an execption to exit the inner loops
             for i in range(nslab):
                 tim=times[i]
-                for it in Numeric.sort(timesleft[i].keys()):
+                for it in numpy.sort(timesleft[i].keys()):
                     t=tim[it]
                     val=timesleft[i][it]
                     if val.value==vals[v]:
@@ -223,13 +236,13 @@ def mergeTime(ds,statusbar=1):
     if not statusbar is None and nt!=1:
         if type(prev[0])!=type(0) : prev[0].destroy()
 
-    t=cdms.createAxis(fvals,bounds=bnds)
+    t=cdms2.createAxis(fvals,bounds=bnds)
     t.designateTime()
     t.id='time'
     t.units=times[0].units
     t.setCalendar(times[0].getCalendar())
     ax[0]=t
-    out=cdms.createVariable(out,id=ds[0].id,axes=ax,copy=0)
+    out=cdms2.createVariable(out,id=ds[0].id,axes=ax,copy=0)
     if out.getOrder(ids=1)!=order0:
         return out(order=order0)
     else:
@@ -339,10 +352,7 @@ class TimeSlicer:
         self.prev=0
         self.title=''
         
-    def get(self,slab,slicerarg=None,criteriaarg=None,statusbar=None,weights=False):
-        return _get(self,slab,slicerarg,criteriaarg,statusbar,weights)
-    
-    def _get(self,slab,slicerarg=None,criteriaarg=None,statusbar=None,weights=False):
+    def get(self,slab,slicerarg=None,criteriaarg=None,statusbar=None,weights=False,sum=False):
         '''
     Returns the slices wanted, appropriately masked
        Input:
@@ -361,7 +371,6 @@ class TimeSlicer:
 
         # retrieve the time axis
         tim=slab.getTime()
-        
         # Let slicer figure out wich slices we want
         slices,bounds,norm=self.slicer(tim,slicerarg)
 ##         print 'Slices:',slices,len(slices)
@@ -372,19 +381,21 @@ class TimeSlicer:
 ##         print 'Norm:',norm[-3:]
         
         # Check we have something
-        if slices==[] : raise 'Error Slicer return nothing for: '+str(slicerarg)
+        if slices==[] :
+            return None
+##             raise 'Error Slicer return nothing for: '+str(slicerarg)
         # How many slices ?
-        out=self.average(slab,slices,bounds,norm,criteriaarg,statusbar,weights=weights)
+        out=self.average(slab,slices,bounds,norm,criteriaarg,statusbar,weights=weights,sum=sum)
         if weights:
             out,w = out
         # Put the dimensions
-        out=cdms.createVariable(out,id=slab.id,copy=0)
+        out=cdms2.createVariable(out,id=slab.id,copy=0)
         for i in range(1,len(slab.shape)):
             out.setAxis(i,slab.getAxis(i))
         # Time axis
         n=len(slices)
-        vals=Numeric.zeros((n),MV.Float)  # time values
-        bnds=Numeric.zeros((n,2),MV.Float) # time bounds
+        vals=numpy.zeros((n),MV2.float)  # time values
+        bnds=numpy.zeros((n,2),MV2.float) # time bounds
         # Retrieve the bounds
         sh=out.shape
         for i in range(sh[0]):
@@ -395,7 +406,7 @@ class TimeSlicer:
             v=v+cdtime.reltime(b1,tim.units).value
             v=v/2.
             vals[i]=v
-        t=cdms.createAxis(vals,bounds=bnds)
+        t=cdms2.createAxis(vals,bounds=bnds)
         t.designateTime()
         t.id=tim.id
         t.units=tim.units
@@ -403,7 +414,7 @@ class TimeSlicer:
         out.setAxis(0,t)
         if weights:
 ##             print out.shape,w.shape
-            w=MV.array(w,id='weights')
+            w=MV2.array(w,id='weights')
             w.setAxisList(out.getAxisList())
         if out.getOrder(ids=1)!=initialorder:
             out = out(order=initialorder)
@@ -415,10 +426,7 @@ class TimeSlicer:
             return out
             
 
-    def departures(self,slab,slicerarg=None,criteriaarg=None,ref=None,statusbar=None):
-        return self._departures(self,slab,slicerarg=slicerarg,criteriaarg=criteriaarg,ref=ref,statusbar=statusbar)
-    
-    def _departures(self,slab,slicerarg=None,criteriaarg=None,ref=None,statusbar=None):
+    def departures(self,slab,slicerarg=None,criteriaarg=None,ref=None,statusbar=None,sum=False):
         '''
     Returns the departures of slab from the result of get
        Input:
@@ -431,19 +439,24 @@ class TimeSlicer:
        Output:
           out : departure of slab from ref
           '''
-        sliced=self._get(slab,slicerarg,criteriaarg,statusbar=statusbar)
+        sliced=TimeSlicer.get(self,slab,slicerarg,criteriaarg,statusbar=statusbar,sum=sum)
 ##         print "sliced:",sliced
+        if sliced is None:
+            return None
         order=sliced.getOrder(ids=1)
         if order[0]!='t' : sliced=sliced(order='t...')
         order2=sliced.getOrder(ids=1)
         if ref is None:
-            ref=MA.average(sliced,0)
+            if sum is False:
+                ref=numpy.ma.average(sliced,0)
+            else:
+                ref = numpy.ma.sum(sliced,0)
         elif len(order2[1:])>0:
             ref=ref(order=order2[1:])
-        if cdms.isVariable(ref):
-            out=cdms.asVariable(sliced(raw=1)-ref(raw=1))
+        if cdms2.isVariable(ref):
+            out=cdms2.asVariable(sliced(raw=1)-ref(raw=1))
         else:
-            out=cdms.asVariable(sliced(raw=1)-ref)
+            out=cdms2.asVariable(sliced(raw=1)-ref)
         # put the axes back
         out.id=slab.id
         for i in range(len(sliced.shape)):
@@ -454,7 +467,7 @@ class TimeSlicer:
             return out
 
 
-    def average(self,slab,slices,bounds,norm,criteriaarg=None,statusbar=None,weights=False):
+    def average(self,slab,slices,bounds,norm,criteriaarg=None,statusbar=None,weights=False,sum=False):
         '''
     Return the average of the result of slicer
        Input:
@@ -469,16 +482,16 @@ class TimeSlicer:
         n=len(slices)
         sh=list(slab.shape)
         sh[0]=n
-        out  = MA.zeros(sh,dtype=Numeric.Float)
-        wout = MA.ones(sh,dtype=Numeric.Float)
+        out  = numpy.ma.zeros(sh,dtype=numpy.float)
+        wout = numpy.ma.ones(sh,dtype=numpy.float)
         for i in range(n):
             self.statusbar1(i,n,statusbar)
             sub=slices[i]
             sh[0]=len(sub)
-            msk=Numeric.ones(sh,typecode=Numeric.Float)
+            msk=numpy.ma.ones(sh,dtype=numpy.float)
             subb=bounds[i]
             nrm=norm[i][0]
-##             print sub,subb,nrm,'are subb, nrm',len(sub)
+##             print sub,subb,nrm,'are subb, nrm',len(sub),sum
 ##             if len(sub)==1:
 ##                 out[i]=slab[sub[0]]
 ##                 w=float(subb[0][1]-subb[0][0])/nrm
@@ -487,20 +500,26 @@ class TimeSlicer:
             for j in range(len(sub)):
                 w=float(subb[j][1]-subb[j][0])/nrm
 ##                 print j,w
-                m=MA.getmask(slab[sub[j]])
+                m=numpy.ma.getmask(slab[sub[j]])
                 if m is not None:
-                    msk[j]=msk[j]*(1.-m.astype(MV.Float))*w
+                    msk[j]=msk[j]*(1.-m.astype(MV2.float))*w
                 else:
                     msk[j]=msk[j]*w
-##                 print msk.shape,slab[sub[0]:sub[-1]+1].shape
-                out[i]=MA.sum(slab[sub[0]:sub[-1]+1]*msk,axis=0)
-                wout[i]=MA.sum(msk,axis=0)
-                out[i]=out[i]/wout[i]
-                
+                if len(sub)>1:
+                    out[i]=numpy.ma.sum(msk*slab[sub[0]:sub[-1]+1].asma(),axis=0)
+                    wout[i]=numpy.ma.sum(msk,axis=0)
+                    if sum is False : out[i]=out[i]/wout[i]
+##                     print 'case long:',wout[i,0,0]
+                else:
+##                     print 'case 1:',out.shape,msk.shape,slab[sub[0]].asma().shape
+                    out[i] = MV2.array(slab[sub[0]]).asma()
+##                     if sum is False:
+##                         out[i] = out[i]/msk
+
             if criteriaarg is not None:
-                msk=cdms.asVariable(msk)
+                msk=cdms2.asVariable(msk)
                 ax=msk.getAxis(0)
-                b=Numeric.array(bounds[i])
+                b=numpy.array(bounds[i])
                 ax.setBounds(b)
                 msk.setAxis(0,ax)
                 out[i]=self.criteria(out[i],msk,[norm[i][1],norm[i][1]+norm[i][0],],criteriaarg)
@@ -612,21 +631,28 @@ def monthBasedSlicer(tim,arg=None):
             else: ## yes
 ##                 print 'in here ?',b
                 t0=cdtime.comptime(yr,months[0])
-                t1=cdtime.comptime(yr+1,months[-1]+1)                
+                t1=cdtime.comptime(yr+1,months[-1]+1)              
         else:
             t0=cdtime.comptime(yr,months[0])
             if months[-1]!=12:
                 t1=cdtime.comptime(yr,months[-1]+1)
             else:
                 t1=cdtime.comptime(yr+1)
+        if t0.cmp(b1.tocomp(cal))>0:
+            t1=t1.add(-1,cdtime.Year)
+            t0=t0.add(-1,cdtime.Year)
+        if t1.cmp(b0.tocomp(cal))<0:
+            t1=t1.add(1,cdtime.Year)
+            t0=t0.add(1,cdtime.Year)
         t1=t1.torel(units,cal)
+##         if i<5:print 't1 after:',t1.tocomp(cal)
         t0=t0.torel(units,cal)
         lenseas=float(t1.value-t0.value)
         # Now checks if we overlap the season
-##         print b0.tocomp(),b1.tocomp(),t0.tocomp(),t1.tocomp(),i
-        if t0.cmp(b0)>-1:        # cell starts before season
-##             print 'index t0>=b0 ,time',i,tim[i],t0.tocomp(),b0.tocomp(),b0
-            if b1.cmp(t1)>=0 :            # and ends after the season
+##         if i<5: print '---',i,b0.tocomp(cal),b1.tocomp(cal),t0.tocomp(cal),t1.tocomp(cal)
+##         if i<5: print '---',i,t0.cmp(b0),b1.cmp(t1),t1.cmp(b0)
+        if t0.cmp(b0)>-1:        # cell starts after season started
+            if b1.cmp(t1)>=0 :    # and ends before the season ends
                 sub.append(i)
                 subb.append([t0.value,t1.value])
                 subs.append([lenseas,t0.value])
@@ -672,6 +698,7 @@ def monthBasedSlicer(tim,arg=None):
                     subs=[]
         else:
             iout=1
+##         if i<5: print "ok we got iuot: ",iout,sub
         if iout:
             if sub!=[]:
                 slices.append(sub)
@@ -902,7 +929,7 @@ def generalCriteria(slab,mask,spread,arg):
             if you would rather use a cyclicalcnetroid pass: "cyclical" as an Xtra argument
     '''
     # Reads the arguments
-    slab=MV.asVariable(slab)
+    slab=MV2.asVariable(slab)
     sh=slab.shape
 ##     print slab,mask,spread,arg
     if not arg is None:
@@ -911,8 +938,8 @@ def generalCriteria(slab,mask,spread,arg):
     # prepare the mask
 ##     print 'Mask shape',mask.shape
     if not min is None:
-        fmask=MV.sum(mask, axis=0).filled()
-        fmask=Numeric.less(fmask,min)
+        fmask=MV2.sum(mask, axis=0).filled()
+        fmask=numpy.less(fmask,min)
 ##         print 'fmask,slab',fmask.shape,slab.shape
 ##         import sys,vcs
 ##         x=vcs.init()
@@ -920,18 +947,18 @@ def generalCriteria(slab,mask,spread,arg):
 ##         sys.stdin.readline()
 ##         x.clear()
 ##         x.plot(fmask)
-        slab=MA.masked_where(fmask,slab)
+        slab=numpy.ma.masked_where(fmask,slab)
     if not centro is None:
-        a=MA.equal(mask,0.)
-        a=MV.masked_where(a,a)
+        a=numpy.ma.equal(mask,0.)
+        a=MV2.masked_where(a,a)
         a.setAxis(0,mask.getAxis(0))
         mask=a
         if 'cyclical' in arg:
             c=cyclicalcentroid(mask,spread)
         else:
             c=centroid(mask,spread)
-            c=MA.absolute(c)
-        slab=MA.masked_where(MA.greater_equal(c,centro),slab)
+            c=numpy.ma.absolute(c)
+        slab=numpy.ma.masked_where(numpy.ma.greater_equal(c,centro),slab)
     return slab
 
 def setAxisTimeBoundsDaily(axis,frequency=1):
@@ -952,7 +979,7 @@ def setAxisTimeBoundsDaily(axis,frequency=1):
     units=tim.units
     timc=tim.asComponentTime()
     n=len(tim)
-    bnds=Numeric.zeros((n,2),Numeric.Float)
+    bnds=numpy.zeros((n,2),numpy.float)
     frequency=int(frequency)
     for i in range(n):
         t=timc[i]
@@ -997,9 +1024,9 @@ def setTimeBoundsDaily(obj,frequency=1):
          for   hourly data use frequency=24
     Origin of day is always midnight
     """
-    if isinstance(obj,cdms.AbstractAxis):
+    if isinstance(obj,cdms2.AbstractAxis):
         setAxisTimeBoundsDaily(obj,frequency=frequency)
-    elif isinstance(obj,cdms.MV2.AbstractVariable):
+    elif isinstance(obj,cdms2.MV2.AbstractVariable):
         setSlabTimeBoundsDaily(obj,frequency=frequency)
     return
 
@@ -1018,7 +1045,7 @@ def setAxisTimeBoundsMonthly(axis,stored=0):
     units=tim.units
     timc=tim.asComponentTime()
     n=len(tim)
-    bnds=Numeric.zeros((n,2),Numeric.Float)
+    bnds=numpy.zeros((n,2),numpy.float)
     for i in range(n):
         t=timc[i]
         d=t.day
@@ -1057,9 +1084,9 @@ def setTimeBoundsMonthly(obj,stored=0):
     or
     cdutil.times.setAxisTimeBoundsMonthly(tim,stored=0)
     """
-    if isinstance(obj,cdms.AbstractAxis):
+    if isinstance(obj,cdms2.AbstractAxis):
         setAxisTimeBoundsMonthly(obj,stored=stored)
-    elif isinstance(obj,cdms.MV2.AbstractVariable):
+    elif isinstance(obj,cdms2.MV2.AbstractVariable):
         setSlabTimeBoundsMonthly(obj,stored=stored)
     return
 
@@ -1076,7 +1103,7 @@ def setAxisTimeBoundsYearly(axis):
     units=tim.units
     timc=tim.asComponentTime()
     n=len(tim)
-    bnds=Numeric.zeros((n,2),Numeric.Float)
+    bnds=numpy.zeros((n,2),numpy.float)
     for i in range(n):
         t=timc[i]
         y=t.year
@@ -1105,14 +1132,74 @@ def setTimeBoundsYearly(obj):
     or
     cdutil.times.setSlabTimeBoundsYearly(time_axis)
 """
-    if isinstance(obj,cdms.AbstractAxis):
+    if isinstance(obj,cdms2.AbstractAxis):
         setAxisTimeBoundsYearly(obj)
-    elif isinstance(obj,cdms.MV2.AbstractVariable):
+    elif isinstance(obj,cdms2.MV2.AbstractVariable):
         setSlabTimeBoundsYearly(obj)
     return
 
 
+def insert_monthly_seasons(data,seasons):
+    """ Takes data assumed to be in monthly increments (1,2,3,etc...)
+    And tries to add seasons into it is actually missing
+    For this takes each time step, and see if a number of "season" could be inserted between these two
+    """
+    t = data.getTime()
+    axes=data.getAxisList()
+    cal = t.getCalendar()
+    tc = t.asComponentTime()
+    tbnd = t.getBounds()
+    sh = list(data.shape)
+    sh[0]=1
+    adds = []
+    for season in seasons:
+##         print 'Dealing with season:',season
+        axv = []
+        bnds =[]
+        idx = getMonthIndex(season)
+        for i in range(data.shape[0]-1):
+            tscan=cdtime.reltime(tbnd[i][1]  ,t.units).tocomp(t.getCalendar()) # end of current time step
+            tnext=cdtime.reltime(tbnd[i+1][0],t.units).tocomp(t.getCalendar()) # beginnig of next time step
 
+            # Begining of the season
+            tb = cdtime.comptime(tscan.year,idx[0])
+            if tb.cmp(tscan) == -1:
+                tb.add(1,cdtime.Year)
+            # end of season
+            te=tb.add(len(idx),cdtime.Month)
+##             print season,tb,te,tscan,tnext,tb.cmp(tscan)>-1, te.cmp(tnext)<1,tb.cmp(tscan)>-1 and te.cmp(tnext)<1
+            # ok now we're going to create the "n" seasons
+            while  te.cmp(tnext)<1:
+                if tb.cmp(tscan)>-1:
+                    t0 = tb.torel(t.units,cal).value
+                    t1 = te.torel(t.units,cal).value
+                    bnds.append([t0,t1])
+                    # ok that was the bounds, now computes the mid value
+                    tm = cdtime.reltime((t0+t1)/2.,t.units)
+                    # ok sometimes we need to round up these things (months since especially)
+                    tm = tm.torel(tm.units,t.getCalendar()).value
+                    axv.append(tm)
+##                     print 'adding:',i,season,tb,te
+                tb=tb.add(1,cdtime.Year)
+                te=te.add(1,cdtime.Year)
+        n=len(axv)
+##         print 'N is:',n,'for season',season
+        if n!=0:
+            sh[0]=n
+            tmp = MV2.array(numpy.ma.masked_all(sh,dtype=data.dtype))
+            ax = cdms2.createAxis(axv,bounds=numpy.array(bnds))
+            ax.id = t.id
+            ax.designateTime()
+            ax.units=t.units
+            ax.setCalendar(cal)
+            axes[0]=ax
+            tmp.setAxisList(axes)
+            adds.append(tmp)
+    if adds!=[]:
+        adds.insert(0,data)
+        return mergeTime(adds,statusbar=None)
+    return data
+    
 class ASeason(TimeSlicer):
     def __init__(self):
         self.prev=0
@@ -1136,7 +1223,7 @@ class Seasons(ASeason):
         self.prev=0
         self.title=''
 
-    def get(self,slab,slicerarg=None,criteriaarg=None,statusbar=None):
+    def get(self,slab,slicerarg=None,criteriaarg=None,statusbar=None,sum=False):
         '''Get the seasons asked for and return them in chronological order
         i.e. if you asked for DJF and JJA and the first season of your dataset is JJA you will have a JJA first !!!!
         Check your time axis coordinate !!!
@@ -1147,25 +1234,34 @@ class Seasons(ASeason):
         '''
         s=[]
         i=-1
+        missing_seasons = []
         for season in self.seasons:
             i=i+1
             self.statusbar1(i,len(self.seasons),statusbar)
-            s.append(self._get(slab,season,criteriaarg,statusbar=statusbar))
+            s.append(TimeSlicer.get(self,slab,season,criteriaarg,statusbar=statusbar,sum=sum))
+            if s[-1] is None: # ok no data for that season
+                s.pop(-1)
+                missing_seasons.append(season)
         self.statusbar2(statusbar)
         return mergeTime(s,statusbar=statusbar)
 
-    def departures(self,slab,slicerarg=None,criteriaarg=None,ref=None,statusbar=None):
+    def departures(self,slab,slicerarg=None,criteriaarg=None,ref=None,statusbar=None,sum=False):
         ''' Return the departures for the list of season you specified, returned in chronological order
         i.e. if you asked for DJF and JJA and the first season of your dataset is JJA you will have a JJA first !!!!
         Check your time axis coordinate !!!
         To pass a specific array from which to compute departures, please pass 1 per season (or None if we should compute it)
         for info one default departures see: departures2.__doc__
         '''
+        if not cdms2.isVariable(ref) and ref is not None:
+            raise RuntimeError,"reference must be a variable (MV2)"
         s=[]
         # Loop through the seasons
-        self.departures_seasons=self.seasons
-        for i in range(len(self.departures_seasons)):
-            self.seasons=[self.departures_seasons[i]]
+        self.departures_seasons=[]
+        for ss in self.seasons:
+            self.departures_seasons.append(ss)
+        n = len(self.departures_seasons)
+        for i in range(n):
+            self.seasons=[self.departures_seasons[i],]
             # Do we want a statusbar ?
             if not statusbar is None:
                 if not type(statusbar) in [type([]),type(())]:
@@ -1176,20 +1272,26 @@ class Seasons(ASeason):
                     statusbar[0]=str([float(i),len(self.departures_seasons)])
             # Did we pass a reference to copmute the departures from ?
             if not ref is None :
+                if not ref.getAxis(0).isTime():
+                    ref = ref(order='t...')
+                if ref.shape[0]!=len(self.departures_seasons):
+                    self.seasons=self.departures_seasons
+                    raise ValueError,"The reference time (or first) dimension does not match the number of dimensions"
                 newref=ref[i]
             else:
                 newref=None
             # now computes the departures
-            out=self._departures(slab,slicerarg=self.departures_seasons[i],criteriaarg=criteriaarg,statusbar=statusbar,ref=newref)
+            out=TimeSlicer.departures(self,slab,slicerarg=self.departures_seasons[i],criteriaarg=criteriaarg,statusbar=statusbar,ref=newref,sum=sum)
             # Adds it to the list
-            s.append(out)
+            if out is not None:
+                s.append(out)
         self.seasons=self.departures_seasons
         if not statusbar is None and len(self.seasons)!=1 :
             if type(statusbar) in [type([]),type(())]: statusbar.pop(0)
         # Now merges the stuff
         return mergeTime(s,statusbar=statusbar)
                                     
-    def climatology(self,slab,criteriaarg=None,criteriaargclim=None,statusbar=None):
+    def climatology(self,slab,criteriaarg=None,criteriaargclim=None,statusbar=None,sum=False):
         ''' Compute the climatology from a slab
         Input:
           slab
@@ -1209,9 +1311,9 @@ class Seasons(ASeason):
         sh=list(slab.shape)
         nseason=len(self.seasons)
         sh[0]=nseason
-        s=MA.zeros(sh,MV.Float)
-        vals=Numeric.zeros(nseason,MV.Float)
-        bnds=Numeric.zeros((nseason,2),MV.Float)
+        s=numpy.ma.zeros(sh,MV2.float)
+        vals=numpy.zeros(nseason,MV2.float)
+        bnds=numpy.zeros((nseason,2),MV2.float)
         tim=slab.getTime()
         for i in range(nseason):
             if not statusbar is None:
@@ -1228,34 +1330,40 @@ class Seasons(ASeason):
             v2=cdtime.reltime(months[-1],'months since 0').torel('days since 0',timecalendar)
             vals[i]=float(v1.value+v2.value)/2.
             bnds[i]=[v1.value,v2.value]
-            tmp,w=self._get(slab,self.seasons[i],criteriaarg,statusbar=statusbar,weights=True)
-            tmp2=MA.getmask(tmp)
+            tmp = TimeSlicer.get(self,slab,self.seasons[i],criteriaarg,statusbar=statusbar,weights=True,sum=sum)
+            if tmp is None:
+                return None
+            tmp,w=tmp
+            tmp2=numpy.ma.getmask(tmp)
             if tmp2 is None:
-                tmp2=Numeric.ones(tmp.shape,typecode=Numeric.Float)*w
+                tmp2=numpy.ones(tmp.shape,dtype=numpy.float)*w
             else:
-                tmp2=tmp2.astype(MV.Float)
+                tmp2=tmp2.astype(MV2.float)
                 tmp2=(1.-tmp2)*w
             tim=tmp.getTime()
             bnd=tim.getBounds()
             tot=0
-            if not cdms.isVariable(tmp2):
-                tmp2=cdms.asVariable(tmp2)
+            if not cdms2.isVariable(tmp2):
+                tmp2=cdms2.asVariable(tmp2)
             tmp2.setAxis(0,tim)
             if  criteriaargclim is not None:
                 tmp=self.criteria(tmp,tmp2,bnds[i],criteriaargclim)
             else:
-                tmp=MA.average(tmp,weights=tmp2)                
+                if sum is False:
+                    tmp=numpy.ma.average(tmp,weights=tmp2,axis=0)
+                else:
+                    tmp = numpy.ma.sum(tmp*tmp2,axis=0)
             s[i]=tmp
         if not statusbar is None and len(self.seasons)!=1 :
             if type(statusbar) in [type([]),type(())]: statusbar.pop(0)
-        t=cdms.createAxis(vals,bounds=bnds)
+        t=cdms2.createAxis(vals,bounds=bnds)
         t.id='time'
         t.units='days since 0'
         t.designateTime()
         t.setCalendar(tim.getCalendar())
         ax=slab.getAxisList()
         ax[0]=t
-        s=cdms.createVariable(s,id=slab.id,axes=ax,copy=0)
+        s=cdms2.createVariable(s,id=slab.id,axes=ax,copy=0)
         if s.getOrder(ids=1)!=order:
             return s(order=order)
         else:

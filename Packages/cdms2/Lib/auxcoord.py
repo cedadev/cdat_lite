@@ -4,7 +4,7 @@ CDMS 1-D auxiliary coordinates.
 Note: In contrast to Axis objects (concrete classes subclassed from AbstractAxis), auxiliary coordinate variables are not monotonic in value, and do not share a name with the dimension.
 """
 
-import internattr
+## import internattr
 from error import CDMSError
 from coord import AbstractCoordinateAxis
 from fvariable import FileVariable
@@ -59,7 +59,7 @@ class DatasetAuxAxis1D(AbstractAuxAxis1D, DatasetVariable):
         else:
             return "<DatasetAuxAxis1D: %s, file: **CLOSED**>"%self.id
 
-internattr.initialize_internal_attributes(DatasetAuxAxis1D) # Copy internal attrs from parents
+## internattr.initialize_internal_attributes(DatasetAuxAxis1D) # Copy internal attrs from parents
 
 class FileAuxAxis1D(AbstractAuxAxis1D, FileVariable):
 
@@ -74,7 +74,7 @@ class FileAuxAxis1D(AbstractAuxAxis1D, FileVariable):
         else:
             return "<FileAuxAxis1D: %s, file: **CLOSED**>"%self.id
 
-internattr.initialize_internal_attributes(FileAuxAxis1D) # Copy internal attrs from parents
+## internattr.initialize_internal_attributes(FileAuxAxis1D) # Copy internal attrs from parents
 
 class TransientAuxAxis1D(AbstractAuxAxis1D, TransientVariable):
 
@@ -92,5 +92,5 @@ class TransientAuxAxis1D(AbstractAuxAxis1D, TransientVariable):
         if axes is not None:
             self.setBounds(bounds)
 
-internattr.initialize_internal_attributes(TransientAuxAxis1D) # Copy internal attrs from parents
+## internattr.initialize_internal_attributes(TransientAuxAxis1D) # Copy internal attrs from parents
 

@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 print 'Test 9: cu emulation...',
-import cu, cdms2 as cdms, MA, os, sys
+try:
+    import sys, cu, cdms2, numpy, os
+except:
+    sys.exit()
 from markError import clearError,markError,reportError
 clearError()
 f = cu.open(os.path.join(sys.prefix,'sample_data','test.xml'))
@@ -17,10 +20,10 @@ assert 'flavor' in c.listattributes()
 c.setdimattribute(0, 'nice', 1)
 assert 'nice' in c.listdimattributes(0)
 assert c.getAxis(0).nice == 1
-g = cdms.open(os.path.join(sys.prefix,'sample_data','test.xml'))
+g = cdms2.open(os.path.join(sys.prefix,'sample_data','test.xml'))
 gc = g.variables['u']
-assert MA.allclose(c[...], gc[...])
-assert MA.allclose(c1[...], gc.getRegion(time=cu.dimensionrange(2.0,390.0)))
+assert numpy.ma.allclose(c[...], gc[...])
+assert numpy.ma.allclose(c1[...], gc.getRegion(time=cu.dimensionrange(2.0,390.0)))
 
 #Some of these tests assume axis 0 is time.
 list1 = c.getAxisList()

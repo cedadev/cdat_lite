@@ -1,8 +1,9 @@
 ## Automatically adapted for numpy.oldnumeric Aug 01, 2007 by 
+## Further modified to be pure new numpy June 24th 2008
 
 """Bin index for non-rectilinear grids"""
 
-import _bindex, numpy.oldnumeric as Numeric
+import _bindex, numpy 
 
 def bindexHorizontalGrid(latlin, lonlin):
     """Create a bin index for a horizontal grid.
@@ -12,8 +13,8 @@ def bindexHorizontalGrid(latlin, lonlin):
     Returns the index.
     """
 
-    head = Numeric.zeros(720*360)       # This should match NBINI, NBINJ in bindex.c
-    next = Numeric.zeros(len(latlin))
+    head = numpy.zeros(720*360,dtype='l')       # This should match NBINI, NBINJ in bindex.c
+    next = numpy.zeros(len(latlin),dtype='l')
     _bindex.bindex(latlin, lonlin, head, next)
     
     return (head, next)
@@ -30,7 +31,7 @@ def intersectHorizontalGrid(latspecs, lonspecs, latlin, lonlin, index):
     the intersection.
     """
     
-    points = Numeric.zeros(len(latlin))
+    points = numpy.zeros(len(latlin),dtype='l')
     if latspecs is None:
         slat = -90.0
         elat = 90.0

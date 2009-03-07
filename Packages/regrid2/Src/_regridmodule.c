@@ -12,7 +12,7 @@
 \******************************************************************************************/
 
 #include "Python.h"
-#include "numpy/oldnumeric.h" 
+#include "numpy/arrayobject.h" 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -111,6 +111,7 @@ static PyObject *rgd_gridattr(PyObject *self, PyObject *args)     /* args: (tupl
   int size;                       /* size of the grid pts and wts arrays */ 
   int sizep;                      /* size of the grid bnds array */ 
 
+  npy_intp npsize,npsizep;
   float blon;                     /* beginning longitude */
   float elon;                     /* ending longitude */
 
@@ -161,14 +162,15 @@ static PyObject *rgd_gridattr(PyObject *self, PyObject *args)     /* args: (tupl
   }
 
   /* create the 1D python array objects */
-
-  object_pts = (PyArrayObject *)PyArray_FromDims(1, (int *)&size, PyArray_DOUBLE);
+  npsize = (npy_intp) size;
+  npsizep = (npy_intp) sizep;
+  object_pts = (PyArrayObject *)PyArray_SimpleNew(1, (npy_intp *)&npsize, PyArray_DOUBLE);
   if(!object_pts) PyErr_NoMemory();
 
-  object_wts = (PyArrayObject *)PyArray_FromDims(1, (int *)&size, PyArray_DOUBLE);
+  object_wts = (PyArrayObject *)PyArray_SimpleNew(1, (npy_intp *)&npsize, PyArray_DOUBLE);
   if(!object_wts) PyErr_NoMemory();
 
-  object_bnds = (PyArrayObject *)PyArray_FromDims(1, (int *)&sizep, PyArray_DOUBLE);
+  object_bnds = (PyArrayObject *)PyArray_SimpleNew(1, (npy_intp *)&npsizep, PyArray_DOUBLE);
   if(!object_bnds) PyErr_NoMemory();
 
   /* use pointers to the data attribute in the python array  objects */
@@ -269,7 +271,7 @@ static PyObject *rgd_pressattr(PyObject *self, PyObject *args)
      "points ", "weights ",
      "bounds "
   };
-
+  npy_intp np_nlev, np_nlevp;
     /* ----------------------- Start Execution ------------------------------------*/
 
   if (!PyArg_ParseTuple(args, "iO", &nlev,  &object_pts)) 
@@ -280,12 +282,14 @@ static PyObject *rgd_pressattr(PyObject *self, PyObject *args)
 
   nlevp = nlev + 1;
 
+  np_nlev = (npy_intp) nlev;
+  np_nlevp = (npy_intp) nlevp;
   /* create the 1D python array objects */
 
-  object_wts = (PyArrayObject *)PyArray_FromDims(1, (int *)&nlev, PyArray_DOUBLE);
+  object_wts = (PyArrayObject *)PyArray_SimpleNew(1, (npy_intp *)&np_nlev, PyArray_DOUBLE);
   if(!object_wts) PyErr_NoMemory();
 
-  object_bnds = (PyArrayObject *)PyArray_FromDims(1, (int *)&nlevp, PyArray_DOUBLE);
+  object_bnds = (PyArrayObject *)PyArray_SimpleNew(1, (npy_intp *)&np_nlevp, PyArray_DOUBLE);
   if(!object_bnds) PyErr_NoMemory();
 
   /* use pointers to the data attribute in the python array  objects */
@@ -503,6 +507,7 @@ static PyObject *rgd_maparea(PyObject *self, PyObject *args)
     int iflag;                              /* used as a flag */
     float *bwinl, *beinl;
      
+    npy_intp np_nlono,np_nlonsize,np_nlato,np_nlatsize;
 
 
     FILE *fp;                               /* file used in ascii write */ 
@@ -583,27 +588,32 @@ static PyObject *rgd_maparea(PyObject *self, PyObject *args)
     nlonsize = nloni + nlono; 
     nlatsize = nlati + nlato; 
 
+
+    np_nlono = (npy_intp) nlono;
+    np_nlonsize = (npy_intp) nlonsize;
+    np_nlato = (npy_intp) nlato;
+    np_nlatsize = (npy_intp) nlatsize;
     /* allocate memory for arrays constructed in this routine to pass to python*/
 
     /* create the 1D python array objects */
 
-    object_londx = (PyArrayObject *)PyArray_FromDims(1, (int *)&nlono, PyArray_INT);
-    if(!object_londx) PyErr_NoMemory();
+    object_londx = (PyArrayObject *)PyArray_SimpleNew(1, (npy_intp *)&np_nlono, PyArray_INT);
+    if(object_londx==NULL) PyErr_NoMemory();
 
-    object_lonpt = (PyArrayObject *)PyArray_FromDims(1, (int *)&nlonsize, PyArray_INT);
-    if(!object_lonpt) PyErr_NoMemory();
+    object_lonpt = (PyArrayObject *)PyArray_SimpleNew(1, (npy_intp *)&np_nlonsize, PyArray_INT);
+    if(object_lonpt==NULL) PyErr_NoMemory();
 
-    object_wtlon = (PyArrayObject *)PyArray_FromDims(1, (int *)&nlonsize, PyArray_FLOAT);
-    if(!object_wtlon) PyErr_NoMemory();
+    object_wtlon = (PyArrayObject *)PyArray_SimpleNew(1, (npy_intp *)&np_nlonsize, PyArray_FLOAT);
+    if(object_wtlon==NULL) PyErr_NoMemory();
 
-    object_latdx = (PyArrayObject *)PyArray_FromDims(1, (int *)&nlato, PyArray_INT);
-    if(!object_latdx) PyErr_NoMemory();
+    object_latdx = (PyArrayObject *)PyArray_SimpleNew(1, (npy_intp *)&np_nlato, PyArray_INT);
+    if(object_latdx==NULL) PyErr_NoMemory();
 
-    object_latpt = (PyArrayObject *)PyArray_FromDims(1, (int *)&nlatsize, PyArray_INT);
-    if(!object_latpt) PyErr_NoMemory();
+    object_latpt = (PyArrayObject *)PyArray_SimpleNew(1, (npy_intp *)&np_nlatsize, PyArray_INT);
+    if(object_latpt==NULL) PyErr_NoMemory();
 
-    object_wtlat = (PyArrayObject *)PyArray_FromDims(1, (int *)&nlatsize, PyArray_FLOAT);
-    if(!object_wtlat) PyErr_NoMemory();
+    object_wtlat = (PyArrayObject *)PyArray_SimpleNew(1, (npy_intp *)&np_nlatsize, PyArray_FLOAT);
+    if(object_wtlat==NULL) PyErr_NoMemory();
 
 
     /* assign c pointers to the data attribute in the python array  objects */
@@ -1019,6 +1029,7 @@ static PyObject *rgd_rgdarea(PyObject *self, PyObject *args)
     int datasize;                  /* size of output data */
     int number_dim;                /* number of dimensions in the data */
     int dim_array[4] = {0,0,0,0};  /* array with size of the array */
+    npy_intp np_dim_array[4] = {0,0,0,0};  /* array with size of the array */
     int nlonsize;                  /* nloni + nlono */
     int nlatsize;                  /* nlati + nlato */
     int n2D;                       /* index into a 2D array */
@@ -1109,7 +1120,11 @@ static PyObject *rgd_rgdarea(PyObject *self, PyObject *args)
         dim_array[itim2] = ntim2;
     }
 
-    object_amskout = (PyArrayObject *)PyArray_FromDims(number_dim, (int *)&dim_array, PyArray_FLOAT);
+    np_dim_array[0]=(npy_intp)dim_array[0];
+    np_dim_array[1]=(npy_intp)dim_array[1];
+    np_dim_array[2]=(npy_intp)dim_array[2];
+    np_dim_array[3]=(npy_intp)dim_array[3];
+    object_amskout = (PyArrayObject *)PyArray_SimpleNew(number_dim, (npy_intp *)&np_dim_array, PyArray_FLOAT);
     if(!object_amskout) PyErr_NoMemory();
 
     amskout  = (float *)object_amskout->data; 
@@ -1494,7 +1509,7 @@ static PyObject *rgd_rgdarea(PyObject *self, PyObject *args)
     /* ------------------------------------------------------- */
 
     /* NB! Don't use Py_BuildValue here, since it increments the reference count!
-       PyArray_FromDims has already incremented it. */
+       PyArray_SimpleNew has already incremented it. */
     return PyArray_Return(object_amskout);
     
 }
@@ -1623,6 +1638,8 @@ static PyObject *rgd_maplength(PyObject *self, PyObject *args)
        "bnin ", "bnout ", "bsin ", "bsout "
     };
 
+    npy_intp np_nlatsize,np_nlato;
+
     /* python array transform variables */
 
     PyArrayObject *object_latdx;      /* object pointer to 1D array to hold data */
@@ -1669,15 +1686,17 @@ static PyObject *rgd_maplength(PyObject *self, PyObject *args)
 
     nlatsize = nlati + nlato; 
 
+    np_nlatsize = (npy_intp) nlatsize;
+    np_nlato = (npy_intp) nlato;
     /* create the 1D python array objects */
 
-    object_latdx = (PyArrayObject *)PyArray_FromDims(1, (int *)&nlato, PyArray_INT);
+    object_latdx = (PyArrayObject *)PyArray_SimpleNew(1, (npy_intp *)&np_nlato, PyArray_INT);
     if(!object_latdx) PyErr_NoMemory();
 
-    object_latpt = (PyArrayObject *)PyArray_FromDims(1, (int *)&nlatsize, PyArray_INT);
+    object_latpt = (PyArrayObject *)PyArray_SimpleNew(1, (npy_intp *)&np_nlatsize, PyArray_INT);
     if(!object_latpt) PyErr_NoMemory();
 
-    object_wtlat = (PyArrayObject *)PyArray_FromDims(1, (int *)&nlatsize, PyArray_FLOAT);
+    object_wtlat = (PyArrayObject *)PyArray_SimpleNew(1, (npy_intp *)&np_nlatsize, PyArray_FLOAT);
     if(!object_wtlat) PyErr_NoMemory();
 
 

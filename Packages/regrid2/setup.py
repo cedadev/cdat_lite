@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from distutils.core import setup, Extension
+from numpy.distutils.core import setup, Extension
 import os, sys
 import numpy
 

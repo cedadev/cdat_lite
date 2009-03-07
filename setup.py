@@ -29,7 +29,7 @@ CDAT_HOME_URL = 'http://www-pcmdi.llnl.gov/software-portal/cdat'
 cdat_release = '5.0'
 cdat_tag = ''
 cdunifpp_version = '0.13pre2'
-cdat_lite_version = '0.2.9pre3'
+cdat_lite_version = '0.3pre1'
 
 
 long_description = """
@@ -56,7 +56,10 @@ def copyScripts(scripts=['cdscan', 'cddump']):
 
     """
     for script in scripts:
-        src = os.path.abspath(os.path.join('libcdms/src/python', script))
+        src = os.path.abspath(os.path.join('Packages/cdms2/Script', script))
+        if not os.path.exists(src):
+            src = os.path.abspath(os.path.join('libcdms/src/python', script))
+            
         dest = os.path.abspath(os.path.join('cdat_lite', 'scripts', script+'.py'))
         shutil.copy(src, dest)
 
