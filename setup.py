@@ -8,8 +8,8 @@ import sys, os, shutil
 from ez_setup import use_setuptools
 use_setuptools()
 
-from setuptools import setup, Extension
-from setup_util import build_ext, makeExtension
+from setuptools import setup, Extension, find_packages
+from setup_util import build_ext, makeExtension, buildLibTree
 
 NDG_EGG_REPOSITORY = 'http://ndg.nerc.ac.uk/dist/'
 CDAT_LITE_URL = 'http://proj.badc.rl.ac.uk/ndg/wiki/CdatLite'
@@ -29,7 +29,7 @@ CDAT_HOME_URL = 'http://www-pcmdi.llnl.gov/software-portal/cdat'
 cdat_release = '5.0'
 cdat_tag = ''
 cdunifpp_version = '0.13pre2'
-cdat_lite_version = '0.3pre1'
+cdat_lite_version = '0.3pre2'
 
 
 long_description = """
@@ -68,6 +68,19 @@ def copyScripts(scripts=['cdscan', 'cddump']):
         
 copyScripts()
 
+buildLibTree(packageRoots={'unidata': 'Packages/unidata/Lib',
+                           'cdms2': 'Packages/cdms2/Lib',
+                           'cdutil': 'Packages/cdutil/Lib',
+                           'xmgrace': 'Packages/xmgrace/Lib',
+                           'genutil': 'Packages/genutil/Lib',
+                           'Properties': 'Packages/Properties/Lib',
+                           'regrid2': 'Packages/regrid2/Lib',
+                           'kinds': 'Packages/kinds/Lib',
+                           'ncml': 'Packages/ncml/Lib',
+                           'cdat_lite': 'cdat_lite',
+                           },
+             mods=['Packages/cdms2/MV2.py'],
+             )
 #------------------------------------------------------------------------------
 
 # As from CDAT-4.3 we must use Python-2.5.  The C extensions won't compile
@@ -112,6 +125,10 @@ import numpy
 
 #------------------------------------------------------------------------------
 
+# Remove the libcdms makefile.  This is the trigger that causes
+# libcdms to be rebuilt when extensions are built.
+if os.path.exists('libcdms/Makefile'):
+    os.remove('libcdms/Makefile')
     
 setup(name='cdat_lite',
       description="Climate Data Analysis tools, core components",
@@ -134,27 +151,11 @@ setup(name='cdat_lite',
         
 
       dependency_links = [NDG_EGG_REPOSITORY],
-      install_requires = ['setuptools>=0.6c1'],
+      install_requires = ['setuptools>=0.6c1', 'numpy'],
       zip_safe = False,
       
-      packages = ['unidata', 'cdms2', 'cdutil', 'xmgrace', 'genutil',
-                  'PropertiedClasses', 'regrid2', 'kinds',
-                  'cdat_lite', 'cdat_lite.clib', 'cdat_lite.scripts', 'cdat_lite.test'],
-      py_modules = ['MV2'],
-      package_dir = {'': 'Packages/cdms2',
-                     'unidata': 'Packages/unidata/Lib',
-                     'cdms2': 'Packages/cdms2/Lib',
-                     'cdutil': 'Packages/cdutil/Lib',
-                     'xmgrace': 'Packages/xmgrace/Lib',
-                     'genutil': 'Packages/genutil/Lib',
-                     'PropertiedClasses': 'Packages/Properties/Lib',
-                     'regrid2': 'Packages/regrid2/Lib',
-                     'kinds': 'Packages/kinds/Lib',
-                     'cdat_lite': 'cdat_lite',
-                     'cdat_lite.scripts': 'cdat_lite/scripts',
-                     'cdat_lite.clib': 'cdat_lite/clib',
-                     'cdat_lite.test': 'cdat_lite/test'
-                     },
+      packages = find_packages('lib'),
+      package_dir = {'': 'lib'},
       
       ext_modules = [
         makeExtension('cdtime'),
@@ -174,8 +175,7 @@ setup(name='cdat_lite',
       # Since udunits.dat isn't in the Lib directory we use the data_files attribute
       # to install data.
       include_package_data = True,
-      package_data = {'cdat_lite.clib': ['include/*', 'lib/*']},
-      #package_data = {'unidata': ['Packages/unidata/Src/*.dat']},
+      #package_data = {'cdat_lite.clib': ['include/*', 'lib/*']},
       data_files = [('unidata', ['Packages/unidata/Src/udunits.dat'])],
       
       entry_points = {

@@ -8,7 +8,7 @@
 
 
 
-import sys, os
+import sys, os, shutil
 from glob import glob
 
 from setuptools import setup, Extension
@@ -58,8 +58,8 @@ def _findNetcdf():
         else:
             print 'no'
 
-    prefixes = ['/usr', '/usr/local',
-                os.environ.get('HOME'), os.environ.get('NETCDF_HOME')]
+    prefixes = [os.environ.get('NETCDF_HOME'), '/usr', '/usr/local',
+                os.environ.get('HOME')]
 
     # Try finding a common NetCDF prefix
     found = False
@@ -100,6 +100,30 @@ netcdf_incdir, netcdf_libdir = _findNetcdf()
 
 
 
+
+def check_ifnetcdf4(netcdf4_incdir):
+    """
+    Check whether NetCDF4 is installed.
+
+    Code borrowed from the python netcdf4 bindings
+    http://netcdf4-python.googlecode.com
+
+    This will only return True if netcdf4_incdir points to a NetCDF4
+    library compiled with --enable-netcdf-4
+
+    """
+    try:
+        f = open(os.path.join(netcdf4_incdir,'netcdf.h'))
+    except IOError:
+        return False
+    isnetcdf4 = False
+    for line in f:
+        if line.startswith('nc_inq_compound'):
+            isnetcdf4 = True
+    return isnetcdf4
+
+
+
 def makeExtension(name, package_dir=None, sources=None,
                   include_dirs=None, library_dirs=None):
     """Convenience function for building extensions from the Packages directory.
@@ -126,6 +150,35 @@ def makeExtension(name, package_dir=None, sources=None,
     return e
 
 
+
+def buildLibTree(packageRoots, mods=None, root='./lib'):
+    """
+    Symbolically link the contents of each package directory to a common root.
+
+    This is required to support develop eggs which only works from a single
+    directory root.
+
+    @warning: The root will be removed before being reconstructed.
+    
+    """
+
+    if os.path.exists(root):
+        shutil.rmtree(root)
+    os.mkdir(root)
+
+    if mods:
+        for mod in mods:
+            os.symlink(os.path.abspath(mod),
+                       os.path.join(root, os.path.basename(mod)))
+
+    for package, dir in packageRoots.items():
+        if package:
+            os.mkdir(os.path.join(root, package))
+        for f in os.listdir(dir):
+            p = os.path.abspath(os.path.join(dir, f))
+            os.symlink(p, os.path.join(root, package, f))
+    
+
 class build_ext(build_ext_orig):
     """
     Add distribution specific search paths and build libcdms first.
@@ -139,15 +192,21 @@ class build_ext(build_ext_orig):
         build_ext_orig.finalize_options(self)        
 
         # Non-option attributes used during run()
-        self.build_base = self.distribution.command_obj['build'].build_base
-        self.build_lib = self.distribution.command_obj['build'].build_lib
+        #self.build_base = self.distribution.command_obj['build'].build_base
+        #self.build_lib = self.distribution.command_obj['build'].build_lib
 
         # Option attributes
         #self.include_dirs += [self.findNumericHeaders(), self.netcdf_incdir,
         #                      'libcdms/include']
         self.include_dirs += [numpy.get_include(), 'libcdms/include']
         self.library_dirs += [netcdf_libdir, 'libcdms/lib']
+
         self.libraries += ['cdms', 'netcdf']
+
+        # If NetCDF4 support add hdf5 libraries
+        if check_ifnetcdf4(netcdf_incdir):
+            print 'NetCDF4 detected.  Including HDF libraries'
+            self.libraries += ['hdf5', 'hdf5_hl']
 
     def run(self):
 
@@ -166,25 +225,37 @@ class build_ext(build_ext_orig):
     def _buildLibcdms(self):
         """Build the libcdms library.
         """
-        #if os.path.exists('cdat_lite/clib/lib/libcdms.a'):
-        #    return
 
         if self.compiler:
             cc = self.compiler
         else:
             cc = distutils.ccompiler.new_compiler().compiler[0]
 
+        # If NetCDF4 support we need to add HDF5 libraries in.
+        # Also ./configure doesn't include the right libraries so add the
+        # necessary declarations to CFLAGS too.
+        if check_ifnetcdf4(netcdf_incdir):
+            'NetCDF4 detected.  Configuring libcdms with NetCDF4 support'
+            nc4_defs = '-I%(ncinc)s -L%(nclib)s -lnetcdf -lhdf5 -lhdf5_hl' % dict(
+                ncinc=netcdf_incdir, nclib=netcdf_libdir)
+        else:
+            nc4_defs = ''
+
         if not os.path.exists('libcdms/Makefile'):
             self._system('cd libcdms ; '
-                         'CFLAGS="-fPIC" CC=%s ./configure --disable-drs --disable-hdf --disable-dods '
-                         '--disable-ql --with-ncinc=%s --with-ncincf=%s --with-nclib=%s'
-                         % (cc, netcdf_incdir, netcdf_incdir, netcdf_libdir))
-
+                         'CFLAGS="-fPIC %(nc4)s" '
+                         'CC=%(cc)s '
+                         ' ./configure --disable-drs --disable-hdf --enable-dap '
+                         '--disable-ql --with-ncinc=%(ncinc)s --with-ncincf=%(ncinc)s --with-nclib=%(nclib)s'
+                         % dict(ncinc=netcdf_incdir, nclib=netcdf_libdir,
+                                cc=cc, nc4=nc4_defs))
+        
         self._system('cd libcdms ; make db_util ; make cdunif')
 
+        #!DEPRECATED: No need to include libcdms.a in the egg
         # link into cdat.clib package
-        self._linkFiles(glob('libcdms/include/*.h'), '%s/cdat_lite/clib/include' % self.build_lib)
-        self._linkFiles(glob('libcdms/lib/lib*.a'), '%s/cdat_lite/clib/lib' % self.build_lib)
+        #self._linkFiles(glob('libcdms/include/*.h'), '%s/cdat_lite/clib/include' % self.build_lib)
+        #self._linkFiles(glob('libcdms/lib/lib*.a'), '%s/cdat_lite/clib/lib' % self.build_lib)
         
 
         
