@@ -1,0 +1,43 @@
+Migrating to CDAT-5.0 full release
+==================================
+
+I have applied a patch to libcdms to unify it with cdat-5.0 (excluding
+cdunifpp which is out of date in the CDAT trunk).  
+
+TODO
+----
+
+Before cdat_lite-5.0-0.3 I should:
+
+ 1. Support "setup.py develop".   This will require rearranging the package layout in "Packages" [DONE]
+ 2. Support NetCDF4.  [DONE - testS needed]
+ 3. All tests passing.  [DONE]
+ 4. Update cdat_lite.test with changes in Packages/cdms2/Test.  
+    Add cdtest18.py and test_compression.py to test suite.  
+
+Test switching
+--------------
+
+All tests that should pass on all systems are called test_* or Test*
+as per the usual nose discovery rules.  Tests that are known to fail
+but identify bugs that need fixing are in modules called [Ff]ull[Tt]est*.
+setup.cfg has settings to run all tests whereas "nosetests cdat_lite"
+on an egg will run the reduced test suite.
+
+Supporting NetCDF4
+------------------
+
+setup.py will detect if you are using NetCDF4 and look for the HDF5 libraries if necessary.
+
+OPeNDAP Support
+---------------
+
+OPeNDAP support can be enabled via the latest NetCDF4 beta without
+configuring it in libcdms/configure.  Therefore
+cdat_info.CDMS_INCLUDE_DAP is always 'no' even if DAP is enabled.
+
+Buildbot
+--------
+
+I'm trying to automate the build process with buildbot.  Checkins will
+be automatically build on esg-dev1.badc.rl.ac.uk
