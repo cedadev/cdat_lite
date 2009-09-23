@@ -16,6 +16,10 @@
 #define _CDUNIF_MODULE
 #include "Cdunifmodule.h"
 
+int cdms_shuffle = 1 ;
+int cdms_deflate = 1 ;
+int cdms_deflate_level = 6 ;
+
 staticforward int
 Cdunif_file_init(PyCdunifFileObject *self);
 staticforward PyCdunifVariableObject *
@@ -159,7 +163,12 @@ cdunif_signalerror(int code)
   if (code != NC_NOERR) {
     Py_BEGIN_ALLOW_THREADS;
     acquire_Cdunif_lock();
-    sprintf(buffer, "cdunif: %s", nc_strerror(code));
+    if ((code == -45)&&(cdms_shuffle==0)&&(cdms_deflate==0)) {
+      sprintf(buffer, "cdunif: %s\nIf you are trying to write a NetCDF4 type (e.g. int64) please do not turn off cdms_shuffle and cdms_deflate", nc_strerror(code));
+    }
+    else {
+      sprintf(buffer, "cdunif: %s", nc_strerror(code));
+    }
     release_Cdunif_lock();
     Py_END_ALLOW_THREADS;
     fprintf(stderr, buffer); printf("\n");
@@ -199,7 +208,7 @@ static void cdmapdatatype_cu(CuType cutype,nc_type *datatype){
 }
 
 static int cdattget(PyCdunifFileObject *file, int varid, const char* name, void* value){
-    int err;
+  int err;
     nc_type dtype;
     int t_len;
     
@@ -207,7 +216,11 @@ static int cdattget(PyCdunifFileObject *file, int varid, const char* name, void*
 	err = ncattinq(file->id, varid, name, &dtype, &t_len);
 	if (err==-1)
 	    return -1;
-	return nc_get_att_any(file->id, varid, name, dtype, value);
+	err = nc_get_att_any(file->id, varid, name, dtype, value);
+	if (dtype == NC_CHAR) {
+	  ((char *)value)[t_len]='\0';
+	}
+	return err;
     }
     else
 	return cuattget(file->id,varid,name,value);
@@ -494,7 +507,13 @@ int data_types[] = {-1,  /* not used */
 		    NPY_SHORT,  /* 16-bit signed int */
 		    NPY_INT,    /* 32-bit signed int */
 		    NPY_FLOAT,  /* 32-bit IEEE float */
-		    NPY_DOUBLE  /* 64-bit IEEE float */
+		    NPY_DOUBLE,  /* 64-bit IEEE float */
+		    NPY_UBYTE,   /* NC_UBYTE */
+		    NPY_USHORT, /*NC_USHORT */
+		    NPY_UINT, /*NC_UINT */
+		    NPY_INT64, /*int64 */
+		    NPY_UINT64,
+		    NPY_STRING
 };
 
 static char *dimension_types[] = {"error", "global", "local"};
@@ -530,7 +549,44 @@ nc_put_att_any(int ncid, int varid, const char *name,
     return nc_put_att_double(ncid, varid, name, xtype, len,
 			     (double *)data);
     break;
+    /* need the following #ifdef for linking against netcdf3 */
+#ifdef NC_UBYTE
+  case NC_UBYTE:
+    return nc_put_att_ubyte(ncid, varid, name, xtype, len,
+			     (unsigned char *)data);
+    break;    
+#endif
+#ifdef NC_USHORT
+  case NC_USHORT:
+    return nc_put_att_ushort(ncid, varid, name, xtype, len,
+			     (unsigned short *)data);
+    break; 
+#endif
+#ifdef NC_UINT   
+  case NC_UINT:
+    return nc_put_att_uint(ncid, varid, name, xtype, len,
+			     (unsigned int *)data);
+    break;   
+#endif
+#ifdef NC_INT64 
+  case NC_INT64:
+    return nc_put_att_longlong(ncid, varid, name, xtype, len,
+			     (long long *)data);
+    break;
+#endif
+#ifdef NC_UINT64
+  case NC_UINT64:
+    return nc_put_att_ulonglong(ncid, varid, name, xtype, len,
+			     (unsigned long long *)data);
+    break;
+#endif
+#ifdef NC_STRING
+  case NC_STRING:
+    return nc_put_att_string(ncid, varid, name, len,
+			     (char **)data);
+    break;
   default:
+#endif
     return NC_EINVAL;
   }
 }
@@ -558,6 +614,43 @@ nc_put_var1_any(int ncid, int varid, nc_type xtype, const size_t *indexp,
   case NC_DOUBLE:
     return nc_put_var1_double(ncid, varid, indexp, (double *)data);
     break;
+    /* need the following #ifdef for linking against netcdf3 */
+#ifdef NC_UBYTE
+  case NC_UBYTE:
+    return nc_put_var1_ubyte(ncid, varid, indexp,
+			     (unsigned char *)data);
+    break;   
+#endif
+#ifdef NC_USHORT 
+  case NC_USHORT:
+    return nc_put_var1_ushort(ncid, varid, indexp,
+			     (unsigned short *)data);
+    break;   
+#endif
+#ifdef NC_UINT 
+  case NC_UINT:
+    return nc_put_var1_uint(ncid, varid, indexp,
+			     (unsigned int *)data);
+    break;   
+#endif
+#ifdef NC_INT64
+  case NC_INT64:
+    return nc_put_var1_longlong(ncid, varid, indexp,
+			     (long long *)data);
+    break;
+#endif
+#ifdef NC_UINT64
+  case NC_UINT64:
+    return nc_put_var1_ulonglong(ncid, varid, indexp,
+			     (unsigned long long *)data);
+    break;
+#endif
+#ifdef NC_STRING
+  case NC_STRING:
+    return nc_put_var1_string(ncid, varid, indexp,
+			     (char **)data);
+    break;
+#endif
   default:
     return NC_EINVAL;
   }
@@ -596,6 +689,43 @@ nc_put_vars_any(int ncid, int varid, nc_type xtype, const size_t start[],
     return nc_put_vars_double(ncid, varid, start, count, stride,
 			      (double *)data);
     break;
+    /* need the following #ifdef for linking against netcdf3 */
+#ifdef NC_UBYTE
+  case NC_UBYTE:
+    return nc_put_vars_ubyte(ncid, varid,start, count, stride,
+			     (unsigned char *)data);
+    break;  
+#endif
+#ifdef NC_USHORT  
+  case NC_USHORT:
+    return nc_put_vars_ushort(ncid, varid,start, count, stride,
+			     (unsigned short *)data);
+    break; 
+#endif
+#ifdef NC_UINT   
+  case NC_UINT:
+    return nc_put_vars_uint(ncid, varid,start, count, stride,
+			     (unsigned int *)data);
+    break;  
+#endif
+#ifdef NC_INT64  
+  case NC_INT64:
+    return nc_put_vars_longlong(ncid, varid,start, count, stride,
+				(long long *)data);
+    break;
+#endif
+#ifdef NC_UINT64
+  case NC_UINT64:
+    return nc_put_vars_ulonglong(ncid, varid,start, count, stride,
+			     (unsigned long long *)data);
+    break;
+#endif
+#ifdef NC_STRING
+  case NC_STRING:
+    return nc_put_vars_string(ncid, varid,start, count, stride,
+			     (char **)data);
+    break;
+#endif
   default:
     return NC_EINVAL;
   }
@@ -624,6 +754,43 @@ nc_get_att_any(int ncid, int varid, const char *name,
   case NC_DOUBLE:
     return nc_get_att_double(ncid, varid, name, (double *)data);
     break;
+    /* need the following #ifdef for linking against netcdf3 */
+#ifdef NC_UBYTE
+  case NC_UBYTE:
+    return nc_get_att_ubyte(ncid, varid, name,
+			     (unsigned char *)data);
+    break; 
+#endif
+#ifdef NC_USHORT   
+  case NC_USHORT:
+    return nc_get_att_ushort(ncid, varid, name,
+			     (unsigned short *)data);
+    break;   
+#endif
+#ifdef NC_UINT 
+  case NC_UINT:
+    return nc_get_att_uint(ncid, varid, name,
+			     (unsigned int *)data);
+    break;   
+#endif
+#ifdef NC_INT64 
+  case NC_INT64:
+    return nc_get_att_longlong(ncid, varid, name,
+			     (long long *)data);
+    break;
+#endif
+#ifdef NC_UINT64
+  case NC_UINT64:
+    return nc_get_att_ulonglong(ncid, varid, name,
+			     (unsigned long long *)data);
+    break;
+#endif
+#ifdef NC_STRING
+  case NC_STRING:
+    return nc_get_att_string(ncid, varid, name,
+			     (char **)data);
+    break;
+#endif
   default:
     return NC_EINVAL;
   }
@@ -653,28 +820,52 @@ typecode(int type)
   char t;
   switch(type) {
   case NPY_CHAR:
-    t = 'c';
-    break;
-  case NPY_UBYTE:
-    t = 'b';
+    t = NPY_CHARLTR;
     break;
   case NPY_BYTE:
-    t = '1';
+    t = NPY_BYTELTR;
     break;
+/*   case NPY_BYTE: */
+/*     t = '1'; */
+/*     break; */
   case NPY_SHORT:
-    t = 's';
+    t = NPY_SHORTLTR;
     break;
   case NPY_INT:
-    t = 'i';
+    t = NPY_INTLTR;
     break;
   case NPY_LONG:
-    t = 'l';
+    t = NPY_LONGLTR;
     break;
   case NPY_FLOAT:
-    t = 'f';
+    t = NPY_FLOATLTR;
     break;
   case NPY_DOUBLE:
-    t = 'd';
+    t = NPY_DOUBLELTR;
+    break;
+  case NPY_LONGDOUBLE:
+    t = NPY_LONGDOUBLELTR;
+    break;
+  case NPY_UBYTE:
+    t= NPY_UBYTELTR;
+    break;
+  case NPY_USHORT:
+    t=NPY_USHORTLTR;
+    break;
+  case NPY_UINT:
+    t=NPY_UINTLTR;
+    break;
+  case NPY_ULONG:
+    t=NPY_ULONGLTR;
+    break;
+  case NPY_LONGLONG:
+    t=NPY_LONGLONGLTR;
+    break;
+  case NPY_ULONGLONG:
+    t=NPY_ULONGLONGLTR;
+    break;
+  case NPY_STRING:
+    t=NPY_STRINGLTR;
     break;
   default: t = ' ';
   }
@@ -707,6 +898,36 @@ cdunif_type_from_code(char code)
   case 'd':
     type = NC_DOUBLE;
     break;
+#ifdef NC_UBYTE
+  case 'B':
+    type = NC_UBYTE;
+    break;
+#endif
+#ifdef NC_SHORT
+  case 'H':
+    type = NC_USHORT;
+    break;
+#endif
+#ifdef NC_UINT
+  case 'L':
+    type = NC_UINT;
+    break;
+#endif
+#ifdef NC_INT64
+  case 'q':
+    type = NC_INT64;
+    break;
+#endif
+#ifdef NC_UINT64
+  case 'Q':
+    type = NC_UINT64;
+    break;
+#endif
+#ifdef NC_STRING
+  case 'S':
+    type = NC_STRING;
+    break;
+#endif
   default:
     type = 0;
   }
@@ -900,7 +1121,7 @@ static PyCdunifFileObject *
 PyCdunifFile_Open(char *filename, char *mode)
 {
   PyCdunifFileObject *self;
-  int rw;
+  int rw,ncmode;
   CuFileType filetype;
 
   self = PyObject_NEW(PyCdunifFileObject, &PyCdunifFile_Type);
@@ -922,7 +1143,13 @@ PyCdunifFile_Open(char *filename, char *mode)
   if (mode[0] == 'w') {
     Py_BEGIN_ALLOW_THREADS;
     acquire_Cdunif_lock();
-    self->id = nccreate(filename, NC_CLOBBER);
+    ncmode = NC_CLOBBER;
+#ifndef NONC4
+    if ((cdms_shuffle!=0) || (cdms_deflate!=0)) {
+      ncmode = NC_CLOBBER|NC_NETCDF4;
+    }
+#endif
+    self->id = nccreate(filename, ncmode);
     release_Cdunif_lock();
     Py_END_ALLOW_THREADS;
     self->define = 1;
@@ -939,7 +1166,13 @@ PyCdunifFile_Open(char *filename, char *mode)
     self->id = cdopen(filename, NC_WRITE, &self->filetype);
     self->define = 0;
     if (self->id == -1) {
-      self->id = nccreate(filename, NC_NOCLOBBER);
+    ncmode = NC_NOCLOBBER;
+#ifndef NONC4
+    if ((cdms_shuffle!=0) || (cdms_deflate!=0)) {
+      ncmode = NC_NOCLOBBER|NC_NETCDF4;
+    }
+#endif
+      self->id = nccreate(filename, ncmode);
       self->filetype = CuNetcdf;
       self->define = 1;
     }
@@ -1189,6 +1422,22 @@ PyCdunifFile_CreateVariable(PyCdunifFileObject *file, char *name, int typecode,
     ret = nc_def_var(file->id, name, ntype, ndim, dimids, &i);
     release_Cdunif_lock();
     Py_END_ALLOW_THREADS;
+    if (ret != NC_NOERR) {
+      cdunif_signalerror(ret);
+      if (dimids != NULL)
+	free(dimids);
+      return NULL;
+    }
+#ifndef NONC4
+    Py_BEGIN_ALLOW_THREADS;
+    /* try some compression thing here */
+    if (((cdms_shuffle!=0) || (cdms_deflate!=0))&& (ndim!=0)) {
+      acquire_Cdunif_lock();
+      ret = nc_def_var_deflate(file->id,i,cdms_shuffle,cdms_deflate,cdms_deflate_level);
+      release_Cdunif_lock();
+    }
+    Py_END_ALLOW_THREADS;
+#endif
     if (ret != NC_NOERR) {
       cdunif_signalerror(ret);
       if (dimids != NULL)
@@ -2565,6 +2814,72 @@ CdunifFile(PyObject *self, PyObject *args)
     PyCdunifFile_AddHistoryLine(file, history);
   return (PyObject *)file;
 }
+
+/* Wrapper for nc flag compression setting */
+PyObject *
+PyCdunif_setncflags(PyObject *self, PyObject *args) {
+  char msg[1024];
+  char *flagname=NULL;
+  int flagval;
+  if (!PyArg_ParseTuple(args, "si", &flagname,&flagval))
+    return NULL;
+  if (strcmp(flagname,"shuffle") == 0) {
+    if (flagval>2) {
+      sprintf(msg,"invalid shuffle flag: '%i' valid flags are: 0 or 1",flagval);
+      PyErr_SetString(PyExc_TypeError, msg);
+      return NULL;      
+    }
+    cdms_shuffle = flagval;
+  }
+  else if (strcmp(flagname,"deflate")==0) {
+    if (flagval>2) {
+      sprintf(msg,"invalid deflate flag: '%i' valid flags are: 0 or 1",flagval);
+      PyErr_SetString(PyExc_TypeError, msg);
+      return NULL; 
+    }
+    cdms_deflate = flagval;
+  }
+  else if (strcmp(flagname,"deflate_level") == 0) {
+    if (flagval>10) {
+      sprintf(msg,"invalid deflate_level flag: '%i' valid flags are between 0 and 9 included",flagval);
+      PyErr_SetString(PyExc_TypeError, msg);
+      return NULL;      
+    }
+    cdms_deflate_level = flagval;
+  }
+  else {
+    sprintf(msg,"invalid compression flag: '%s' valid flags are: shuffle, deflate, deflate_level",flagname);
+    PyErr_SetString(PyExc_TypeError, msg);
+    return NULL;
+  }
+  Py_INCREF(Py_None);
+  return Py_None;
+}
+PyObject *
+PyCdunif_getncflags(PyObject *self, PyObject *args) {
+  char msg[1024];
+  char *flagname=NULL;
+  int flagval;
+  if (!PyArg_ParseTuple(args, "s", &flagname))
+    return NULL;
+  if (strcmp(flagname,"shuffle") == 0) {
+      return Py_BuildValue("i",cdms_shuffle);      
+  }
+  else if (strcmp(flagname,"deflate")==0) {
+      return Py_BuildValue("i",cdms_deflate);      
+  }
+  else if (strcmp(flagname,"deflate_level") == 0) {
+      return Py_BuildValue("i",cdms_deflate_level);      
+  }
+  else {
+    sprintf(msg,"invalid compression flag: '%s' valid flags are: shuffle, deflate, deflate_level",flagname);
+    PyErr_SetString(PyExc_TypeError, msg);
+    return NULL;
+  }
+  Py_INCREF(Py_None);
+  return Py_None;
+}
+
 static char cdunif_doc[] =
 "CdunifFile(filename, mode, history_line)\n\nopens a Cdunif file";
 
@@ -2572,6 +2887,8 @@ static char cdunif_doc[] =
 
 static PyMethodDef cdunif_methods[] = {
   {"CdunifFile",	CdunifFile, 1, cdunif_doc},
+  {"CdunifSetNCFLAGS",	(PyCFunction)PyCdunif_setncflags, 1},
+  {"CdunifGetNCFLAGS",	(PyCFunction)PyCdunif_getncflags, 1},
   {NULL,		NULL}		/* sentinel */
 };
 

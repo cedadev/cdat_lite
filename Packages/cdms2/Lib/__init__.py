@@ -19,7 +19,7 @@ from axis import createAxis, createEqualAreaAxis, createGaussianAxis, createUnif
 from grid import createGenericGrid, createGlobalMeanGrid, createRectGrid, createUniformGrid, createZonalGrid, setClassifyGrids, createGaussianGrid, writeScripGrid
 
 # Dataset functions
-from dataset import createDataset, openDataset
+from dataset import createDataset, openDataset, setNetcdfShuffleFlag, setNetcdfDeflateFlag, setNetcdfDeflateLevelFlag, setCompressionWarnings
 open = openDataset
 
 # Database functions

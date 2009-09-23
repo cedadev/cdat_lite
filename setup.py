@@ -2,14 +2,13 @@
 """Build the cdat_lite distribution.
 """
 
-
 import sys, os, shutil
 
 from ez_setup import use_setuptools
 use_setuptools()
 
 from setuptools import setup, Extension, find_packages
-from setup_util import build_ext, makeExtension, buildLibTree
+from setup_util import build_ext, makeExtension, buildLibTree, copyScripts
 
 NDG_EGG_REPOSITORY = 'http://ndg.nerc.ac.uk/dist/'
 CDAT_LITE_URL = 'http://proj.badc.rl.ac.uk/ndg/wiki/CdatLite'
@@ -26,48 +25,19 @@ CDAT_HOME_URL = 'http://www-pcmdi.llnl.gov/software-portal/cdat'
 #     in <cdat-release>.
 #  3. The cdunifpp version is stated in long_description not in the version.  Any
 #     change to the cdunifpp version naturally triggers a new <cdat-lite-version>.
-cdat_release = '5.0'
+cdat_release = '5.2'
 cdat_tag = ''
-cdunifpp_version = '0.13pre2'
-cdat_lite_version = '0.3pre2'
+cdunifpp_version = '0.13'
 
 
-long_description = """
-This package contains core components from the Climate Data Analysis
-Tools (CDAT) with slight modifications to make them compatable with
-python eggs.  The cdms package has been augmented with the latest code
-to read UK Met. Office PP file format developed at the British
-Atmospheric Data Centre.
 
-This software is based on CDAT-%(cdat_release)s%(cdat_tag)s and
-cdunfpp%(cdunifpp_version)s.  It is distributed under the CDAT licence
-%(CDAT_LICENCE_URL)s.
+description = "Core components of the Climate Data Analysis tools.  This software is based on CDAT-%(cdat_release)s%(cdat_tag)s and cdunfpp%(cdunifpp_version)s." % globals()
 
-Full documentation for CDAT is available from the CDAT homepage
-%(CDAT_HOME_URL)s.
-
-""" % globals()
+long_description = open('./README').read()
 
 #------------------------------------------------------------------------------
-
-def copyScripts(scripts=['cdscan', 'cddump']):
-    """In order to put cdat scripts in their own package they are copied
-    into the cdat/scripts directory.
-
-    """
-    for script in scripts:
-        src = os.path.abspath(os.path.join('Packages/cdms2/Script', script))
-        if not os.path.exists(src):
-            src = os.path.abspath(os.path.join('libcdms/src/python', script))
-            
-        dest = os.path.abspath(os.path.join('cdat_lite', 'scripts', script+'.py'))
-        shutil.copy(src, dest)
-
-    shutil.copy('Packages/cdms2/Script/convertcdms.py',
-                os.path.abspath(os.path.join('cdat_lite', 'scripts')))
-        
+# Create the lib tree from traditional CDAT directory structure.
 copyScripts()
-
 buildLibTree(packageRoots={'unidata': 'Packages/unidata/Lib',
                            'cdms2': 'Packages/cdms2/Lib',
                            'cdutil': 'Packages/cdutil/Lib',
@@ -75,12 +45,11 @@ buildLibTree(packageRoots={'unidata': 'Packages/unidata/Lib',
                            'genutil': 'Packages/genutil/Lib',
                            'Properties': 'Packages/Properties/Lib',
                            'regrid2': 'Packages/regrid2/Lib',
-                           'kinds': 'Packages/kinds/Lib',
                            'ncml': 'Packages/ncml/Lib',
-                           'cdat_lite': 'cdat_lite',
                            },
-             mods=['Packages/cdms2/MV2.py'],
+             mods=['Packages/cdms2/MV2.py', 'Packages/cdat_info.py'],
              )
+
 #------------------------------------------------------------------------------
 
 # As from CDAT-4.3 we must use Python-2.5.  The C extensions won't compile
@@ -97,47 +66,17 @@ if sys.version_info[:3] < (2,5):
 ==========================================================================
 """)
 
-### This is untested but I think it will be useful when we try installing
-### on suse
-##
-## # Suse 10.0 has a bug that prevents numpy installing properly.  This test
-## # catches the problem and advises a solution
-## try:
-##     import numpy
-## except ImportError, e:
-##     if 'undefined symbol:_gfortran_filename' in str(e):
-##         raise SystemExit("""
-## ==========================================================================
-##  Your numpy installation is broken due to a known problem with libblas on
-##  your system.
-
-##  We recommend you install ATLAS (http://math-atlas.sourceforge.net) and
-##  reinstall numpy with:
-
-##  $ ATLAS=<atlas-home> easy_install -U numpy
-
-##  You may need to remove your current installation of numpy first.
-## ==========================================================================
-## """)
-##     else:
-##         raise e
-import numpy
 
 #------------------------------------------------------------------------------
 
-# Remove the libcdms makefile.  This is the trigger that causes
-# libcdms to be rebuilt when extensions are built.
-if os.path.exists('libcdms/Makefile'):
-    os.remove('libcdms/Makefile')
-    
 setup(name='cdat_lite',
-      description="Climate Data Analysis tools, core components",
+      description=description,
       long_description=long_description,
-      version='%s-%s' % (cdat_release, cdat_lite_version),
+      version='%s%s' % (cdat_release, cdat_tag),
       url = CDAT_LITE_URL,
       download_url = NDG_EGG_REPOSITORY,
       maintainer = 'Stephen Pascoe',
-      maintainer_email = 'S.Pascoe@rl.ac.uk',
+      maintainer_email = 'Stephen.Pascoe@stfc.ac.uk',
       license = CDAT_LICENCE_URL,
 
       classifiers = [
@@ -156,11 +95,13 @@ setup(name='cdat_lite',
       
       packages = find_packages('lib'),
       package_dir = {'': 'lib'},
+      py_modules = ['cdat_info', 'MV2'],
       
       ext_modules = [
         makeExtension('cdtime'),
         makeExtension('unidata.udunits_wrap', 'unidata'),
-        makeExtension('cdms2.Cdunif', 'cdms2'),
+        #!TODO: macro depends on whether NC4 is used
+        makeExtension('cdms2.Cdunif', 'cdms2', macros=[('NONC4', None)]),
         Extension('cdms2._bindex',
                   ['Packages/cdms2/Src/_bindexmodule.c',
                    'Packages/cdms2/Src/bindex.c'],
@@ -169,7 +110,6 @@ setup(name='cdat_lite',
         Extension('regrid2._regrid', ['Packages/regrid2/Src/_regridmodule.c']),
         Extension('regrid2._scrip', ['Packages/regrid2/Src/_scripmodule.c',
                                      'Packages/regrid2/Src/regrid.c']),
-        makeExtension('kinds._kinds', 'kinds'),
       ],
 
       # Since udunits.dat isn't in the Lib directory we use the data_files attribute

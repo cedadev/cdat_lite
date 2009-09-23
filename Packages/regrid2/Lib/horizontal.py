@@ -78,6 +78,7 @@ class Regridder:
 
         import cdms2
         from cdms2.avariable import AbstractVariable
+        from cdms2.tvariable import TransientVariable
 
         # Compatibility
         if mask is numpy.ma.nomask:
@@ -98,6 +99,10 @@ class Regridder:
             inputIsVariable = 1
             if order is None:
                 order = ar.getOrder()
+            #this expects contiguous arrays
+            if isinstance(ar, TransientVariable) and ar.iscontiguous() is False:
+                ar = ar.ascontiguous()
+            
         else:
             inputIsVariable = 0
 

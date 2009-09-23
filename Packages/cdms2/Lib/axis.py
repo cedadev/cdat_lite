@@ -253,7 +253,7 @@ def mapLinearExt(axis, bounds, interval, indicator ='ccn', epsilon=None, stride=
     if(epsilon is None):
         eps=1.0e-5
         if len(ar)>1:
-            epsilon = eps * abs(ar[1]-ar[0])
+            epsilon = eps * min(abs(ar[1]-ar[0]), abs(ar[-1]-ar[-2]))
         else:
             epsilon=eps
 

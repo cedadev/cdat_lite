@@ -149,7 +149,9 @@ class CrossSectionRegridder:
 
         import cdms2
         from cdms2.avariable import AbstractVariable
+        from cdms2.tvariable import TransientVariable
 
+            
         # Save Variable metadata for output
         if isinstance(ar, AbstractVariable):
             attrs = copy.copy(ar.attributes)
@@ -158,6 +160,9 @@ class CrossSectionRegridder:
             inputIsVariable = 1
             if order is None:
                 order = ar.getOrder()
+            #this expects contiguous arrays
+            if isinstance(ar, TransientVariable) and ar.iscontiguous() is False:
+                ar = ar.ascontiguous()
         else:
             inputIsVariable = 0
 

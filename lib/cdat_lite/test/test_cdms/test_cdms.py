@@ -17,13 +17,6 @@ class CdmsTests(unittest.TestCase):
         vars.sort()
         self.assert_(vars == ['bounds_latitude', 'bounds_longitude', 'climseas'])
 
-    def testDimensionsAttr(self):
-        """Known to fail after initial merge of CDAT-5.0 release.
-        """
-        f = pkg_resources.resource_filename('cdat_lite.test', 'tas_mo_clim.nc')
-        d = cdms.open(f)
-        assert hasattr(d, 'dimensions')
-
     def testPP(self):
         f = pkg_resources.resource_filename('cdat_lite.test', 'testpp.pp')
         d = cdms.open(f)

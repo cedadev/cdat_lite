@@ -30,6 +30,31 @@ class StringConstructor:
     """
     def __init__(self,template=None):
         self.template=template
+        ## ok we need to generate the keys and set them to empty it seems like a better idea
+        keys = self.keys()
+        for k in keys:
+            setattr(self,k,"")
+
+    def keys(self,template=None):
+        if template is None:
+            template=self.template
+        if template is None:
+            return []
+##         # First sets all the keyword values passed
+##         for k in kw.keys():
+##             setattr(self,k,kw[k])
+        # Now determine the keywords in the template:
+        end=0
+        s2=template.split('%(')
+        keys=[]
+        for k in s2:
+            sp=k.split(')')
+            i=len(sp[0])
+            if len(k)>i:
+                if k[i]==')' and (not sp[0] in  keys):
+                    keys.append(sp[0])
+        return keys
+
     def construct(self,template=None,**kw):
         """
         construct, accepts a string with a unlimited number of keyword to replace
@@ -43,26 +68,13 @@ class StringConstructor:
 
         print myfilename
         """
-        import string
         if template is None:
             template=self.template
-##         # First sets all the keyword values passed
-##         for k in kw.keys():
-##             setattr(self,k,kw[k])
         # Now determine the keywords in the template:
-        end=0
-        s2=string.split(template,'%(')
-        keys=[]
-        for k in s2:
-            sp=string.split(k,')')
-            i=len(sp[0])
-            if len(k)>i:
-                if k[i]==')' and (not sp[0] in  keys):
-                    keys.append(sp[0])
-        
+        keys = self.keys()
         # Now replace the keywords with their values
         for k in keys:
-               template=string.replace(template,'%('+k+')',kw.get(k,getattr(self,k,'')))
+               template=template.replace('%('+k+')',kw.get(k,getattr(self,k,'')))
 ##             cmd='template=string.replace(template,\'%('+k+')\',self.'+k+')'
 ##             exec(cmd)
         return template

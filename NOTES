@@ -10,18 +10,34 @@ TODO
 Before cdat_lite-5.0-0.3 I should:
 
  1. Support "setup.py develop".   This will require rearranging the package layout in "Packages" [DONE]
- 2. Support NetCDF4.  I need to investigate what support CDAT-5.0 has and merge.
- 3. All tests passing.  2 tests are failing at the moment but I'm not sure if this is CDAT's problem or mine.  Some cdms tests aren't ported yet.
+ 2. Support NetCDF4.  [DONE - testS needed]
+ 3. All tests passing.  [DONE]
+ 4. Update cdat_lite.test with changes in Packages/cdms2/Test.  
+    Add cdtest18.py and test_compression.py to test suite.  
 
- 4. The cdms2.CdunifFile API has changed!  CdmsFile.dimensions no longer exists.  This will require changes to csml and other software.
+Test switching
+--------------
+
+All tests that should pass on all systems are called test_* or Test*
+as per the usual nose discovery rules.  Tests that are known to fail
+but identify bugs that need fixing are in modules called [Ff]ull[Tt]est*.
+setup.cfg has settings to run all tests whereas "nosetests cdat_lite"
+on an egg will run the reduced test suite.
 
 Supporting NetCDF4
 ------------------
 
-Some initial investigation suggests the following changes will be needed to support NetCDF4 with embedded OPeNDAP support:
+setup.py will detect if you are using NetCDF4 and look for the HDF5 libraries if necessary.
 
- 1. netcdf-4.0.1 library (beta) -- this is the first with embedded DAP support.
- 2. Configure libcdms with --with-hdf5lib --disable-hdf and --disable-drs (hdf5 is needed for netcdf4 but we aren't building hdf4 support).
- 3. Set linked libraries as ['cdms', 'nc-dap', 'hdf5', 'hdf5_hl'] in setup_util.py.
+OPeNDAP Support
+---------------
 
-This will get cdms2 opening DAP URLs but there are bugs connecting to pydap servers.  More playing needed.
+OPeNDAP support can be enabled via the latest NetCDF4 beta without
+configuring it in libcdms/configure.  Therefore
+cdat_info.CDMS_INCLUDE_DAP is always 'no' even if DAP is enabled.
+
+Buildbot
+--------
+
+I'm trying to automate the build process with buildbot.  Checkins will
+be automatically build on esg-dev1.badc.rl.ac.uk

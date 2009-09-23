@@ -44,7 +44,13 @@ NumericToCdType = {numpy.sctype2char(numpy.float32):CdFloat,
                    numpy.sctype2char(numpy.int):CdLong,
                    numpy.sctype2char(numpy.intc):CdLong,
                    numpy.sctype2char(numpy.int8):CdByte,
-                   'c':CdChar
+                   'c':CdChar,
+                   'B':'B',
+                   'H':'H',
+                   'L':'L',
+                   'q':'q',
+                   'Q':'Q',
+                   'S':'S'
                    }
 
 CdToNumericType = {CdChar:'c',
@@ -947,9 +953,9 @@ class AttrNode(CdmsNode):
             return self.datatype
         elif type(self.value) is StringType:
             return CdString
-        elif isinstance(self.value, FloatType):
+        elif isinstance(self.value, FloatType) or isinstance(self.value,numpy.floating):
             return CdDouble
-        elif isinstance(self.value, IntType):
+        elif isinstance(self.value, IntType) or isinstance(self.value,numpy.integer):
             return CdLong
         else:
             raise CDMSError, 'Invalid attribute type: '+`self.value`

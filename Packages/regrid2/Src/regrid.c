@@ -11,6 +11,12 @@ void conserv_regrid (int num_links, int nextra, int ninput, int noutput, double 
 
     int n, k, daddr, saddr;
 
+    /*    printf("num_links = %d\n", num_links);
+    printf("nextra = %d\n", nextra);
+    printf("ninput = %d\n", ninput);
+    printf("noutput = %d\n", noutput);
+    */
+
     for (k=0; k<nextra; k++){
 	for (n=0; n<num_links; n++){
 	    daddr = dst_address[n]-1;

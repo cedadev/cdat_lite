@@ -16,5 +16,5 @@ def test_attributeType():
     assert type(f.input_word_length) == type(Numeric.zeros(1))
 
     # numpy returns special scalar types.  This test should pass now.
-    assert type(f.input_word_length[0]) == numpy.int32
+    assert f.input_word_length.dtype == numpy.dtype('int32')
 

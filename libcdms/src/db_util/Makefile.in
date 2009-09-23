@@ -56,7 +56,7 @@ SHELL = /bin/sh
 # Do not change values below this line
 #
 LIBRARY		= ../../lib/libcdms.a
-OBJS		= cdTimeConv.o fcdTimeConv.o timeConv.o timeArith.o reg_trfm.o cdRegTrfm.o \
+OBJS		= cdTimeConv.o timeConv.o timeArith.o reg_trfm.o cdRegTrfm.o \
 		  cdUtil.o
 
 all:		$(OBJS) FORCE

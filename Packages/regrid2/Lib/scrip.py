@@ -44,6 +44,9 @@ class ScripRegridder:
             # Check that the grid matches the last dimension(s) of input
             if input.shape[-rank:] != ingrid.shape:
                 raise RegridError, 'Last dimensions of input array must match grid shape: %s'%`ingrid.shape`
+            #this expects contiguous arrays
+            if input.iscontiguous() is False:
+                input = input.ascontiguous()
 
         else:
             rank = 1                    # If not a TV, last dimension is the 'cell' dimension
@@ -115,6 +118,15 @@ class ConservativeRegridder(ScripRegridder):
 
     def regrid(self, input):
         if self.normal is None:
+##             print "On input, num_links = %d"%(len(self.sourceAddress))
+##             print "On input, nextra = %d"%(input.shape[0])
+##             print "On input, ninput = %d"%(input.shape[1])
+##             print "On input, noutput = %d"%(self.outputGrid.size())
+##             print "On input, shape(input) = %s"%`input.shape`
+##             print "On input, shape(output) = %s"%`self.outputGrid.shape`
+##             print "On input, shape(remap_matrix) = %s"%`self.remapMatrix.shape`
+##             print "On input, shape(src_address) = %s"%`self.sourceAddress.shape`
+##             print "On input, shape(dst_address) = %s"%`self.destAddress.shape`
             result = _scrip.conserv_regrid(self.outputGrid.size(), input, self.remapMatrix, self.sourceAddress, self.destAddress)
         else:
             result = _scrip.conserv_regrid_normal(self.outputGrid.size(), input, self.remapMatrix, self.sourceAddress, self.destAddress, self.normal)

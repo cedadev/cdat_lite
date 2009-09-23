@@ -11,6 +11,6 @@ setup (name = "regrid2",
        package_dir = {'regrid2': 'Lib'},
        include_dirs = [numpy.lib.utils.get_include()],
        ext_modules = [Extension('regrid2._regrid', ['Src/_regridmodule.c']),
-                      Extension('regrid2._scrip', ['Src/_scripmodule.c','Src/regrid.c'])]
+                      Extension('regrid2._scrip', ['Src/scrip.pyf','Src/regrid.c'])]
       )
     

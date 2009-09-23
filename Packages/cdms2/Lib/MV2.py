@@ -84,7 +84,6 @@ class var_unary_operation_with_axis:
         """
         self.mafunc = mafunc
         self.__doc__ = mafunc.__doc__
-
     def __call__ (self, a, axis=0):
         axis = _conv_axis_arg(axis)
         ta = _makeMaskedArg(a)
@@ -243,7 +242,15 @@ class var_binary_operation:
         b1 = _makeMaskedArg(b)
         maresult = self.mafunc.outer(a1, b1)
         return TransientVariable(maresult)
-        
+
+
+def compress(a,b):
+   __doc__=numpy.ma.__doc__
+   import warnings
+   warnings.warn("arguments order for compress function has changed\nit is now: MV2.copmress(array,condition), if your code seems to not react or act wrong to a call to compress, please check this", Warning)
+   return TransientVariable(numpy.ma.compress(a,b),copy=1)
+
+
 sqrt = var_unary_operation(numpy.ma.sqrt)
 absolute = var_unary_operation(numpy.ma.absolute)
 negative = var_unary_operation(numpy.ma.negative)

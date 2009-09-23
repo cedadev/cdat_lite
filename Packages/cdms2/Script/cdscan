@@ -503,11 +503,11 @@ def addAttrs(fobj, eattrs):
     where if varid is '', set the global attribute."""
     for evar,eattr,evalue in eattrs:
         if evar=='':
-            fobj.attributes[eattr] = evalue
+            fobj.__dict__[eattr] = evalue
         else:
             varobj = fobj[evar]
             if varobj is not None:
-                varobj.attributes[eattr] = evalue
+                varobj.__dict__[eattr] = evalue
 
 def setNodeDict(node, dict):
     for key in dict.keys():
@@ -1355,7 +1355,10 @@ def main(argv):
     keys.sort()
     for key in keys:
         axis = axisdict[key]
-        cdtype = cdmsNode.NumericToCdType[axis.typecode()]
+        tcode = axis.typecode()
+        if tcode in [numpy.float32, numpy.float, numpy.int16, numpy.int32, numpy.int, numpy.intc, numpy.int8]:
+            tcode = numpy.sctype2char(tcode)
+        cdtype = cdmsNode.NumericToCdType[tcode]
         node = cdmsNode.AxisNode(axis.id, len(axis), cdtype)
 
         # Override the time axis as a linear axis
@@ -1409,6 +1412,8 @@ def main(argv):
         if (excludeList is not None) and (key in excludeList):
             continue
         domain, attrs, tcode = vardict[key]
+        if tcode in [numpy.float32, numpy.float, numpy.int16, numpy.int32, numpy.int, numpy.intc, numpy.int8]:
+            tcode = numpy.sctype2char(tcode)
         domainNode = cdmsNode.DomainNode()
         cdtype = cdmsNode.NumericToCdType[tcode]
         node = cdmsNode.VariableNode(key, cdtype, domainNode)

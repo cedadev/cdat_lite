@@ -42,7 +42,9 @@ class TransientVariable(AbstractVariable,numpy.ma.MaskedArray):
         out = TransientVariable(out,mask=m,attributes=self.attributes)
         out.setAxisList(self.getAxisList())
         return out
-
+    
+    ascontiguous = ascontiguousarray
+    
     def asma(self):
         return numpy.ma.array(self._data,mask=self._mask)
     
@@ -148,7 +150,7 @@ class TransientVariable(AbstractVariable,numpy.ma.MaskedArray):
         fv = self.fill_value
         if attributes is not None:
             for key, value in attributes.items():
-                if key in ['shape','flat','imaginary','real'] or key[0]=='_':
+                if (key in ['shape','flat','imaginary','real'] or key[0]=='_') and key not in ['_FillValue']:
                     raise CDMSError, 'Bad key in attributes: ' + key
                 elif key == 'missing_value':
                     #ignore if fill value given explicitly

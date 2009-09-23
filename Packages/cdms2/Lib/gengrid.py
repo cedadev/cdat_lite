@@ -210,7 +210,7 @@ class AbstractGenericGrid(AbstractHorizontalGrid):
         return submask, indexspecs
 
     def getAxisList(self):
-        return (self._lataxis_.getAxis(0), )
+        return [self._lataxis_.getAxis(0), ]
 
     def isClose(self, g):
         """Return 1 iff g is a grid of the same type and shape. A real element-by-element

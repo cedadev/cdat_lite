@@ -448,7 +448,7 @@ class CdmsObj (object):
     def _listatts(self):
         dic={}
         for nm,val in self.__dict__.items():
-            if nm[0]!='_' and not nm in self.__cdms_internals__:
+            if (nm[0]!='_' and not nm in self.__cdms_internals__) or nm in ['_FillValue']:
                 dic[nm]=val
             if nm == '_units':
                 dic['units']=val

@@ -57,6 +57,86 @@ _FilePath = r"([^\s\]\',]+)"
 _IndexList = re.compile(_ListStartPat+_IndexPat+_ListSepPat+_IndexPat+_ListSepPat+_IndexPat+_ListSepPat+_IndexPat+_ListSepPat+_FilePath+_ListEndPat)
 
 _NPRINT = 20
+import cdat_info
+_showCompressWarnings = True
+
+def setCompressionWarnings(value=None):
+    """Turn on/off the warnings for compression
+    Usage:
+      setCompressionWarning(value)
+    Where:
+      value is 0/1 False/True 'no'/'yes' or None (which sets it to the opposite
+    Returns:
+      the value it has been set to
+    """
+    global _showCompressWarnings
+    if value is None:
+        value = not _showCompressWarnings
+    if isinstance(value,str):
+        if not value.slower() in ['y','n','yes','no']:
+            raise CDMSError,"setCompressionWarnings flags must be yes/no or 1/0, or None to invert it"
+        if value.lower()[0]=='y':
+            value = 1
+        else:
+            value = 0
+    if not isinstance(value, (int,bool)):
+        raise CMDSError, "setCompressionWarnings flags must be yes/no or 1/0, or None to invert it"
+
+    if value in [1,True]:
+        _showCompressWarnings = True
+    elif value in [0,False]:
+        _showCompressWarnings = False
+    else:
+        raise CMDSError, "setCompressionWarnings flags must be yes/no or 1/0, or None to invert it"
+    return _showCompressWarnings
+
+def setNetcdfShuffleFlag(value):
+    if cdat_info.CDMS_INCLUDE_DAP=='yes' and _showCompressWarnings:
+        import warnings
+        warnings.warn("Since CDAT Version 5.2 File can now be written with compression and shuffling\nThis is the correct function to set the compression flags.\nHOWEVER you are using dap-enabled version of CDAT, this version of DAP does not allow for new NETCDF4 features.\nWhile your code will seem to work, note that your data will not be compressed.\nPlease use a version of CDAT built w/o DAP in order to achieve compression within cdms2.\nAlternatively you could use the cmor module to output compressed data.",Warning)
+        
+    if value not in [True,False,0,1]:
+        raise CDMSError, "Error NetCDF Shuffle flag must be 1/0 or true/False"
+    if value in [0,False]:
+        Cdunif.CdunifSetNCFLAGS("shuffle",0)
+    else:
+        Cdunif.CdunifSetNCFLAGS("shuffle",1)
+def setNetcdfDeflateFlag(value):
+    if cdat_info.CDMS_INCLUDE_DAP=='yes' and _showCompressWarnings:
+        import warnings
+        warnings.warn("Since CDAT Version 5.2 File can now be written with compression and shuffling\nThis is the correct function to set the compression flags.\nHOWEVER you are using dap-enabled version of CDAT, this version of DAP does not allow for new NETCDF4 features.\nWhile your code will seem to work, note that your data will not be compressed.\nPlease use a version of CDAT built w/o DAP in order to achieve compression within cdms2.\nAlternatively you could use the cmor module to output compressed data.",Warning)
+    if value not in [True,False,0,1]:
+        raise CDMSError, "Error NetCDF deflate flag must be 1/0 or true/False"
+    if value in [0,False]:
+        Cdunif.CdunifSetNCFLAGS("deflate",0)
+    else:
+        Cdunif.CdunifSetNCFLAGS("deflate",1)
+        
+def setNetcdfDeflateLevelFlag(value):
+    if cdat_info.CDMS_INCLUDE_DAP=='yes' and _showCompressWarnings:
+        import warnings
+        warnings.warn("Since CDAT Version 5.2 File can now be written with compression and shuffling\nThis is the correct function to set the compression flags.\nHOWEVER you are using dap-enabled version of CDAT, this version of DAP does not allow for new NETCDF4 features.\nWhile your code will seem to work, note that your data will not be compressed.\nPlease use a version of CDAT built w/o DAP in order to achieve compression within cdms2.\nAlternatively you could use the cmor module to output compressed data.",Warning)
+    if value not in [0,1,2,3,4,5,6,7,8,9]:
+        raise CDMSError, "Error NetCDF deflate_level flag must be an integer < 10"
+    Cdunif.CdunifSetNCFLAGS("deflate_level",value)
+
+def getNetcdfShuffleFlag():
+    if cdat_info.CDMS_INCLUDE_DAP=='yes' and _showCompressWarnings:
+        import warnings
+        warnings.warn("Since CDAT Version 5.2 File can now be written with compression and shuffling\nThis is the correct function to set the compression flags.\nHOWEVER you are using dap-enabled version of CDAT, this version of DAP does not allow for new NETCDF4 features.\nWhile your code will seem to work, note that your data will not be compressed.\nPlease use a version of CDAT built w/o DAP in order to achieve compression within cdms2.\nAlternatively you could use the cmor module to output compressed data.",Warning)
+    return Cdunif.CdunifGetNCFLAGS("shuffle")
+
+def getNetcdfDeflateFlag():
+    if cdat_info.CDMS_INCLUDE_DAP=='yes' and _showCompressWarnings:
+        import warnings
+        warnings.warn("Since CDAT Version 5.2 File can now be written with compression and shuffling\nThis is the correct function to set the compression flags.\nHOWEVER you are using dap-enabled version of CDAT, this version of DAP does not allow for new NETCDF4 features.\nWhile your code will seem to work, note that your data will not be compressed.\nPlease use a version of CDAT built w/o DAP in order to achieve compression within cdms2.\nAlternatively you could use the cmor module to output compressed data.",Warning)
+    return Cdunif.CdunifGetNCFLAGS("deflate")
+
+def getNetcdfDeflateLevelFlag():
+    if cdat_info.CDMS_INCLUDE_DAP=='yes' and _showCompressWarnings:
+        import warnings
+        warnings.warn("Since CDAT Version 5.2 File can now be written with compression and shuffling\nThis is the correct function to set the compression flags.\nHOWEVER you are using dap-enabled version of CDAT, this version of DAP does not allow for new NETCDF4 features.\nWhile your code will seem to work, note that your data will not be compressed.\nPlease use a version of CDAT built w/o DAP in order to achieve compression within cdms2.\nAlternatively you could use the cmor module to output compressed data.",Warning)
+    return Cdunif.CdunifGetNCFLAGS("deflate_level")
 
 # Create a tree from a file path.
 # Returns the parse tree root node.
@@ -1321,9 +1401,6 @@ class CdmsFile(CdmsObj, cuDataset):
             coords = grid.writeToFile(self)
             if coords is not None:
                 coordattr = "%s %s"%(coords[0].id, coords[1].id)
-                #
-                #!KEEPME: This comment fixes a bug in cdat trunk.
-                #
                 #if attributes is None:
                 #    attributes = {'coordinates': coordattr}
                 #else:
@@ -1336,17 +1413,26 @@ class CdmsFile(CdmsObj, cuDataset):
         # Copy variable metadata
         if attributes is None:
             attributes = var.attributes
+            try:
+                attributes['missing_value']=var.missing_value
+            except Exception,err:
+                print err
+                pass
+            try:
+                attributes['_FillValue']=var._FillValue
+            except:
+                pass
+            if attributes.has_key("name"):
+                if attributes['name']!=var.id:
+                    del(attributes['name'])
         for attname,attval in attributes.items():
             if attname not in ["id", "datatype", "parent"]:
                 setattr(newvar, attname, attval)
         if fill_value is not None:
             newvar.setMissing(fill_value)
 
-        #
-        #!KEEPME: This isn't in cdat trunk but fixes a bug with rotated grids
-        #
-        if 'coordattr' in locals():
-            attributes['coordinates'] = coordattr
+        if 'coordattr' in locals(): 
+            attributes['coordinates'] = coordattr 
 
         return newvar
 
@@ -1371,7 +1457,12 @@ class CdmsFile(CdmsObj, cuDataset):
           - dtype is the numpy dtype
           - typecode is deprecated, for backward compatibility only
         """
-
+        import cdat_info
+        if cdat_info.CDMS_INCLUDE_DAP!='yes' and _showCompressWarnings:
+            if  (Cdunif.CdunifGetNCFLAGS("shuffle")!=0) or (Cdunif.CdunifGetNCFLAGS("deflate")!=0) or (Cdunif.CdunifGetNCFLAGS("deflate_level")!=0):
+                import warnings
+                warnings.warn("Since CDAT Version 5.2 File are now written with compression and shuffling\nYou can query different values of compression using the functions:\ncdms2.getNetcdfShuffleFlag() returning 1 if shuffling is enabled, 0 otherwise\ncdms2.getNetcdfDeflateFlag() returning 1 if deflate is used, 0 otherwise\ncdms2.getNetcdfDeflateLevelFlag() returning the level of compression for the deflate method\n\nIf you want to turn that off or set different values of compression use the functions:\ncdms2.setNetcdfShuffleFlag(value) where value is either 0 or 1\ncdms2.setNetcdfDeflateFlag(value) where value is either 0 or 1\ncdms2.setNetcdfDeflateLevelFlag(value) where value is a integer between 0 and 9 included\n\nTurning all values to 0 will produce NetCDF3 Classic files\n",Warning)
+                
         # Make var an AbstractVariable
         if dtype is None and typecode is not None:
             dtype = typeconv.convtypecode2(typecode)
@@ -1411,7 +1502,7 @@ class CdmsFile(CdmsObj, cuDataset):
             
         if extend==0 or (extend is None and not vec1.isTime()):
             if vrank>0:
-                v[:] = var
+                v[:] = var.astype(v.dtype)
             else:
                 v.assignValue(var.getValue())
         else:

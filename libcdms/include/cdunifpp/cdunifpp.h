@@ -26,7 +26,7 @@
 
 /*---------------------------------------------------------*/
 
-#define CDUNIFPP_VERSION "0.13pre2"
+#define CDUNIFPP_VERSION "0.13"
 
 /*---------------------------------------------------------*/
 
@@ -878,6 +878,7 @@ int pp_axis_regular(const PPextravec, const PPrec *, const PPfile *);
 int pp_is_rotated_grid(const PPhdr *);
 Freal pp_mean_period(const PPtime *);
 Freal pp_time_diff(Fint, const PPdate *, const PPdate *);
+Freal pp_sec_to_day(long long);
 PPcalendartype pp_calendar_type(Fint);
 long long pp_gregorian_to_secs(const PPdate *);
 char *pp_t_units(const PPtaxis *, PPlist *);

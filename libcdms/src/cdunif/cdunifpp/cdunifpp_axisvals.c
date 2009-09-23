@@ -292,11 +292,9 @@ Freal pp_time_diff(Fint LBTIM, const PPdate *date, const PPdate *orig_date)
 {
   long long secs;
 
-  const Freal sec_to_day = 1. / 86400.;
-
   switch(pp_calendar_type(LBTIM)) {
   case gregorian:
-    return (pp_gregorian_to_secs(date) - pp_gregorian_to_secs(orig_date)) * sec_to_day;
+    return pp_sec_to_day(pp_gregorian_to_secs(date) - pp_gregorian_to_secs(orig_date));
     break; /* notreached */
   case cal360day:
     secs =
@@ -307,7 +305,7 @@ Freal pp_time_diff(Fint LBTIM, const PPdate *date, const PPdate *orig_date)
 			30 * (date->month - orig_date->month +
 			      12 * (long long) (date->year - orig_date->year) ))));
 
-    return secs * sec_to_day;
+    return pp_sec_to_day(secs);
     break; /* notreached */
   case model:
     secs =
@@ -316,7 +314,7 @@ Freal pp_time_diff(Fint LBTIM, const PPdate *date, const PPdate *orig_date)
 	    60 * (date->hour - orig_date->hour + 
 		  24 * (long long) (date->day - orig_date->day)));
 
-    return secs * sec_to_day;
+    return pp_sec_to_day(secs);
     break; /* notreached */
 
   default:
@@ -326,6 +324,21 @@ Freal pp_time_diff(Fint LBTIM, const PPdate *date, const PPdate *orig_date)
 
   ERRBLKF("pp_time_diff");
 }
+
+
+Freal pp_sec_to_day(long long seconds) {
+  /* convert seconds to days, avoiding rounding where possible 
+   * by using integer arithmetic for the whole days
+   */
+  const int secs_per_day = 86400;
+  
+  long long days, remainder;
+  days = seconds / secs_per_day;
+  remainder = seconds % secs_per_day;
+
+  return days + remainder / (Freal) secs_per_day;
+}
+
 
 PPcalendartype pp_calendar_type(Fint type){
 

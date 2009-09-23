@@ -315,9 +315,12 @@ class AbstractVariable(CdmsObj, Slab):
         """Return the missing value as a scalar, or as
         a numpy array if asarray==1"""
         mv = self.missing_value
+        if mv is None and hasattr(self,'_FillValue'):
+            mv = self._FillValue
+            
         if asarray==0 and isinstance(mv, numpy.ndarray):
             mv = mv[0]
-        if type(mv) is types.StringType and self.dtype.char not in ['?','c','O']:
+        if type(mv) is types.StringType and self.dtype.char not in ['?','c','O','S']:
             mv = float(mv)
         return mv
 
@@ -346,7 +349,7 @@ class AbstractVariable(CdmsObj, Slab):
                 value = numpy.array([value], selftype)
             except:                     # Set fill value when ar[i:j] returns a masked value
                 value = numpy.array([numpy.ma.default_fill_value(self)], selftype)
-        elif valuetype is types.StringType and selftype in ['?','c','O']: # '?' for Boolean and object
+        elif valuetype is types.StringType and selftype in ['?','c','O','S']: # '?' for Boolean and object
             pass
         else:
             raise CDMSError, 'Invalid missing value %s'%`value`

@@ -23,17 +23,22 @@ class ConfigError(Exception):
     pass
 
 
-def _findNetcdf():
-    """Find NetCDF libraries installed on the system or prompt the user.
-    
-    Various heuristics are tried to find the NetCDF installation.
-    """
-    
-    prefix = None
-    inc_dir = None
-    lib_dir = None
 
-    def findLib(prefix):
+class DepFinder(object):
+    """
+    Find dependent libraries by looking in <prefix>/lib and <prefix>/include.
+
+    """
+
+    def __init__(self, depname, homeenv, includefile, libfile):
+        self.depname = depname
+        self.homeenv = homeenv
+        self.prefixes = [os.environ.get(homeenv), '/usr', '/usr/local',
+                os.environ.get('HOME')]
+        self.includefile = includefile
+        self.libfile = libfile
+
+    def findLib(self, prefix):
         if prefix is None:
             return None
         libs = ['lib']
@@ -41,64 +46,48 @@ def _findNetcdf():
             libs.append(sys.lib)
 
         for lib in libs:
-            print 'Looking for NetCDF library in %s/%s ...' % (prefix, lib),
-            if os.path.exists('%s/%s/libnetcdf.a' % (prefix, lib)):
+            print 'Looking for %s library in %s/%s ...' % (self.depname, prefix, lib),
+            if os.path.exists('%s/%s/%s' % (prefix, lib, self.libfile)):
                 print 'yes'
                 return '%s/%s' % (prefix, lib)
             else:
                 print 'no'
 
-    def findInclude(prefix):
+    def findInclude(self, prefix):
         if prefix is None:
             return None
-        print 'Looking for NetCDF include in %s/include ...' % prefix,
-        if os.path.exists('%s/include/netcdf.h' % prefix):
+        print 'Looking for %s include in %s/include ...' % (self.depname, prefix),
+        if os.path.exists('%s/include/%s' % (prefix, self.includefile)):
             print 'yes'
             return '%s/include' % prefix
         else:
             print 'no'
 
-    prefixes = [os.environ.get('NETCDF_HOME'), '/usr', '/usr/local',
-                os.environ.get('HOME')]
+    def find(self):
+        # Try finding a common NetCDF prefix
+        found = False
+        for p in self.prefixes:
+            lib = self.findLib(p)
+            include = self.findInclude(p)
+            if lib and include:
+                found = True
+                break
 
-    # Try finding a common NetCDF prefix
-    found = False
-    for p in prefixes:
-        lib = findLib(p)
-        include = findInclude(p)
-        if lib and include:
-            found = True
-            break
-    else:
-        # Try looking for ncdump
-        for ex_p in os.environ['PATH'].split(':'):
-            if os.path.exists('%s/ncdump' % ex_p):
-                updir = os.path.dirname(ex_p.rstrip('/'))
-                lib = findLib(updir)
-                include = findInclude(updir)
-                if lib and include:
-                    found = True
-                    break
-
-    if not found:
-        print '''===================================================
-NetCDF installation not found.
+        if not found:
+            print '''===================================================
+%s installation not found.
         
-Please enter the NetCDF installation directory below or set the NETCDF_HOME
+Please enter the %s installation directory below or set the %s
 environment variable and re-run setup.py
 
-Enter NetCDF installation prefix:''',
-        prefix = raw_input()
-        lib = findLib(prefix)
-        include = findInclude(prefix)
-        if not (lib and include):
-            raise SystemExit
+Enter %s installation prefix:''' % (self.depname, self.depname, self.homeenv, self.depname),
+            prefix = raw_input()
+            lib = self.findLib(prefix)
+            include = self.findInclude(prefix)
+            if not (lib and include):
+                raise SystemExit
 
-    return include, lib
-
-netcdf_incdir, netcdf_libdir = _findNetcdf()
-
-
+        return include, lib
 
 
 def check_ifnetcdf4(netcdf4_incdir):
@@ -124,8 +113,24 @@ def check_ifnetcdf4(netcdf4_incdir):
 
 
 
+
+netcdf_incdir, netcdf_libdir = DepFinder('NetCDF', 'NETCDF_HOME',
+                                         includefile='netcdf.h',
+                                         libfile='libnetcdf.a').find()
+# If using NetCDF4 find the HDF5 libraries
+if check_ifnetcdf4(netcdf_incdir):
+    print 'NetCDF4 detected.  Including HDF libraries'
+    hdf5_incdir, hdf5_libdir = DepFinder('HDF5', 'HDF5_HOME',
+                                                 includefile='hdf5.h', libfile='libhdf5.a').find()
+else:
+    hdf5_incdir = False
+
+
+
+
+
 def makeExtension(name, package_dir=None, sources=None,
-                  include_dirs=None, library_dirs=None):
+                  include_dirs=None, library_dirs=None, macros=None):
     """Convenience function for building extensions from the Packages directory.
     """
 
@@ -145,7 +150,8 @@ def makeExtension(name, package_dir=None, sources=None,
 
     e = Extension(name, sources,
                   include_dirs=include_dirs,
-                  library_dirs=library_dirs)
+                  library_dirs=library_dirs,
+                  define_macros=macros)
 
     return e
 
@@ -162,22 +168,45 @@ def buildLibTree(packageRoots, mods=None, root='./lib'):
     
     """
 
-    if os.path.exists(root):
-        shutil.rmtree(root)
-    os.mkdir(root)
 
     if mods:
         for mod in mods:
+            modpath = os.path.abspath(mod)
+            linkpath = os.path.join(root, os.path.basename(mod))
+            if os.path.exists(linkpath):
+                os.remove(linkpath)
             os.symlink(os.path.abspath(mod),
-                       os.path.join(root, os.path.basename(mod)))
+                       linkpath)
 
     for package, dir in packageRoots.items():
         if package:
-            os.mkdir(os.path.join(root, package))
+            sdir = os.path.join(root,package)
+            if os.path.exists(sdir):
+                shutil.rmtree(sdir)
+            os.mkdir(sdir)
         for f in os.listdir(dir):
             p = os.path.abspath(os.path.join(dir, f))
             os.symlink(p, os.path.join(root, package, f))
     
+
+
+def copyScripts(scripts=['cdscan', 'cddump']):
+    """In order to put cdat scripts in their own package they are copied
+    into the cdat/scripts directory.
+
+    """
+    for script in scripts:
+        src = os.path.abspath(os.path.join('Packages/cdms2/Script', script))
+        if not os.path.exists(src):
+            src = os.path.abspath(os.path.join('libcdms/src/python', script))
+            
+        dest = os.path.abspath(os.path.join('lib', 'cdat_lite', 'scripts', script+'.py'))
+        shutil.copy(src, dest)
+
+    shutil.copy('Packages/cdms2/Script/convertcdms.py',
+                os.path.abspath(os.path.join('lib', 'cdat_lite', 'scripts')))
+        
+
 
 class build_ext(build_ext_orig):
     """
@@ -196,17 +225,15 @@ class build_ext(build_ext_orig):
         #self.build_lib = self.distribution.command_obj['build'].build_lib
 
         # Option attributes
-        #self.include_dirs += [self.findNumericHeaders(), self.netcdf_incdir,
-        #                      'libcdms/include']
         self.include_dirs += [numpy.get_include(), 'libcdms/include']
         self.library_dirs += [netcdf_libdir, 'libcdms/lib']
 
         self.libraries += ['cdms', 'netcdf']
 
         # If NetCDF4 support add hdf5 libraries
-        if check_ifnetcdf4(netcdf_incdir):
-            print 'NetCDF4 detected.  Including HDF libraries'
+        if hdf5_incdir:
             self.libraries += ['hdf5', 'hdf5_hl']
+            self.library_dirs += [hdf5_libdir]
 
     def run(self):
 
@@ -232,31 +259,21 @@ class build_ext(build_ext_orig):
             cc = distutils.ccompiler.new_compiler().compiler[0]
 
         # If NetCDF4 support we need to add HDF5 libraries in.
-        # Also ./configure doesn't include the right libraries so add the
-        # necessary declarations to CFLAGS too.
-        if check_ifnetcdf4(netcdf_incdir):
-            'NetCDF4 detected.  Configuring libcdms with NetCDF4 support'
-            nc4_defs = '-I%(ncinc)s -L%(nclib)s -lnetcdf -lhdf5 -lhdf5_hl' % dict(
-                ncinc=netcdf_incdir, nclib=netcdf_libdir)
+        if hdf5_incdir:
+            nc4_defs = '--with-hdf5inc=%s --with-hdf5lib=%s' % (
+                hdf5_incdir, hdf5_libdir)
         else:
             nc4_defs = ''
 
-        if not os.path.exists('libcdms/Makefile'):
-            self._system('cd libcdms ; '
-                         'CFLAGS="-fPIC %(nc4)s" '
-                         'CC=%(cc)s '
-                         ' ./configure --disable-drs --disable-hdf --enable-dap '
-                         '--disable-ql --with-ncinc=%(ncinc)s --with-ncincf=%(ncinc)s --with-nclib=%(nclib)s'
-                         % dict(ncinc=netcdf_incdir, nclib=netcdf_libdir,
-                                cc=cc, nc4=nc4_defs))
+        self._system('cd libcdms ; '
+                     'CFLAGS="-fPIC" '
+                     'CC=%(cc)s '
+                     ' ./configure --disable-drs --disable-hdf'
+                     '--disable-ql --with-ncinc=%(ncinc)s --with-ncincf=%(ncinc)s --with-nclib=%(nclib)s %(nc4)s'
+                     % dict(ncinc=netcdf_incdir, nclib=netcdf_libdir,
+                            cc=cc, nc4=nc4_defs))
         
         self._system('cd libcdms ; make db_util ; make cdunif')
-
-        #!DEPRECATED: No need to include libcdms.a in the egg
-        # link into cdat.clib package
-        #self._linkFiles(glob('libcdms/include/*.h'), '%s/cdat_lite/clib/include' % self.build_lib)
-        #self._linkFiles(glob('libcdms/lib/lib*.a'), '%s/cdat_lite/clib/lib' % self.build_lib)
-        
 
         
     def _system(self, cmd):
@@ -267,34 +284,3 @@ class build_ext(build_ext_orig):
 
 
 
-    def findNumericHeaders(self):
-        """We may or may not have the Numeric_headers module available.
-        """
-
-        try:
-            import Numeric
-        except ImportError:
-            raise ConfigError, "Numeric is not installed."
-
-        #if Numeric.__version__ != '23.1':
-            #!TODO only do this test on 64bit
-            #raise ConfigError("CDAT requires Numeric 23.1, version %s found" %
-            #                  Numeric.__version__)
-            
-
-        if 'NUMERIC_INCLUDE' in os.environ:
-            inc = os.environ['NUMERIC_INCLUDE']
-            if os.path.exists(inc):
-                return inc
-
-        try:
-            from Numeric_headers import get_numeric_include
-            return get_numeric_include()
-        except ImportError:
-            pass
-
-        sysinclude = sys.prefix+'/include/python%d.%d' % sys.version_info[:2]
-        if os.path.exists(os.path.join(sysinclude, 'Numeric')):
-            return sysinclude
-
-        raise ConfigError, "Cannot find Numeric header files."

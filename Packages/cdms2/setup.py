@@ -14,9 +14,14 @@ sys.path.insert(0,os.path.join(target_prefix,'lib','python%i.%i' % sys.version_i
 import cdat_info
 import numpy
 
+macros = []
+import cdat_info
+if cdat_info.CDMS_INCLUDE_DAP=='yes':
+    macros.append(("NONC4",None))
+    
 setup (name = "cdms2",
        version='5.0',
-       description = "Climate Data Management System, Numpy version",
+       description = "Clima1te Data Management System, Numpy version",
        url = "http://cdat.sf.net",
        packages = ['cdms2'],
        package_dir = {'cdms2': 'Lib'},
@@ -26,6 +31,7 @@ setup (name = "cdms2",
                                 ['Src/Cdunifmodule.c'],
                                 library_dirs = cdat_info.cdunif_library_directories,
                                 libraries = cdat_info.cdunif_libraries,
+                                define_macros = macros,
                                 ),
                       Extension('cdms2._bindex',
                                 ['Src/_bindexmodule.c', 'Src/bindex.c'],
@@ -39,3 +45,50 @@ setup (name = "MV2",
        url = "http://cdat.sf.net",
        py_modules=['MV2']
        )
+
+try:
+    import cdms
+except:
+    setup (name = "cdms",
+           version = '1.0',
+           packages = ['cdms'],
+           package_dir = {'cdms': 'deprecated_warns'},
+           description = "Deprecation warning for cdms",
+           )
+try:
+    import MV
+except:
+    setup (name = "MV",
+           version = '1.0',
+           description = "Deprecation warning for MV",
+           packages = ['MV'],
+           package_dir = {'MV': 'deprecated_warns'},
+           )
+try:
+    import regrid
+except:
+    setup (name = "regrid",
+           version = '1.0',
+           description = "Deprecation warning for regrid",
+           packages = ['regrid'],
+           package_dir = {'regrid': 'deprecated_warns'},
+           )
+try:
+    import Numeric
+except:
+    setup (name = "Numeric",
+           version = '1.0',
+           description = "Deprecation warning for Numeric",
+           packages = ['Numeric'],
+           package_dir = {'Numeric': 'deprecated_warns'},
+           )
+
+try:
+    import MA
+except:
+    setup (name = "MA",
+           version = '1.0',
+           description = "Deprecation warning for MA",
+           packages = ['MA'],
+           package_dir = {'MA': 'deprecated_warns'},
+           )

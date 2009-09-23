@@ -45,7 +45,7 @@ def convtypecode2(typecode, dtype=None):
 _changedtypes = {'B': 'b',
                  'b': '1',
                  'h': 's',
-                 'H': 'w',
+##                  'H': 'w',
                  'I': 'u'}
 
 class _oldtypecodes(dict):

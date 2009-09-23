@@ -1,5 +1,9 @@
+python module _scrip
+interface
     subroutine conserv_regrid (num_links, nextra, ninput, noutput, input, output, remap_matrix, src_address, dst_address)
-    integer num_links = size(src_address), nextra = size(input, 1), ninput = size(input, 2)
+    intent(c) conserv_regrid
+    intent(c)
+    integer num_links = len(src_address), nextra = shape(input, 0), ninput = shape(input, 1)
     integer noutput
     real*8 input(nextra, ninput)
     real*8, intent(out):: output(nextra, noutput)
@@ -9,7 +13,9 @@
     end subroutine conserv_regrid
 
     subroutine conserv_regrid_normal (num_links, nextra, ninput, noutput, input, output, remap_matrix, src_address, dst_address, normal)
-    integer num_links = size(src_address), nextra = size(input, 1), ninput = size(input, 2)
+    intent(c) conserv_regrid_normal
+    intent(c)
+    integer num_links = len(src_address), nextra = shape(input, 0), ninput = shape(input, 1)
     integer noutput
     real*8 input(nextra, ninput)
     real*8, intent(out):: output(nextra, noutput)
@@ -20,7 +26,9 @@
     end subroutine conserv_regrid
 
     subroutine conserv_regrid2 (num_links, nextra, ninput, noutput, input, output, remap_matrix, src_address, dst_address, src_grad1, src_grad2)
-    integer num_links = size(src_address), nextra = size(input, 1), ninput = size(input, 2)
+    intent(c) conserv_regrid2
+    intent(c)
+    integer num_links = len(src_address), nextra = shape(input, 0), ninput = shape(input, 1)
     integer noutput
     real*8 input(nextra, ninput)
     real*8, intent(out):: output(nextra, noutput)
@@ -31,7 +39,9 @@
     end subroutine conserv_regrid
 
     subroutine bilinear_regrid (num_links, nextra, ninput, noutput, input, output, remap_matrix, src_address, dst_address)
-    integer num_links = size(src_address), nextra = size(input, 1), ninput = size(input, 2)
+    intent(c) bilinear_regrid
+    intent(c)
+    integer num_links = len(src_address), nextra = shape(input, 0), ninput = shape(input, 1)
     integer noutput
     real*8 input(nextra, ninput)
     real*8, intent(out):: output(nextra, noutput)
@@ -41,7 +51,9 @@
     end subroutine bilinear_regrid
 
     subroutine bicubic_regrid (num_links, nextra, ninput, noutput, input, output, remap_matrix, src_address, dst_address, src_grad1, src_grad2, src_grad3)
-    integer num_links = size(src_address), nextra = size(input, 1), ninput = size(input, 2)
+    intent(c) bicubic_regrid
+    intent(c)
+    integer num_links = len(src_address), nextra = shape(input, 0), ninput = shape(input, 1)
     integer noutput
     real*8 input(nextra, ninput)
     real*8, intent(out):: output(nextra, noutput)
@@ -52,7 +64,9 @@
     end subroutine bicubic_regrid
 
     subroutine distwgt_regrid (num_links, nextra, ninput, noutput, input, output, remap_matrix, src_address, dst_address)
-    integer num_links = size(src_address), nextra = size(input, 1), ninput = size(input, 2)
+    intent(c) distwgt_regrid
+    intent(c)
+    integer num_links = len(src_address), nextra = shape(input, 0), ninput = shape(input, 1)
     integer noutput
     real*8 input(nextra, ninput)
     real*8, intent(out):: output(nextra, noutput)
@@ -60,4 +74,5 @@
     integer src_address(num_links)
     integer dst_address(num_links)
     end subroutine distwgt_regrid
-
+end interface
+end python module _scrip
