@@ -77,17 +77,10 @@ class DepFinder(object):
             print '''===================================================
 %s installation not found.
         
-Please enter the %s installation directory below or set the %s
-environment variable and re-run setup.py
+Please set the %s environment variable and re-run setup.py
 
-Enter %s installation prefix:''' % (self.depname, self.depname, self.homeenv, self.depname),
-            prefix = raw_input()
-            lib = self.findLib(prefix)
-            include = self.findInclude(prefix)
-            if not (lib and include):
-                raise SystemExit
-
-        return include, lib
+''' % (self.depname, self.depname, self.homeenv),
+            raise SystemExit
 
 
 def check_ifnetcdf4(netcdf4_incdir):
@@ -268,7 +261,7 @@ class build_ext(build_ext_orig):
         self._system('cd libcdms ; '
                      'CFLAGS="-fPIC" '
                      'CC=%(cc)s '
-                     ' ./configure --disable-drs --disable-hdf'
+                     'sh ./configure --disable-drs --disable-hdf'
                      '--disable-ql --with-ncinc=%(ncinc)s --with-ncincf=%(ncinc)s --with-nclib=%(nclib)s %(nc4)s'
                      % dict(ncinc=netcdf_incdir, nclib=netcdf_libdir,
                             cc=cc, nc4=nc4_defs))

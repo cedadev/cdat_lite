@@ -90,7 +90,7 @@ setup(name='cdat_lite',
         
 
       dependency_links = [NDG_EGG_REPOSITORY],
-      install_requires = ['setuptools>=0.6c1', 'numpy'],
+      install_requires = ['numpy'],
       zip_safe = False,
       
       packages = find_packages('lib'),
