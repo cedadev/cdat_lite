@@ -22,9 +22,3 @@ class ImportTests(unittest.TestCase):
     def testRegrid(self): self.tryImport('regrid2')
 
 
-def test_numeric():
-    """Test the version of Numeric being used
-    """
-    import Numeric
-    print 'Python-23.1 is required for reliable cdat_lite behaviour'
-    assert Numeric.__version__.split('.')[0] == '23'
