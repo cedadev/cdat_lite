@@ -16,12 +16,20 @@ from distutils.command.build_ext import build_ext as build_ext_orig
 from distutils.cmd import Command
 import distutils.ccompiler
 
-import numpy
-
-class ConfigError(Exception):
-    """Configuration failed."""
-    pass
-
+#
+# Numpy detection code.  We want to be able to run commands like
+# setup.py sdist without needing numpy installed.
+#
+try:
+    import numpy
+    has_numpy = True
+except:
+    has_numpy = False
+def get_numpy_include():
+    if has_numpy:
+        return os.path.abspath(numpy.get_include())
+    else:
+        print >>sys.stderr, "Warning: numpy not available.  cdat_lite will not build without it."
 
 
 class DepFinder(object):
@@ -31,10 +39,11 @@ class DepFinder(object):
     """
 
     def __init__(self, depname, homeenv, includefile, libfile):
+
         self.depname = depname
         self.homeenv = homeenv
         self.prefixes = [os.environ.get(homeenv), '/usr', '/usr/local',
-                os.environ.get('HOME')]
+                         os.environ.get('HOME')]
         self.includefile = includefile
         self.libfile = libfile
 
@@ -79,8 +88,10 @@ class DepFinder(object):
         
 Please set the %s environment variable and re-run setup.py
 
-''' % (self.depname, self.depname, self.homeenv),
+''' % (self.depname, self.homeenv)
             raise SystemExit
+        else:
+            return include, lib
 
 
 def check_ifnetcdf4(netcdf4_incdir):
@@ -128,7 +139,11 @@ def makeExtension(name, package_dir=None, sources=None,
     """
 
     if include_dirs is None:
-        include_dirs = []
+        numpy_inc = get_numpy_include()
+        if numpy_inc:
+            include_dirs = [numpy_inc]
+        else:
+            include_dirs = []
     if library_dirs is None:
         library_dirs = []
 
@@ -137,9 +152,11 @@ def makeExtension(name, package_dir=None, sources=None,
     if not sources:
         sources = glob('Packages/%s/Src/*.c' % package_dir)
 
-    include_dirs += ['Packages/%s/Include' % package_dir, netcdf_incdir,
-                     numpy.get_include()]
-    library_dirs += ['Packages/%s/Lib' % package_dir, netcdf_libdir]
+    include_dirs += [os.path.abspath(x) 
+                     for x in ['Packages/%s/Include' % package_dir, 
+                               netcdf_incdir]]
+    library_dirs += [os.path.abspath(x) 
+                     for x in ['Packages/%s/Lib' % package_dir, netcdf_libdir]]
 
     e = Extension(name, sources,
                   include_dirs=include_dirs,
@@ -211,6 +228,7 @@ class build_ext(build_ext_orig):
         """Append NetCDF and libcdms libraries and includes.
         """
 
+
         build_ext_orig.finalize_options(self)        
 
         # Non-option attributes used during run()
@@ -218,8 +236,11 @@ class build_ext(build_ext_orig):
         #self.build_lib = self.distribution.command_obj['build'].build_lib
 
         # Option attributes
-        self.include_dirs += [numpy.get_include(), 'libcdms/include']
-        self.library_dirs += [netcdf_libdir, 'libcdms/lib']
+        numpy_inc = get_numpy_include()
+        if numpy_inc:
+            self.include_dirs += [numpy_inc]
+        self.include_dirs += [os.path.abspath('libcdms/include')]
+        self.library_dirs += [netcdf_libdir, os.path.abspath('libcdms/lib')]
 
         self.libraries += ['cdms', 'netcdf']
 
