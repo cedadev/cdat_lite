@@ -1,0 +1,33 @@
+
+CHECKING NetCDF FILE: hfogo_O1_labelVariable_KT.nc
+=====================
+Using CF Checker Version 2.0.0
+Using Standard Name Table Version 13 (2010-03-11T11:12:25Z)
+
+
+------------------
+Checking variable: time_bnds
+------------------
+
+------------------
+Checking variable: hfogo
+------------------
+
+------------------
+Checking variable: lat_bnds
+------------------
+
+------------------
+Checking variable: time
+------------------
+
+------------------
+Checking variable: lat
+------------------
+
+------------------
+Checking variable: geo_region
+------------------
+
+ERRORS detected: 0
+WARNINGS given: 0

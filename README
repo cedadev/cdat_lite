@@ -16,8 +16,13 @@ different installation system to CDAT.  As a result it is much more
 lightweight (hence the name): CDAT's source distribution is the order
 of 1Gb whereas CDAT-lite is under 5Mb.
 
+As of version 5.2-2, CDAT-lite also includes the CF Checker developed by `Rosalyn Hatcher`_.  The latest version of this code is available at the `CF SVN`_ repository.
+
 .. _CDAT: http://www2-pcmdi.llnl.gov/cdat
 .. _PCMDI: http://www2-pcmdi.llnl.gov/
+.. _`Rosalyn Hatcher`: mailto:r.s.hatcher@reading.ac.uk
+.. _`CF SVN`: http://cf-pcmdi.llnl.gov/svn/repository-cf/cf-checker
+
 
 Installing cdat-lite
 ====================
@@ -67,6 +72,8 @@ to install NetCDF as a shared library (use ``--enable-shared`` in the
 NetCDF ``configure`` script).  Alternatively, you can configure NetCDF with::
 
   $ ./configure --with-pic ...
+
+If you are using NetCDF4 you will also need to configure HDF5 with ``--enable-shared`` or ``--with-pic``.
 
 cdat-lite will look for a NetCDF installation in several places and
 prompt you if it can't find it.  If your NetCDF is installed somewhere
@@ -152,6 +159,15 @@ moment.  To disable this behaviour do:
 .. _`NERC Data Grid wiki`: http://proj.badc.rl.ac.uk/ndg/wiki
 
 
+CF Checker
+==========
+
+See ``README_cfchecks`` for full description of the CF checker.
+However, note the script will be installed under the name
+``cfchecks`` rather than ``cfchecks.py`` as described in ``README_cfchecks``.
+
+This script requires udunits2 to be installed as a dynamic library and
+included in your library search path.
 
 
 FAQ

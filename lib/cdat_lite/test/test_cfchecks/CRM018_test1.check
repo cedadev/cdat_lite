@@ -1,0 +1,32 @@
+
+CHECKING NetCDF FILE: CRM018_test1.nc
+=====================
+Using CF Checker Version 2.0.0
+Using Standard Name Table Version 13 (2010-03-11T11:12:25Z)
+
+WARNING (2.6.1): No 'Conventions' attribute present
+ERROR (7.1): bounds attribute referencing non-existent variable: bounds_lat
+
+------------------
+Checking variable: lat
+------------------
+
+------------------
+Checking variable: level0
+------------------
+
+------------------
+Checking variable: tap
+------------------
+WARNING (2.5.1): Use of 'missing_value' attribute is deprecated
+
+------------------
+Checking variable: lon
+------------------
+
+------------------
+Checking variable: time
+------------------
+
+ERRORS detected: 1
+WARNINGS given: 2

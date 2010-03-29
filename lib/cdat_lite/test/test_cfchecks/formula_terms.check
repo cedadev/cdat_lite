@@ -1,0 +1,76 @@
+
+CHECKING NetCDF FILE: formula_terms.nc
+=====================
+Using CF Checker Version 2.0.0
+Using Standard Name Table Version 13 (2010-03-11T11:12:25Z)
+
+WARNING (7.1): Data for variable lat lies outside cell boundaries
+
+------------------
+Checking variable: PS
+------------------
+
+------------------
+Checking variable: level
+------------------
+ERROR (3.3): Invalid standard_name: model_level
+
+------------------
+Checking variable: time
+------------------
+
+------------------
+Checking variable: lon
+------------------
+
+------------------
+Checking variable: height
+------------------
+
+------------------
+Checking variable: sh
+------------------
+WARNING (3): No standard_name or long_name attribute specified
+ERROR (4.3.2): Cannot get formula definition as no standard_name
+
+------------------
+Checking variable: bounds_lat
+------------------
+
+------------------
+Checking variable: lat
+------------------
+
+------------------
+Checking variable: sigma4
+------------------
+ERROR (4.3.2): Invalid formula_terms syntax
+
+------------------
+Checking variable: level_name
+------------------
+WARNING (3): No standard_name or long_name attribute specified
+
+------------------
+Checking variable: sigma
+------------------
+
+------------------
+Checking variable: PTOP
+------------------
+WARNING (3): No standard_name or long_name attribute specified
+
+------------------
+Checking variable: sigma3
+------------------
+ERROR (4.3.2): fred is not declared as a variable
+ERROR (4.3.2): term ps2 not present in formula
+
+------------------
+Checking variable: sigma2
+------------------
+ERROR (4.3.2): No formula defined for standard name: height
+ERROR (5): co-ordinate variable 'sigma2' not monotonic
+
+ERRORS detected: 7
+WARNINGS given: 4
