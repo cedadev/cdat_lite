@@ -1,0 +1,62 @@
+===========================================================================
+README  -  CF Checker version 2.0.0
+===========================================================================
+
+To run the CF file conformance checker you must have the following 
+installed on your system:
+
+     - Python 2.5
+     - UDUNITS2
+     - CDMS (part of CDAT-5.x)
+
+
+Notes on CDMS install:
+-----------------------
+The CDMS module is part of the CDAT distribution available from the
+PCMDI software portal (http://www2-pcmdi.llnl.gov/cdat/).
+
+You can either install the entire CDAT distribution or alternatively 
+use the --enable-cdms-only option to the configure script to install 
+a minimal configuration supporting CDMS only (See CDAT express install 
+instructions for further details).
+
+
+Notes on UDUNITS-2 install:
+--------------------------
+The UDUNITS-2 package can be obtained from the unidata website
+(http://www.unidata.ucar.edu/software/udunits)
+
+
+To run the CF checker:
+-----------------------
+Once you have both UDUNITS-2 and CDMS installed you need to complete the 
+following steps in order to run the CF Checker.
+
+1. Make sure that the location of the cdms library is in your PYTHONPATH
+
+   E.g. export PYTHONPATH=/home/rsh/software/CDAT-5.2-cdms/lib/python2.5/site-packages
+
+2. Make sure that the path to the udunits libraries are in the system 
+   library path or alternatively set the environment variable LD_LIBRARY_PATH
+
+   E.g. export LD_LIBRARY_PATH=$PREFIX/lib    
+
+   where $PREFIX is the --prefix option you passed to the configure script 
+   when installing udunits.
+
+3. Depending on the platform you are installing on, you may need to edit
+   the name of the udunits2 library in the cfchecks.py script.  If the name
+   of the library is anything other than libudunits2.so then you will need to
+   modify, as appropriate, the line
+
+   udunits=CDLL("libudunits2.so")
+
+4. You may also need to modify the path to the python interpreter at the top 
+   of the cfchecks.py script.
+
+5. Run the checker by typing:
+      cfchecks.py <netCDF_file.nc>
+
+
+If you have any problems or comments please contact Rosalyn Hatcher
+(r.s.hatcher@reading.ac.uk)
