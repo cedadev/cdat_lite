@@ -158,7 +158,15 @@ def makeExtension(name, package_dir=None, sources=None,
     library_dirs += [os.path.abspath(x) 
                      for x in ['Packages/%s/Lib' % package_dir, netcdf_libdir]]
 
+    libraries = []
+
+    # If NetCDF4 support add hdf5 libraries
+    if hdf5_incdir:
+        libraries += ['hdf5_hl', 'hdf5', 'm', 'z']
+        library_dirs += [hdf5_libdir]
+
     e = Extension(name, sources,
+                  libraries=libraries,
                   include_dirs=include_dirs,
                   library_dirs=library_dirs,
                   define_macros=macros)
@@ -246,7 +254,7 @@ class build_ext(build_ext_orig):
 
         # If NetCDF4 support add hdf5 libraries
         if hdf5_incdir:
-            self.libraries += ['hdf5', 'hdf5_hl']
+            self.libraries += ['hdf5_hl', 'hdf5', 'm', 'z']
             self.library_dirs += [hdf5_libdir]
 
     def run(self):
