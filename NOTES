@@ -7,13 +7,7 @@ cdunifpp which is out of date in the CDAT trunk).
 TODO
 ----
 
-Before cdat_lite-5.0-0.3 I should:
-
- 1. Support "setup.py develop".   This will require rearranging the package layout in "Packages" [DONE]
- 2. Support NetCDF4.  [DONE - testS needed]
- 3. All tests passing.  [DONE]
- 4. Update cdat_lite.test with changes in Packages/cdms2/Test.  
-    Add cdtest18.py and test_compression.py to test suite.  
+ 1. Tests are failing on latest 64-bit ubuntu.
 
 Test switching
 --------------
