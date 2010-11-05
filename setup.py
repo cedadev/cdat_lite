@@ -25,8 +25,8 @@ CDAT_HOME_URL = 'http://www-pcmdi.llnl.gov/software-portal/cdat'
 #     in <cdat-release>.
 #  3. The cdunifpp version is stated in long_description not in the version.  Any
 #     change to the cdunifpp version naturally triggers a new <cdat-lite-version>.
-cdat_release = '5.2'
-cdat_tag = '-2'
+cdat_release = '6.0.alpha'
+cdat_tag = '-1'
 cdunifpp_version = '0.13'
 
 
@@ -101,7 +101,7 @@ setup(name='cdat_lite',
         makeExtension('cdtime'),
         makeExtension('unidata.udunits_wrap', 'unidata'),
         #!TODO: macro depends on whether NC4 is used
-        makeExtension('cdms2.Cdunif', 'cdms2', macros=[('NONC4', None)]),
+        makeExtension('cdms2.Cdunif', 'cdms2'),
         Extension('cdms2._bindex',
                   ['Packages/cdms2/Src/_bindexmodule.c',
                    'Packages/cdms2/Src/bindex.c'],

@@ -1,6 +1,13 @@
 from numpy.distutils.core import setup, Extension
-import os,sys,string
+import os,sys
 
+try:
+    import cdat_info
+    externals = cdat_info.externals
+except:
+    #externals = os.path.join(sys.prefix,"Externals")
+    externals = os.environ.get("EXTERNALS",externals)
+    
 target_prefix = sys.prefix
 for i in range(len(sys.argv)):
     a = sys.argv[i]
@@ -20,18 +27,20 @@ setup (name = "udunits",
        ext_modules = [
     Extension('unidata.udunits_wrap',
               ['Src/udunits_wrap.c',
-               'Src/utparse.c',
-               'Src/utlib.c',
-               'Src/utscan.c',
+               ## 'Src/utparse.c',
+               ## 'Src/utlib.c',
+               ## 'Src/utscan.c',
                ],
-              include_dirs = ['Include']
+              include_dirs = [os.path.join(externals,'include')],
+              library_dirs = [os.path.join(externals,'lib')],
+              libraries=['udunits2','expat']
               )
     ]
       )
 
 f=open('Src/udunits.dat')
 version=sys.version.split()[0].split('.')
-version=string.join(version[:2],'.')
+version='.'.join(version[:2])
 try:
     f2=open(target_prefix+'/lib/python'+version+'/site-packages/unidata/udunits.dat','w')
 except:

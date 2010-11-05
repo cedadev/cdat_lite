@@ -126,12 +126,14 @@ class PickComponent(SelectorComponent):
                     try:
                         tmp=fetched(**{faxes[i].id:(l,l)})
                         ax=tmp.getAxis(i)
+                        #print ax
                         newaxvals.append(ax[0])
 			if ax.getBounds()!=None:
                    	     bounds.append(ax.getBounds()[0])
 			else:
 			     bounds=None
                     except Exception,err:
+                        #print 'err:',err,'match:',self.match
                         if self.match==1:
                             raise Exception,'Error axis value :'+str(l)+' was requested but is not present in slab\n(more missing might exists)'
                         elif self.match==0:
@@ -144,7 +146,8 @@ class PickComponent(SelectorComponent):
                                     newaxvals.append(cdtime.s2r(l,faxes[i].units).value)
                             else:
                                 newaxvals.append(l)
-                            bounds.append([ax[-1]-1.,ax[-1]+1])
+                            if bounds is not None:
+                                bounds.append([ax[-1]-1.,ax[-1]+1])
                         else:
                             tmp=None
                     if not tmp is None:

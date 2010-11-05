@@ -54,10 +54,12 @@ _ListSepPat = r'\s*,\s*'
 _ListSep = re.compile(_ListSepPat)
 _IndexPat = r'(\d+|-)'
 _FilePath = r"([^\s\]\',]+)"
-_IndexList = re.compile(_ListStartPat+_IndexPat+_ListSepPat+_IndexPat+_ListSepPat+_IndexPat+_ListSepPat+_IndexPat+_ListSepPat+_FilePath+_ListEndPat)
+# Two file map patterns, _IndexList4 is the original one, _IndexList5 supports
+# forecast data too...
+_IndexList4 = re.compile(_ListStartPat+_IndexPat+_ListSepPat+_IndexPat+_ListSepPat+_IndexPat+_ListSepPat+_IndexPat+_ListSepPat+_FilePath+_ListEndPat)
+_IndexList5 = re.compile(_ListStartPat+_IndexPat+_ListSepPat+_IndexPat+_ListSepPat+_IndexPat+_ListSepPat+_IndexPat+_ListSepPat+_IndexPat+_ListSepPat+_FilePath+_ListEndPat)
 
 _NPRINT = 20
-import cdat_info
 _showCompressWarnings = True
 
 def setCompressionWarnings(value=None):
@@ -90,11 +92,7 @@ def setCompressionWarnings(value=None):
         raise CMDSError, "setCompressionWarnings flags must be yes/no or 1/0, or None to invert it"
     return _showCompressWarnings
 
-def setNetcdfShuffleFlag(value):
-    if cdat_info.CDMS_INCLUDE_DAP=='yes' and _showCompressWarnings:
-        import warnings
-        warnings.warn("Since CDAT Version 5.2 File can now be written with compression and shuffling\nThis is the correct function to set the compression flags.\nHOWEVER you are using dap-enabled version of CDAT, this version of DAP does not allow for new NETCDF4 features.\nWhile your code will seem to work, note that your data will not be compressed.\nPlease use a version of CDAT built w/o DAP in order to achieve compression within cdms2.\nAlternatively you could use the cmor module to output compressed data.",Warning)
-        
+def setNetcdfShuffleFlag(value):        
     if value not in [True,False,0,1]:
         raise CDMSError, "Error NetCDF Shuffle flag must be 1/0 or true/False"
     if value in [0,False]:
@@ -102,9 +100,6 @@ def setNetcdfShuffleFlag(value):
     else:
         Cdunif.CdunifSetNCFLAGS("shuffle",1)
 def setNetcdfDeflateFlag(value):
-    if cdat_info.CDMS_INCLUDE_DAP=='yes' and _showCompressWarnings:
-        import warnings
-        warnings.warn("Since CDAT Version 5.2 File can now be written with compression and shuffling\nThis is the correct function to set the compression flags.\nHOWEVER you are using dap-enabled version of CDAT, this version of DAP does not allow for new NETCDF4 features.\nWhile your code will seem to work, note that your data will not be compressed.\nPlease use a version of CDAT built w/o DAP in order to achieve compression within cdms2.\nAlternatively you could use the cmor module to output compressed data.",Warning)
     if value not in [True,False,0,1]:
         raise CDMSError, "Error NetCDF deflate flag must be 1/0 or true/False"
     if value in [0,False]:
@@ -113,29 +108,17 @@ def setNetcdfDeflateFlag(value):
         Cdunif.CdunifSetNCFLAGS("deflate",1)
         
 def setNetcdfDeflateLevelFlag(value):
-    if cdat_info.CDMS_INCLUDE_DAP=='yes' and _showCompressWarnings:
-        import warnings
-        warnings.warn("Since CDAT Version 5.2 File can now be written with compression and shuffling\nThis is the correct function to set the compression flags.\nHOWEVER you are using dap-enabled version of CDAT, this version of DAP does not allow for new NETCDF4 features.\nWhile your code will seem to work, note that your data will not be compressed.\nPlease use a version of CDAT built w/o DAP in order to achieve compression within cdms2.\nAlternatively you could use the cmor module to output compressed data.",Warning)
     if value not in [0,1,2,3,4,5,6,7,8,9]:
         raise CDMSError, "Error NetCDF deflate_level flag must be an integer < 10"
     Cdunif.CdunifSetNCFLAGS("deflate_level",value)
 
 def getNetcdfShuffleFlag():
-    if cdat_info.CDMS_INCLUDE_DAP=='yes' and _showCompressWarnings:
-        import warnings
-        warnings.warn("Since CDAT Version 5.2 File can now be written with compression and shuffling\nThis is the correct function to set the compression flags.\nHOWEVER you are using dap-enabled version of CDAT, this version of DAP does not allow for new NETCDF4 features.\nWhile your code will seem to work, note that your data will not be compressed.\nPlease use a version of CDAT built w/o DAP in order to achieve compression within cdms2.\nAlternatively you could use the cmor module to output compressed data.",Warning)
     return Cdunif.CdunifGetNCFLAGS("shuffle")
 
 def getNetcdfDeflateFlag():
-    if cdat_info.CDMS_INCLUDE_DAP=='yes' and _showCompressWarnings:
-        import warnings
-        warnings.warn("Since CDAT Version 5.2 File can now be written with compression and shuffling\nThis is the correct function to set the compression flags.\nHOWEVER you are using dap-enabled version of CDAT, this version of DAP does not allow for new NETCDF4 features.\nWhile your code will seem to work, note that your data will not be compressed.\nPlease use a version of CDAT built w/o DAP in order to achieve compression within cdms2.\nAlternatively you could use the cmor module to output compressed data.",Warning)
     return Cdunif.CdunifGetNCFLAGS("deflate")
 
 def getNetcdfDeflateLevelFlag():
-    if cdat_info.CDMS_INCLUDE_DAP=='yes' and _showCompressWarnings:
-        import warnings
-        warnings.warn("Since CDAT Version 5.2 File can now be written with compression and shuffling\nThis is the correct function to set the compression flags.\nHOWEVER you are using dap-enabled version of CDAT, this version of DAP does not allow for new NETCDF4 features.\nWhile your code will seem to work, note that your data will not be compressed.\nPlease use a version of CDAT built w/o DAP in order to achieve compression within cdms2.\nAlternatively you could use the cmor module to output compressed data.",Warning)
     return Cdunif.CdunifGetNCFLAGS("deflate_level")
 
 # Create a tree from a file path.
@@ -174,7 +157,7 @@ def createDataset(path,template=None):
 # 'uri' is a Uniform Resource Identifier, referring to a cdunif file, XML file,
 #   or LDAP URL of a catalog dataset entry.
 # 'mode' is 'r', 'r+', 'a', or 'w'
-def openDataset(uri,mode='r',template=None,dods=1):
+def openDataset(uri,mode='r',template=None,dods=1,dpath=None):
     uri = string.strip(uri)
     (scheme,netloc,path,parameters,query,fragment)=urlparse.urlparse(uri)
     if scheme in ('','file'):
@@ -217,14 +200,15 @@ def openDataset(uri,mode='r',template=None,dods=1):
     # Note: In general, dset.datapath is relative to the URL of the
     #   enclosing database, but here the database is null, so the
     #   datapath should be absolute.
-    direc = datanode.getExternalAttr('directory')
-    head = os.path.dirname(path)
-    if direc and os.path.isabs(direc):
-        dpath = direc
-    elif direc:
-        dpath = os.path.join(head,direc)
-    else:
-        dpath = head
+    if dpath==None:
+        direc = datanode.getExternalAttr('directory')
+        head = os.path.dirname(path)
+        if direc and os.path.isabs(direc):
+            dpath = direc
+        elif direc:
+            dpath = os.path.join(head,direc)
+        else:
+            dpath = head
 
     dataset = Dataset(uri, mode, datanode, None, dpath)
     return dataset
@@ -260,19 +244,23 @@ def parselist(text, f):
     return result, n
 
 def parseIndexList(text):
-    """Parse a string of the form [i,j,k,l,path] where
-    i,j,k,l are indices or '-', and path is a filename.
+    """Parse a string of the form [i,j,k,l,...,path] where
+    i,j,k,l,... are indices or '-', and path is a filename.
     Coerce the indices to integers, return (result, nconsumed).
     """
-    m = _IndexList.match(text)
+    m = _IndexList4.match(text)
+    nindices = 4
+    if m is None:
+        m = _IndexList5.match(text)
+        nindices = 5
     if m is None:
         raise CDMSError, "Parsing cdms_filemap near "+text[0:_NPRINT]
-    result = [None]*5
-    for i in range(4):
+    result = [None]*(nindices+1)
+    for i in range(nindices):
         s = m.group(i+1)
         if s!='-':
             result[i] = string.atoi(s)
-    result[4] = m.group(5)
+    result[nindices] = m.group(nindices+1)
     return result, m.end()
 
 def parseName(text):
@@ -499,12 +487,24 @@ class Dataset(CdmsObj, cuDataset):
                 for varname in varlist:
                     timemap = {}
                     levmap = {}
-                    for tstart, tend, levstart, levend, path in varmap:
-                        self._filemap_[(varname, tstart, levstart)] = path
+                    fcmap = {}
+                    # The for loop was:
+                    # for tstart, tend, levstart, levend, path in varmap:
+                    # but now there _may_ be an additional item before path...
+                    for varm1 in varmap:
+                        tstart, tend, levstart, levend = varm1[0:4]
+                        if (len(varmap)>=6):
+                            forecast = varm1[4]
+                        else:
+                            forecast = None
+                        path = varm1[-1]
+                        self._filemap_[(varname, tstart, levstart, forecast)] = path
                         if tstart is not None:
                             timemap[(tstart, tend)] = 1 # Collect unique (tstart, tend) tuples
                         if levstart is not None:
                             levmap[(levstart, levend)] = 1
+                        if forecast is not None:
+                            fcmap[(forecast,forecast)] = 1
                     tkeys = timemap.keys()
                     if len(tkeys)>0:
                         tkeys.sort()
@@ -517,6 +517,9 @@ class Dataset(CdmsObj, cuDataset):
                         levpart = map(lambda x: list(x), levkeys)
                     else:
                         levpart = None
+                    fckeys = fcmap.keys()
+                    if len(fckeys)>0:
+                        fckeys.sort()
                     if self.variables.has_key(varname):
                         self.variables[varname]._varpart_ = [tpart, levpart]
 
@@ -1401,6 +1404,9 @@ class CdmsFile(CdmsObj, cuDataset):
             coords = grid.writeToFile(self)
             if coords is not None:
                 coordattr = "%s %s"%(coords[0].id, coords[1].id)
+                #
+                #!KEEPME: This comment fixes a bug in rotated grids
+                #
                 #if attributes is None:
                 #    attributes = {'coordinates': coordattr}
                 #else:
@@ -1431,8 +1437,11 @@ class CdmsFile(CdmsObj, cuDataset):
         if fill_value is not None:
             newvar.setMissing(fill_value)
 
-        if 'coordattr' in locals(): 
-            attributes['coordinates'] = coordattr 
+        #
+        #!KEEPME: This fixes a bug with rotated grids
+        #
+        if 'coordattr' in locals():
+            attributes['coordinates'] = coordattr
 
         return newvar
 
@@ -1457,8 +1466,7 @@ class CdmsFile(CdmsObj, cuDataset):
           - dtype is the numpy dtype
           - typecode is deprecated, for backward compatibility only
         """
-        import cdat_info
-        if cdat_info.CDMS_INCLUDE_DAP!='yes' and _showCompressWarnings:
+        if _showCompressWarnings:
             if  (Cdunif.CdunifGetNCFLAGS("shuffle")!=0) or (Cdunif.CdunifGetNCFLAGS("deflate")!=0) or (Cdunif.CdunifGetNCFLAGS("deflate_level")!=0):
                 import warnings
                 warnings.warn("Since CDAT Version 5.2 File are now written with compression and shuffling\nYou can query different values of compression using the functions:\ncdms2.getNetcdfShuffleFlag() returning 1 if shuffling is enabled, 0 otherwise\ncdms2.getNetcdfDeflateFlag() returning 1 if deflate is used, 0 otherwise\ncdms2.getNetcdfDeflateLevelFlag() returning the level of compression for the deflate method\n\nIf you want to turn that off or set different values of compression use the functions:\ncdms2.setNetcdfShuffleFlag(value) where value is either 0 or 1\ncdms2.setNetcdfDeflateFlag(value) where value is either 0 or 1\ncdms2.setNetcdfDeflateLevelFlag(value) where value is a integer between 0 and 9 included\n\nTurning all values to 0 will produce NetCDF3 Classic files\n",Warning)
@@ -1518,7 +1526,7 @@ class CdmsFile(CdmsObj, cuDataset):
                 isoverlap = 1
             if isoverlap==1:
                 v[index:index+len(vec1)] = var.astype(v.dtype)
-                vec2[index:index+len(vec1)] = vec1[:]
+                vec2[index:index+len(vec1)] = vec1[:].astype(vec2[:].dtype)
                 if bounds1 is not None:
                     vec2.setBounds(bounds1, persistent=1, index=index)
             else:

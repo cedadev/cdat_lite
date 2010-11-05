@@ -1,0 +1,5 @@
+include ez_setup.py setup_util.py
+recursive-include lib/cdat_lite/test *.nc *.pp *.xml
+include Packages/cdms2/Script/cdscan
+recursive-include libcdms *
+recursive-include Packages *.py *.c *.h *.xml *.pdf *.pfp *.dat *.htm *.html *.doc *.pyf

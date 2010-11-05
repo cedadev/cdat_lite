@@ -163,6 +163,7 @@ def mergeTime(ds,statusbar=1):
     # first determine the number of slabs
     nslab=len(ds)
     order0=None
+    initialgrid = ds[0].getGrid()
     times=[[]]*nslab
     vals=[]
     ax=ds[0].getAxisList()
@@ -242,7 +243,10 @@ def mergeTime(ds,statusbar=1):
     t.units=times[0].units
     t.setCalendar(times[0].getCalendar())
     ax[0]=t
-    out=cdms2.createVariable(out,id=ds[0].id,axes=ax,copy=0)
+    out=cdms2.createVariable(out,id=ds[0].id,copy=0)
+    out.setAxisList(ax)
+    if initialgrid is not None:
+        out.setGrid(initialgrid)
     if out.getOrder(ids=1)!=order0:
         return out(order=order0)
     else:
@@ -367,6 +371,7 @@ class TimeSlicer:
         
         # Makes sure time is first
         initialorder=slab.getOrder(ids=1)
+        initialgrid = slab.getGrid()
         if initialorder[0]!='t' : slab=slab(order='t...')
 
         # retrieve the time axis
@@ -420,6 +425,11 @@ class TimeSlicer:
             out = out(order=initialorder)
             if weights:
                 w = w(order=initialorder)
+        if initialgrid is not None:
+            out.setGrid(initialgrid)
+            if weights:
+                w.setGrid(initialgrid)
+                
         if weights:
             return out,w
         else:
@@ -440,10 +450,12 @@ class TimeSlicer:
           out : departure of slab from ref
           '''
         sliced=TimeSlicer.get(self,slab,slicerarg,criteriaarg,statusbar=statusbar,sum=sum)
-##         print "sliced:",sliced
+
         if sliced is None:
             return None
         order=sliced.getOrder(ids=1)
+        initialgrid=sliced.getGrid()
+        
         if order[0]!='t' : sliced=sliced(order='t...')
         order2=sliced.getOrder(ids=1)
         if ref is None:
@@ -461,6 +473,10 @@ class TimeSlicer:
         out.id=slab.id
         for i in range(len(sliced.shape)):
             out.setAxis(i,sliced.getAxis(i))
+
+        if initialgrid is not None:
+            out.setGrid(initialgrid)
+
         if out.getOrder(ids=1)!=order:
             return out(order=order)
         else:
@@ -1305,6 +1321,8 @@ class Seasons(ASeason):
         '''
         if criteriaargclim is None: criteriaargclim=criteriaarg
         order=slab.getOrder(ids=1)
+        initialgrid = slab.getGrid()
+
         if order[0]!='t' : slab=slab(order='t...')
         timeaxis=slab.getAxis(0)
         timecalendar=timeaxis.getCalendar()
@@ -1363,7 +1381,11 @@ class Seasons(ASeason):
         t.setCalendar(tim.getCalendar())
         ax=slab.getAxisList()
         ax[0]=t
-        s=cdms2.createVariable(s,id=slab.id,axes=ax,copy=0)
+        s=cdms2.createVariable(s,id=slab.id,copy=0)
+        s.setAxisList(ax)
+        if initialgrid is not None:
+            s.setGrid(initialgrid)
+
         if s.getOrder(ids=1)!=order:
             return s(order=order)
         else:

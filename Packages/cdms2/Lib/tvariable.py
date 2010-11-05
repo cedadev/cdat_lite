@@ -480,7 +480,7 @@ class TransientVariable(AbstractVariable,numpy.ma.MaskedArray):
     def set_fill_value(self, value):
         "Set missing value attribute and fill value"
         AbstractVariable.setMissing(self, value)
-        self.__dict__['_fill_value'] = self.missing_value
+        self.fill_value = self.missing_value
 
     def setMissing (self, value):
         "Set missing value attribute and fill value"
@@ -533,7 +533,7 @@ if __name__ == '__main__':
         x.shape = s
         t = createVariable(x)
         assert t.shape == s
-        assert t.missing_value == t._fill_value
+        assert t.missing_value == t.fill_value
         assert numpy.ma.allclose(x, t)
         assert t.dtype.char == numpy.int
         assert numpy.ma.size(t) == numpy.ma.size(x)

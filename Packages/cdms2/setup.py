@@ -16,8 +16,8 @@ import numpy
 
 macros = []
 import cdat_info
-if cdat_info.CDMS_INCLUDE_DAP=='yes':
-    macros.append(("NONC4",None))
+## if cdat_info.CDMS_INCLUDE_DAP=='yes':
+##     macros.append(("NONC4",None))
     
 setup (name = "cdms2",
        version='5.0',

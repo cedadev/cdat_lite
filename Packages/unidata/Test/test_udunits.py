@@ -14,7 +14,7 @@ print i
 print f
 
 dC=unidata.udunits(33,'degC')
-dF=unidata.udunits(83,'F')
+dF=unidata.udunits(83,'degF')
 dK=unidata.udunits(300,'K')
 
 print m,'+',cm,'=',m+cm

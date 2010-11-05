@@ -75,7 +75,7 @@ class udunits(object):
             raise 'Error, must provide at least one args as string representing units'
         
         if unidata.udunits_init == 0:
-            udunits_wrap.init(udunits_name)
+            udunits_wrap.init()#udunits_name)
             unidata.udunits_init=1
         self._units=units
         self._value=value

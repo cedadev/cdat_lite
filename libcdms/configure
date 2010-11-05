@@ -5309,7 +5309,7 @@ if test "${with_nclib+set}" = set; then
   withval=$with_nclib; NCLIB=$withval
 fi
 
-      NC_LIB_OPTIONS="nc-dap "`${NCLIB}/../bin/ncdap-config --libs`
+      NC_LIB_OPTIONS="netcdf "`${NCLIB}/../bin/nc-config --libs`
 else
 
 # Check whether --with-hdf5lib was given.

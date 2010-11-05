@@ -64,7 +64,7 @@ SHELL = /bin/sh
 LIBRARY		= libcdms.a
 
 # all:		cddrs cdunif db_util cddrstest cduniftest 
-all:		cdunif db_util cduniftest
+all:		cddrs cdunif db_util cduniftest
 
 debug:		cddrs_debug cdunif_debug db_util_debug cddrstest_debug cduniftest_debug 
 

@@ -71,7 +71,7 @@ all:		$(OBJS) FORCE
 		$(RANLIB) $(LIBRARY)
 
 cddrs.o:	cddrs.c ../../include/cdunifint.h ../../include/cdunif.h ../../include/cddrsint.h ../../include/cddrs.h
-cddrswrap.o:	cddrswrap.c ../../include/cddrs.h ../../include/cfortran.h
+#cddrswrap.o:	cddrswrap.c ../../include/cddrs.h ../../include/cfortran.h
 
 
 .SUFFIXES: .F

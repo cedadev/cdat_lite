@@ -7,8 +7,8 @@ init(self,args)
      PyObject *self;
      PyObject *args;
 {
-  char *file;
-  if (!PyArg_ParseTuple(args,"s",&file))
+  char *file=NULL;
+  if (!PyArg_ParseTuple(args,"|s",&file))
     return NULL;
   if ( utInit(file) != 0 )
     {

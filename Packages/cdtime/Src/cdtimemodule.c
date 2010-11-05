@@ -49,7 +49,7 @@ PyObject *PyCdtime_ErrorObject;   /* locally-raised exception */
 PyObject *PyCdtime_ModuleDict;		     /* module dictionary */
 
 #define DefineLongConstant(dict, name,value) \
-   { PyDict_SetItemString(dict, name, PyInt_FromLong(value)); }
+  { PyObject *tmpx ; tmpx = PyInt_FromLong(value) ; PyDict_SetItemString(dict, name, tmpx); Py_DECREF(tmpx); }
 
 /*****************************************************************************
  * Helper functions

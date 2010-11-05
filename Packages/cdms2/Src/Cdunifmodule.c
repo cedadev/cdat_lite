@@ -16,9 +16,9 @@
 #define _CDUNIF_MODULE
 #include "Cdunifmodule.h"
 
-int cdms_shuffle = 1 ;
+int cdms_shuffle = 0 ;
 int cdms_deflate = 1 ;
-int cdms_deflate_level = 6 ;
+int cdms_deflate_level = 1 ;
 
 staticforward int
 Cdunif_file_init(PyCdunifFileObject *self);
@@ -1067,7 +1067,9 @@ set_attribute(int fileid, int varid, PyObject *attributes,
 	cdunif_signalerror(ret);
 	return -1;
       }
-      PyDict_SetItemString(attributes, name, (PyObject *)array);
+      PyObject *tmpx = (PyObject *)array;
+      PyDict_SetItemString(attributes, name, tmpx);
+      Py_DECREF(tmpx);
       return 0;
     }
     else
@@ -2023,8 +2025,11 @@ PyCdunifVariable_GetAttribute(PyCdunifVariableObject *self, char *name)
     if (check_if_open(self->file, -1)) {
       PyCdunifVariable_GetShape(self);
       tuple = PyTuple_New(self->nd);
-      for (i = 0; i < self->nd; i++)
-	PyTuple_SetItem(tuple, i, PyInt_FromLong(self->dimensions[i]));
+      for (i = 0; i < self->nd; i++) {
+	PyObject *tmpx = PyInt_FromLong(self->dimensions[i]);
+	PyTuple_SetItem(tuple, i, tmpx);
+	//Py_DECREF(tmpx);
+      }
       return tuple;
     }
     else
@@ -2048,11 +2053,15 @@ PyCdunifVariable_GetAttribute(PyCdunifVariableObject *self, char *name)
 	  Py_END_ALLOW_THREADS;
 	  
 	  if (dimtype==CuGlobalDim){
-	      PyTuple_SetItem(tuple, i, PyString_FromString(name));
+	    PyObject *tmpx = PyString_FromString(name);
+	    PyTuple_SetItem(tuple, i, tmpx);
+	    //Py_DECREF(tmpx);
 	  }
 	  else {
 	      sprintf(pseudoname,"%s_%s",name,vname);
-	      PyTuple_SetItem(tuple, i, PyString_FromString(pseudoname));
+	      PyObject *tmpx = PyString_FromString(pseudoname);
+	      PyTuple_SetItem(tuple, i, tmpx);
+	      //Py_DECREF(tmpx);
 	  }
       }
       return tuple;
