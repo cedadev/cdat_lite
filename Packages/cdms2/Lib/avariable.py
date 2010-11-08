@@ -1261,6 +1261,9 @@ class AbstractVariable(CdmsObj, Slab):
     def __sqrt__(self): 
         return MV.sqrt(self)
 
+    def __mod__(self,other):
+        return MV.mod(self,other)
+
     def astype (self, tc):
         "return self as array of given type."
         return self.subSlice().astype(tc)

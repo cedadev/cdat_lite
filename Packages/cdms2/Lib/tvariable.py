@@ -104,6 +104,7 @@ class TransientVariable(AbstractVariable,numpy.ma.MaskedArray):
     __gt__    = AbstractVariable.__gt__
     __ge__    = AbstractVariable.__ge__
     __sqrt__    = AbstractVariable.__sqrt__
+    __mod__    = AbstractVariable.__mod__
 
     def __init__(self,data, typecode=None, copy=1, savespace=0, 
                  mask=numpy.ma.nomask, fill_value=None, grid=None,

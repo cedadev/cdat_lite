@@ -364,6 +364,7 @@ bitwise_and = var_binary_operation(numpy.ma.bitwise_and)
 bitwise_or = var_binary_operation(numpy.ma.bitwise_or)
 bitwise_xor = var_binary_operation(numpy.ma.bitwise_xor)
 
+mod = var_binary_operation(numpy.ma.mod)
 
 def count (a, axis = None):
     "Count of the non-masked elements in a, or along a certain axis."   
@@ -864,7 +865,5 @@ def fromstring (s, t):
        t is a typecode.
     """
     return TransientArray(numpy.ma.fromstring(s,t))
-
-
 
 

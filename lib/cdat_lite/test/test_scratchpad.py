@@ -47,3 +47,17 @@ def test_makevar():
     finally:
         if os.path.exists(tmp):
             os.remove(tmp)
+
+
+def test_modulo():
+    """
+    A problem with modulo of CDMS variables has been reported with
+    numpy-1.5.0
+
+    """
+    a = numpy.arange(10)
+    var = cdms2.createVariable(a)
+    # Fails here
+    m = var % 2
+
+    assert m.tolist() == [0,1,0,1,0,1,0,1,0,1]
