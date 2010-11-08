@@ -61,3 +61,35 @@ def test_modulo():
     m = var % 2
 
     assert m.tolist() == [0,1,0,1,0,1,0,1,0,1]
+
+def test_arithmathic():
+    """
+    As contributed by Chris (lee@ashimaresearch.com)
+
+    """
+    nc_file = pkg_resources.resource_filename('cdat_lite.test', 'lee_data.nc')
+    nc = cdms2.open(nc_file)
+    d = nc.variables["data"]
+
+    statements = ["d2 =  d + 10.",
+                  "d2 =  d / 10.",
+                  "d2 =  d % 10.",
+                  "d2 =  d[:] + 10.",
+                  "d2 =  d[:] / 10.",
+                  "d2 =  d[:] % 10.",
+                  "d2 =  d[:].data + 10.",
+                  "d2 =  d[:].data / 10.",
+                  "d2 =  d[:].data % 10.",
+                  ]
+
+    fail = False
+    for s in statements:
+        try:
+            exec(s)
+            print("success: {0}".format(s))
+        except:
+            fail = True
+            print("fail   : {0}".format(s))
+
+    if fail:
+        raise AssertionError("Arithmatic test failure")
