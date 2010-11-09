@@ -126,8 +126,10 @@ if check_ifnetcdf4(netcdf_incdir):
     print 'NetCDF4 detected.  Including HDF libraries'
     hdf5_incdir, hdf5_libdir = DepFinder('HDF5', 'HDF5_HOME',
                                                  includefile='hdf5.h', libfile='libhdf5.a').find()
+    with_netcdf4 = True
 else:
     hdf5_incdir = False
+    with_netcdf4 = False
 
 
 

@@ -8,7 +8,7 @@ from ez_setup import use_setuptools
 use_setuptools()
 
 from setuptools import setup, Extension, find_packages
-from setup_util import build_ext, makeExtension, buildLibTree, copyScripts
+from setup_util import build_ext, makeExtension, buildLibTree, copyScripts, with_netcdf4
 
 NDG_EGG_REPOSITORY = 'http://ndg.nerc.ac.uk/dist/'
 CDAT_LITE_URL = 'http://proj.badc.rl.ac.uk/ndg/wiki/CdatLite'
@@ -26,7 +26,7 @@ CDAT_HOME_URL = 'http://www-pcmdi.llnl.gov/software-portal/cdat'
 #  3. The cdunifpp version is stated in long_description not in the version.  Any
 #     change to the cdunifpp version naturally triggers a new <cdat-lite-version>.
 cdat_release = '6.0.alpha'
-cdat_tag = '-1'
+cdat_tag = '-2'
 cdunifpp_version = '0.13'
 
 
@@ -66,6 +66,10 @@ if sys.version_info[:3] < (2,5):
 ==========================================================================
 """)
 
+# cdunif macros depend on the presence of NetCDF4 API
+cdunif_macros = []
+if not with_netcdf4:
+    cdunif_macros.append(('NONC4', None))
 
 #------------------------------------------------------------------------------
 
@@ -100,8 +104,7 @@ setup(name='cdat_lite',
       ext_modules = [
         makeExtension('cdtime'),
         makeExtension('unidata.udunits_wrap', 'unidata'),
-        #!TODO: macro depends on whether NC4 is used
-        makeExtension('cdms2.Cdunif', 'cdms2'),
+        makeExtension('cdms2.Cdunif', 'cdms2', macros=cdunif_macros),
         Extension('cdms2._bindex',
                   ['Packages/cdms2/Src/_bindexmodule.c',
                    'Packages/cdms2/Src/bindex.c'],
