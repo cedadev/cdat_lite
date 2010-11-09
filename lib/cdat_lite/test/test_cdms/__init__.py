@@ -9,6 +9,32 @@ import tempfile, os, shutil
 
 import cdms2
 
+def detect_nc4():
+    """
+    Detect which type of NetCDF cdms2 will create.
+
+    """
+    import tempfile, subprocess
+    from subprocess import PIPE, Popen
+
+    try:
+        fd, tmpnc = tempfile.mkstemp(suffix='.nc')
+        os.close(fd)
+        d = cdms2.open(tmpnc, 'w')
+        d.close()
+        output = Popen(["ncdump", "-k", tmpnc], stdout=PIPE).communicate()[0]
+
+        if 'classic' in output:
+            return False
+        elif 'netCDF-4' in output:
+            return True
+        else:
+            raise Exception("Undetected NetCDF: %s" % output)
+    finally:
+        os.remove(tmpnc)
+
+has_nc4 = detect_nc4()
+
 class CdTest(TestCase):
     """
     Run all tests taken from CDAT's cdms package
@@ -74,5 +100,7 @@ CdTest.addTestModules(['cdtest01', 'cdtest02', 'cdtest03', 'cdtest04',
                        'cdtest10',
                        'cdtest11', 'cdtest12', 'cdtest13', 'cdtest14',
                        ])
-CdTest.addFullTestModules(['cdtest18'])
+
+if has_nc4:
+    CdTest.addFullTestModules(['cdtest18'])
 
