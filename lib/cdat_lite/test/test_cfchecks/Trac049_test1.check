@@ -1,0 +1,33 @@
+
+CHECKING NetCDF FILE: Trac049_test1.nc
+=====================
+Using CF Checker Version 2.0.1
+Using Standard Name Table Version 15 (2010-07-26T08:53:14Z)
+Using Area Type Table Version 1 (5 December 2008)
+
+
+------------------
+Checking variable: latitude
+------------------
+
+------------------
+Checking variable: ecoregion
+------------------
+ERROR (3.5): Invalid syntax for 'flag_meanings' attribute
+
+------------------
+Checking variable: flag_meanings_array
+------------------
+ERROR (3.1): No units attribute set
+
+------------------
+Checking variable: longitude
+------------------
+
+------------------
+Checking variable: time
+------------------
+
+ERRORS detected: 2
+WARNINGS given: 0
+INFORMATION messages: 0

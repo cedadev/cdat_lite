@@ -1,8 +1,8 @@
 
 CHECKING NetCDF FILE: CRM027_test1.nc
 =====================
-Using CF Checker Version 2.0.0
-Using Standard Name Table Version 13 (2010-03-11T11:12:25Z)
+Using CF Checker Version 2.0.1
+Using Standard Name Table Version 15 (2010-07-26T08:53:14Z)
 
 WARNING (7.1): Data for variable time lies outside cell boundaries
 
@@ -25,10 +25,12 @@ Checking variable: forecast
 ------------------
 Checking variable: time
 ------------------
+WARNING (4.4.1): Use of the calendar and/or month_lengths attributes is recommended for time coordinate variables
 
 ------------------
 Checking variable: lat
 ------------------
 
 ERRORS detected: 0
-WARNINGS given: 1
+WARNINGS given: 2
+INFORMATION messages: 0

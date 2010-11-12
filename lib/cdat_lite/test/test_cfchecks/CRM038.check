@@ -1,0 +1,45 @@
+ncvarget: ncid 65536; varid 0: NetCDF: Index exceeds dimension bound
+
+CHECKING NetCDF FILE: CRM038.nc
+=====================
+Using CF Checker Version 2.0.1
+Using Standard Name Table Version 15 (2010-07-26T08:53:14Z)
+
+
+------------------
+Checking variable: tas
+------------------
+
+------------------
+Checking variable: xc
+------------------
+WARNING (3.1): units attribute should be present
+ERROR (5): co-ordinate variable 'xc' not monotonic
+
+------------------
+Checking variable: yc
+------------------
+WARNING (3.1): units attribute should be present
+ERROR (5): co-ordinate variable 'yc' not monotonic
+
+------------------
+Checking variable: lon
+------------------
+
+------------------
+Checking variable: height
+------------------
+INFO: attribute 'positive' is being used in a non-standard way
+INFO: attribute 'axis' is being used in a non-standard way
+
+------------------
+Checking variable: time
+------------------
+
+------------------
+Checking variable: lat
+------------------
+
+ERRORS detected: 2
+WARNINGS given: 2
+INFORMATION messages: 2

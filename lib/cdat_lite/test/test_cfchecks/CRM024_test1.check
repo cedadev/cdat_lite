@@ -1,0 +1,38 @@
+
+CHECKING NetCDF FILE: CRM024_test1.nc
+=====================
+Using CF Checker Version 2.0.1
+Using Standard Name Table Version 15 (2010-07-26T08:53:14Z)
+
+ERROR (2.6.1): This netCDF file does not appear to contain CF Convention data.
+WARNING: Inconsistency - The conventions attribute is set to CF1.0, but you've requested a validity check against CF 1.0
+ERROR (5.6): MSLP - Invalid syntax for 'grid_mapping' attribute
+
+------------------
+Checking variable: latitude
+------------------
+WARNING (3): No standard_name or long_name attribute specified
+
+------------------
+Checking variable: time
+------------------
+WARNING (3): No standard_name or long_name attribute specified
+WARNING (4.4.1): Use of the calendar and/or month_lengths attributes is recommended for time coordinate variables
+
+------------------
+Checking variable: MSLP
+------------------
+
+------------------
+Checking variable: longitude
+------------------
+WARNING (3): No standard_name or long_name attribute specified
+
+------------------
+Checking variable: rgrid
+------------------
+WARNING (3): No standard_name or long_name attribute specified
+
+ERRORS detected: 2
+WARNINGS given: 6
+INFORMATION messages: 0

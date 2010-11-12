@@ -14,12 +14,21 @@ import tempfile, glob
 import difflib
 from subprocess import Popen, PIPE
 
+# Ignore all except v1.0 tests
+ignore = ['badc_units.nc', 'stdName_test.nc']
+version_map = {
+    'CF_1_2.nc': '1.2',
+    'flag_tests.nc': '1.3',
+    'Trac049_test1.nc': '1.4',
+    'Trac049_test2.nc': '1.4',
+    }
 
-def _do_test(filename, checkfilename):
+
+def _do_test(filename, checkfilename, version='1.0'):
     exe = sys.executable
     temp = tempfile.TemporaryFile()
 
-    p1 = Popen([exe, '-c', 'import cdat_lite.scripts as s; s.cfchecks_main()'] + checker_args + [filename],
+    p1 = Popen([exe, '-c', 'import cdat_lite.scripts as s; s.cfchecks_main()'] + checker_args + ['-v', version] + [filename],
                stdout=temp,
                )
     p1.communicate()
@@ -46,8 +55,11 @@ def test():
     try:
         os.chdir(os.path.dirname(__file__))
         for file in glob.glob('*.nc'):
+            if file in ignore:
+                continue
+            version = version_map.get(file, '1.0')
             checkfile = os.path.splitext(file)[0]+'.check'
-            yield _do_test, file, checkfile
+            yield _do_test, file, checkfile, version
     finally:
         os.chdir(here)
 
@@ -59,7 +71,7 @@ except KeyError:
 else:
     udunits2_xml = os.path.join(udunits2_home, 'share', 'udunits', 'udunits2.xml')
     cf_table = os.path.join(os.path.dirname(__file__), 'cf-standard-name-table.xml')
-    checker_args = ['-u', udunits2_xml, '-s', cf_table, '-v', '1.0']
+    checker_args = ['-u', udunits2_xml, '-s', cf_table]
 
     if not os.path.exists(udunits2_xml):
         log.warning('Not running cfchecks tests.  Cannot find udunits2.xml')
