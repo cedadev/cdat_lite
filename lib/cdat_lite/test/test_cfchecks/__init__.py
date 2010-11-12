@@ -58,6 +58,7 @@ def test():
             if file in ignore:
                 continue
             version = version_map.get(file, '1.0')
+
             checkfile = os.path.splitext(file)[0]+'.check'
             yield _do_test, file, checkfile, version
     finally:
@@ -71,7 +72,8 @@ except KeyError:
 else:
     udunits2_xml = os.path.join(udunits2_home, 'share', 'udunits', 'udunits2.xml')
     cf_table = os.path.join(os.path.dirname(__file__), 'cf-standard-name-table.xml')
-    checker_args = ['-u', udunits2_xml, '-s', cf_table]
+    area_table = os.path.join(os.path.dirname(__file__), 'area-type-table.xml')
+    checker_args = ['-u', udunits2_xml, '-s', cf_table, '-a', area_table]
 
     if not os.path.exists(udunits2_xml):
         log.warning('Not running cfchecks tests.  Cannot find udunits2.xml')
