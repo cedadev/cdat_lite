@@ -1,7 +1,15 @@
 include ez_setup.py setup_util.py
-exclude *.pyc *~
 
-prune lib
+exclude lib/cdat_info.py lib/cdtime.so lib/MV2.py
+prune lib/cdms2
+prune lib/cdutil
+prune lib/genutil
+prune lib/ncml
+prune lib/Properties
+prune lib/regrid2
+prune lib/unidata
+prune lib/xmgrace
+
 recursive-include lib/cdat_lite/test *.nc *.pp *.xml *.check
 recursive-include lib/cdat_lite/scripts *.py
 
@@ -9,3 +17,5 @@ recursive-include libcdms *
 recursive-exclude libcdms *.o *.so *.a
 
 recursive-include Packages *.py *.c *.h *.xml *.pdf *.pfp *.dat *.htm *.html *.doc *.pyf cdscan
+
+exclude *.pyc *~

@@ -18,14 +18,17 @@
 NETCDF_HOME=/opt/netcdf-4.1.1-classic
 #HDF5_HOME=/opt/hdf5
 NUMPY_VERSION=1.5
+CDAT_LITE_VERSION=6.0.alpha-2
 
 DIST_DIR=$PWD/dist
 VIRTUALENV=$PWD/test_venv
 PIP_CACHE=$HOME/.pip/cache
 
+TARBALL=${DIST_DIR}/cdat_lite-${CDAT_LITE_VERSION}.tar.gz
+
 ########################################################################
 
-export NETCDF_HOME HDF5_HOME NUMPY_VERSION DIST_DIR VIRTUALENV PIP_CACHE
+export NETCDF_HOME HDF5_HOME NUMPY_VERSION DIST_DIR VIRTUALENV PIP_CACHE TARBALL
 
 (
     virtualenv --no-site-packages $VIRTUALENV
@@ -45,7 +48,7 @@ export NETCDF_HOME HDF5_HOME NUMPY_VERSION DIST_DIR VIRTUALENV PIP_CACHE
 	exit 1
     fi
 
-    ./bin/pip install -f file://${DIST_DIR} --no-index --download-cache=$PIP_CACHE cdat_lite
+    ./bin/pip install --no-index --download-cache=$PIP_CACHE ${TARBALL}
     if [ $? != 0 ]
     then
 	echo "cdat_lite install failed"

@@ -2,6 +2,8 @@
 """Build the cdat_lite distribution.
 """
 
+#!TODO: test for numpy first.  install_requires won't work.
+
 import sys, os, shutil
 
 from ez_setup import use_setuptools
