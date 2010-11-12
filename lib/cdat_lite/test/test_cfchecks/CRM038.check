@@ -1,4 +1,3 @@
-ncvarget: ncid 65536; varid 0: NetCDF: Index exceeds dimension bound
 
 CHECKING NetCDF FILE: CRM038.nc
 =====================
