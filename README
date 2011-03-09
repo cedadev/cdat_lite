@@ -16,12 +16,10 @@ different installation system to CDAT.  As a result it is much more
 lightweight (hence the name): CDAT's source distribution is the order
 of 1Gb whereas CDAT-lite is under 5Mb.
 
-As of version 5.2-2, CDAT-lite also includes the CF Checker developed by `Rosalyn Hatcher`_.  The latest version of this code is available at the `CF SVN`_ repository.
+From 6.0-alpha-3 CDAT-lite no longer comes with the CF Checker.  This should be available as a separate easy_installable package shortly.
 
 .. _CDAT: http://www2-pcmdi.llnl.gov/cdat
 .. _PCMDI: http://www2-pcmdi.llnl.gov/
-.. _`Rosalyn Hatcher`: mailto:r.s.hatcher@reading.ac.uk
-.. _`CF SVN`: http://cf-pcmdi.llnl.gov/svn/repository-cf/cf-checker
 
 
 Installing cdat-lite
@@ -158,16 +156,6 @@ moment.  To disable this behaviour do:
 .. _`cdat-lite homepage`: http://proj.badc.rl.ac.uk/ndg/wiki/CdatLite
 .. _`NERC Data Grid wiki`: http://proj.badc.rl.ac.uk/ndg/wiki
 
-
-CF Checker
-==========
-
-See ``README_cfchecks`` for full description of the CF checker.
-However, note the script will be installed under the name
-``cfchecks`` rather than ``cfchecks.py`` as described in ``README_cfchecks``.
-
-This script requires udunits2 to be installed as a dynamic library and
-included in your library search path.
 
 
 FAQ

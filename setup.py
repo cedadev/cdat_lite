@@ -28,7 +28,7 @@ CDAT_HOME_URL = 'http://www-pcmdi.llnl.gov/software-portal/cdat'
 #  3. The cdunifpp version is stated in long_description not in the version.  Any
 #     change to the cdunifpp version naturally triggers a new <cdat-lite-version>.
 cdat_release = '6.0.alpha'
-cdat_tag = '-2'
+cdat_tag = '-3'
 cdunifpp_version = '0.13'
 
 
@@ -127,7 +127,6 @@ setup(name='cdat_lite',
         'console_scripts': ['cdscan = cdat_lite.scripts:cdscan_main',
                             'cddump = cdat_lite.scripts:cddump_main',
                             'convertcdms = cdat_lite.scripts:convertcdms_main',
-                            'cfchecks = cdat_lite.scripts:cfchecks_main',
                             ]
         },
 

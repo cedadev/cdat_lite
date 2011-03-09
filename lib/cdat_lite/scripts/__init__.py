@@ -25,19 +25,3 @@ def convertcdms_main():
     """
     import convertcdms
     convertcdms.main(sys.argv[1:])
-
-
-def cfchecks_main():
-    """cfchecks_main is based on the main program block in cfchecks.py
-    """
-    from cdat_lite.scripts.cfchecks import getargs, CFChecker
-    from sys import argv,exit
-
-    (badc,coards,uploader,useFileName,standardName,areaTypes,udunitsDat,version,files)=getargs(argv)
-    
-    inst = CFChecker(uploader=uploader, useFileName=useFileName, badc=badc, coards=coards, cfStandardNamesXML=standardName, cfAreaTypesXML=areaTypes, udunitsDat=udunitsDat, version=version)
-    for file in files:
-        rc = inst.checker(file)
-        exit (rc)
-
-
