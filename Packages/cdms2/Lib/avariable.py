@@ -580,7 +580,9 @@ class AbstractVariable(CdmsObj, Slab):
         result = self.subSlice(*specs, **keys)
 
         # return a scalar for 0-D slices
-        if isitem and result.size==1 and (not _numeric_compatibility) and not result.mask.item():
+        if not hasattr(result, 'mask'):
+            return result
+        elif isitem and result.size==1 and (not _numeric_compatibility) and not result.mask.item():
             result = result.item()
         return result
 
