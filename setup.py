@@ -28,7 +28,7 @@ CDAT_HOME_URL = 'http://www-pcmdi.llnl.gov/software-portal/cdat'
 #  3. The cdunifpp version is stated in long_description not in the version.  Any
 #     change to the cdunifpp version naturally triggers a new <cdat-lite-version>.
 cdat_release = '6.0.alpha'
-cdat_tag = '-3'
+cdat_tag = '-4'
 cdunifpp_version = '0.13'
 
 
@@ -110,13 +110,18 @@ setup(name='cdat_lite',
         Extension('cdms2._bindex',
                   ['Packages/cdms2/Src/_bindexmodule.c',
                    'Packages/cdms2/Src/bindex.c'],
+                  depends=['libcdms/config.status'],
                   ),
         makeExtension('genutil.array_indexing', 'genutil'),
-        Extension('regrid2._regrid', ['Packages/regrid2/Src/_regridmodule.c']),
+        Extension('regrid2._regrid', ['Packages/regrid2/Src/_regridmodule.c'],
+                  depends=['libcdms/config.status'],
+                  ),
         Extension('regrid2._scrip', ['Packages/regrid2/Src/_scripmodule.c',
-                                     'Packages/regrid2/Src/regrid.c']),
-      ],
-
+                                     'Packages/regrid2/Src/regrid.c'],
+                  depends=['libcdms/config.status'],
+                  ),
+        ],
+      
       # Since udunits.dat isn't in the Lib directory we use the data_files attribute
       # to install data.
       include_package_data = True,
