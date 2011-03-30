@@ -11,6 +11,9 @@
 
 void pp_dump_header(const PPhdr *hdr)
 {
+  int i;
+  PPrawhdr *rawhdr;
+
 #ifdef PP_STORE_LBYR
   printf("LBYR=%d\n",hdr->LBYR);
 #endif
@@ -204,6 +207,17 @@ void pp_dump_header(const PPhdr *hdr)
 #ifdef PP_STORE_BMKS
   printf("BMKS=%e\n",  hdr->BMKS);
 #endif
+
+  rawhdr = hdr->rawhdr;
+  if (rawhdr) {
+    printf("Raw header:\n");
+    printf("  Ints:\n");
+    for (i = 0; i < n_int_hdr; i++)
+      printf("     %02d : %d\n", 1 + i, rawhdr->ihdr[i]);
+    printf("  Reals:\n");
+    for (i = 0; i < n_real_hdr; i++)
+      printf("     %02d : %g\n", 1 + i + n_int_hdr, rawhdr->rhdr[i]);
+  }
 
   fflush(stdout);
 }

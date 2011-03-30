@@ -21,13 +21,14 @@ CuFile *pp_create_file(const char *controlpath){
   if (file == (CuFile*)0) goto err1;
 
   /* allocate internal structure - hang it off cu_file structure */
-  ppfile=pp_malloc(sizeof(PPfile),NULL);
+  ppfile=pp_malloc(sizeof(PPfile), NULL);
   if (ppfile==NULL) goto err2;
   
   file->internp = ppfile;
   ppfile->fh = NULL;
-  strncpy(file->controlpath,controlpath,CU_MAX_PATH);
+  strncpy(file->controlpath, controlpath, CU_MAX_PATH);
   ppfile->landmask = NULL;
+  ppfile->store_raw_headers = 0;
 
   /* initialise heap list */
   ppfile->heaplist = pp_list_new(NULL);

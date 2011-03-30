@@ -100,10 +100,14 @@ typedef double Freal8;
 
 /* constants */
 
-static const int n_int_hdr = 45;
-static const int n_real_hdr = 19;
-/* static const int n_hdr = n_int_hdr + n_real_hdr; */
-static const int n_hdr = 64;
+#define N_INT_HDR 45
+#define N_REAL_HDR 19
+static const int n_int_hdr = N_INT_HDR;
+static const int n_real_hdr = N_REAL_HDR;
+static const int n_hdr = N_INT_HDR + N_REAL_HDR;
+static const int bytes_int_hdr = N_INT_HDR * sizeof(Fint);
+static const int bytes_real_hdr = N_REAL_HDR * sizeof(Freal);
+
 
 /* int_fill_value is output */
 static const int int_fill_value = -32768;
@@ -133,6 +137,7 @@ typedef struct pp_file PPfile;
 typedef struct pp_var PPvar;
 typedef struct pp_dim PPdim;
 typedef struct pp_rec PPrec;
+typedef struct pp_rawhdr PPrawhdr;
 typedef struct pp_hdr PPhdr;
 typedef struct pp_stashmeta PPstashmeta;
 typedef struct pp_dimnames PPdimnames;
@@ -261,6 +266,7 @@ struct pp_file {
   int swap; /* true if byte swap */
   int wordsize; /* in bytes */
   PPlandmask *landmask;
+  int store_raw_headers; /* boolean */
 };
 struct pp_var {
   int firstrecno; /* for fieldvar */
@@ -575,6 +581,11 @@ struct pp_xsaxis {  /* could be pp cross section? */
 #define PP_STORE_BMKS
 
 
+struct pp_rawhdr{
+  Fint ihdr[N_INT_HDR];
+  Freal rhdr[N_REAL_HDR];
+};
+
 struct pp_hdr {
 #ifdef PP_STORE_LBYR
   Fint LBYR;     
@@ -768,6 +779,7 @@ struct pp_hdr {
 #ifdef PP_STORE_BMKS
   Freal BMKS;  
 #endif
+  PPrawhdr *rawhdr;
 };
 
 struct pp_rec {
@@ -912,8 +924,11 @@ int pp_compare_taxes(const void *, const void *);
 int pp_data_copy(const CuFile *, const CuVar *, const long [], const long [], void *);
 int pp_data_read(const CuFile *, const CuVar *, const long [], const long [], void *);
 
+/* in cdunifpp_env.c: */
+int pp_set_vars_from_env(PPfile *);
+
 /* in cdunifpp_error.c: */
-int pp_switch_bug();
+int pp_switch_bug(const char*);
 int pp_error(const char*);
 int pp_errorhandle_init();
 int pp_error_mesg(const char *, const char *);
@@ -969,6 +984,34 @@ int pp_append_cell_method(char [], const char *, const char *);
 int pp_var_get_extra_atts(const CuVar *, const PPfieldvar *, const CuDim *, PPlist *, PPlist *);
 int pp_append_string(char *, const char *, int);
 PPlist *pp_get_global_attributes(const char *, const PPfile *, PPlist *);
+int pp_set_landmask(int, PPrec **, PPfile *, PPlist *, PPlist *);
+int pp_get_fvars(int, PPrec **, PPfile *, PPlist *, 
+		 PPlist *, PPlist *, PPlist *, PPlist *,
+		 PPlist *, PPlist *, int *, int *, int *, 
+		 PPlist *);
+
+int pp_get_new_fvar(int, PPrec *, PPfile *, PPlist *,
+		    PPfieldvar **, PPgenaxis **, PPgenaxis **, PPgenaxis **, PPgenaxis **,
+		    int *, PPlist *);
+int pp_add_axes_to_fvar(PPfieldvar *, 
+			PPgenaxis *, PPgenaxis *, PPgenaxis *, PPgenaxis *, 
+			PPlist *, PPlist *, PPlist *, PPlist *, PPlist *, 
+			int, int *, int *, int *,
+			PPlist *);
+int pp_get_num_dims(PPlist *, PPlist *, PPlist *, PPlist *, int,
+		    int *, int *);
+int pp_get_num_vars(PPlist *, int, int *);
+CuDim *pp_init_cu_dims(CuFile *, int);
+CuVar *pp_init_cu_vars(CuFile *, int, PPlist *);
+int pp_add_nv_dim(int, int, CuDim *, int *);
+int pp_add_p0_var(int, CuVar *, int *, PPlist *);
+int pp_add_rotmap_pole_vars(PPlist *, CuVar *, int *, PPlist *);
+int pp_add_rotgrid_lon_lat_vars(PPlist *, CuVar *, int *, PPlist *);
+int pp_add_coord_var_atts(CuFile *, CuVar *, int, PPlist *);
+int pp_add_dims_and_coord_vars(PPlist *, PPlist *, PPlist *, PPlist *, int, 
+			       CuDim *, CuVar *, int *, int *, PPlist *);
+int pp_add_field_vars(PPlist *, CuFile *, CuDim *, CuVar *, int *, PPlist *);
+
 int pp_free_tmp_vars(PPlist *, PPlist *, PPlist *, PPlist *, PPlist *, PPlist *);
 
 /* in cdunifpp_read.c: */
@@ -980,6 +1023,7 @@ int pp_skip_fortran_record(const PPfile *);
 int pp_skip_word(const PPfile *);
 void *pp_read_header(const PPfile *, PPlist *);
 int pp_read_all_headers(CuFile *);
+int pp_store_raw_header(PPhdr *, const void *, PPlist *);
 int pp_store_header(PPhdr *, const void *);
 int pp_evaluate_lengths (const PPhdr *, const PPfile *, long *, long *);
 PPdata *pp_read_extradata(const PPrec *, const PPfile *, PPlist *, const PPextravec);

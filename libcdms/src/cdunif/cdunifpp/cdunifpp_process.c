@@ -21,82 +21,28 @@
 
 int pp_process(CuFile *file)
 {
-  int rec, nrec, at_start_rec, at_end_rec;
+  int nrec;
   PPfile *ppfile;
-  PPfieldvar *fvar;
-  PPrec *recp;
-  PPhdr *hdrp;
-  PPgenaxis *xaxis, *yaxis, *zaxis, *taxis; /* JAK 2005-01-05 */
   PPlist *heaplist;
   PPlist *fieldvars;
-  PPlisthandle handle, thandle;
-  PPlist *gatts, *catts;
+  PPlist *gatts;
 
   int ndims, dimid;
-  int idim; /* dim number of given type */
   int have_time_mean, tmdimid; /* dimensions used for meaning (CF cell methods) */
-  CuDim *cudims,*dim;
-  PPdim *ppdim;
+  /* PPdim *ppdim; */
 
-  int nvars, varid, cvarid;
+  int nvars, varid;
   int ncvars; /* coord vars */
-  int nfvars; /* field vars */  
-  int nvrec;  
-  PPrec **recs, **vrecs;
-  CuVar *cuvars, *var;  
-  PPvar *ppvar;
-  PPlist *atts;
-  PPlist *axislist;
+  PPrec **recs;
+  CuDim *cudims;
+  CuVar *cuvars;  
   PPlist *xaxes, *yaxes, *taxes, *zaxes; /* JAK 2005-01-05 */
-  PPgenaxis *axis;  /*JAK 2005-01-10 */
   int have_hybrid_sigmap;
-  PPaxistype axistype;
   
-  int rotmapid, rotgridid;
   PPlist *rotgrids, *rotmaps;
-  PProtmap *rotmap;
-  PProtgrid *rotgrid;
-  CuVar *lonvar, *latvar;  
-  PPvar *lonppvar, *latppvar;
-
-  PPlandmask *landmask;
-
-  char *varnamea, *varnameb;
-
-  char dimnamestem[CU_MAX_NAME], units[CU_MAX_NAME];
-  char formulaterms[MAX_ATT_LEN+1];
-
-  int dont_free_horiz_axes;
-
-  int added;
-
-  int zindex,tindex,svindex;
-
-  /* ------------------------------------------------------ */  
-  /* initialisation constants which matter */
-  ncvars = 0;
-  have_hybrid_sigmap = 0;
-  have_time_mean = 0;
-  svindex = 1;
-
-  /* initialisation constants just to avoid compiler warnings
-   * (rather than get accustomed to ignoring warnings)
-   * but flow logic should mean that these vars do actually get
-   * initialised elsewhere before use
-   */
-  at_end_rec=0;
-  xaxis=yaxis=NULL;
-  fvar=NULL;
-  zaxis=NULL;
-  taxis=NULL;
-  axislist=NULL;
-  tmdimid=-1;
-  dont_free_horiz_axes=0;
-  /* ------------------------------------------------------ */
 
   ppfile = file->internp;
-
-  heaplist=ppfile->heaplist;
+  heaplist = ppfile->heaplist;
 
   nrec = ppfile->nrec;  
   recs = ppfile->recs;
@@ -109,625 +55,91 @@ int pp_process(CuFile *file)
 
   /* now sort out the list of variables and dimensions */
 
-  CKP(   fieldvars=pp_list_new(heaplist)   );
-  CKP(   xaxes=pp_list_new(heaplist)   );
-  CKP(   yaxes=pp_list_new(heaplist)   );
-  CKP(   zaxes=pp_list_new(heaplist)   );
-  CKP(   taxes=pp_list_new(heaplist)   );
-  CKP(   rotmaps=pp_list_new(heaplist)  );
-  CKP(   rotgrids=pp_list_new(heaplist)  );
+  CKP(   fieldvars = pp_list_new(heaplist)   );
+  CKP(   xaxes = pp_list_new(heaplist)   );
+  CKP(   yaxes = pp_list_new(heaplist)   );
+  CKP(   zaxes = pp_list_new(heaplist)   );
+  CKP(   taxes = pp_list_new(heaplist)   );
+  CKP(   rotmaps = pp_list_new(heaplist)  );
+  CKP(   rotgrids = pp_list_new(heaplist)  );
 
-  /* before main loop over records, look for land mask */
-  for (rec=0; rec<nrec ; rec++) {
+  /* look for land mask */
+  CKI(  pp_set_landmask(nrec, recs, ppfile, rotmaps, heaplist)  );
 
-    recp = recs[rec];
-    hdrp = &recp->hdr;    
+  /* initialise field variables and related variables */
+  CKI(  pp_get_fvars(nrec, recs, ppfile, 
+		      fieldvars, xaxes, yaxes, zaxes, taxes, rotmaps, rotgrids, 
+		      &ncvars, &have_time_mean, &have_hybrid_sigmap, 
+		      heaplist)  );
 
-    if (pp_var_is_land_mask(hdrp)) {
-      
-      CKP(   landmask = pp_malloc(sizeof(PPlandmask),heaplist)   );
-
-      CKI(  pp_set_horizontal_axes(recp,ppfile,&xaxis,&yaxis,rotmaps,heaplist)  );
-
-      CKP(   landmask->data = pp_data_new(inttype,pp_genaxis_len(xaxis) * pp_genaxis_len(yaxis),heaplist)   ); /* JAK 2005-01-05 */
-
-      /* read in land mask data values */
-
-      landmask->xaxis = xaxis;
-      landmask->yaxis = yaxis;
-      CKP(   landmask->data->values=pp_read_data_record(recp,ppfile,heaplist)   );
-
-      ppfile->landmask = landmask;
-
-    }	
-  }
-
-  /* ====== START LOOP OVER RECORDS ====== */
-
-  for (rec=0; rec<nrec ; rec++) {
-
-    recp = recs[rec];
-    hdrp = &recp->hdr;
-
-    /* we are at start record of a variable at the very start, or if at we were at the
-     * end record last time
-     */
-    at_start_rec = ( rec == 0 || at_end_rec );
-
-    /* we are at end record of a variable at the very end, or if the header shows a 
-     * difference from the next record which constitutes a different variable
-     */
-    at_end_rec = ( rec == nrec-1 ||
-		   pp_records_from_different_vars(recs[rec+1],recp));
-    
-    /*------------------------------*/
-    /* allow for variables which are unsupported for some reason */
-
-    if (at_start_rec)
-      if (pp_test_skip_var(hdrp, ppfile->landmask))
-	continue;
-      
-    /* -------
-
-    if (at_start_rec) 
-      puts("++++++ START OF VARIABLE +++++++++");
-    printf("processing record %d / %d\n",rec,nrec);
-    pp_dump_header(hdrp);
-
-    ------ */
-
-
-    if (at_start_rec) {
-      /* ====== THINGS DONE ONLY AT START RECORD OF EACH VARIABLE ====== */
-
-      /* get PPvar structure, and initialise certain structure members for tidiness */
-      CKP(   fvar=pp_malloc(sizeof(PPfieldvar), heaplist)   );
-      CKP(   fvar->axes=pp_list_new(heaplist)  );  /* JAK 2005-01-05 */
-      fvar->firstrecno = rec;
-      fvar->firstrec = recp;
-
-      if (pp_get_var_compression(hdrp) == 2) {
-	/* land/sea mask compression: for horiz axes use those of LSM */
-	xaxis = ppfile->landmask->xaxis;
-	yaxis = ppfile->landmask->yaxis;
-	dont_free_horiz_axes = 1;
-      } else {
-
-	CKI(  pp_set_horizontal_axes(recp,ppfile,&xaxis,&yaxis,rotmaps,heaplist)  );
-
-	dont_free_horiz_axes = 0;
-      }
-
-      CKP(   zaxis=pp_genaxis_new(zaxis_type,zdir,heaplist)   );
-      CKI(  pp_zaxis_set(zaxis,hdrp)  );
-
-      CKP(   taxis=pp_genaxis_new(taxis_type,tdir,heaplist)   );
-      CKI(  pp_taxis_set(taxis,hdrp)  );
-
-    }
-
-    /* construct pp_lev struct, and add it to the z axis if not already present
-     * (could already be present if field has multiple times on each level)
-     */
-
-    /* ====== THINGS DONE FOR EVERY PP RECORD ====== */
-
-    CKI(  pp_zaxis_add(zaxis, recp->lev, &zindex, heaplist)  );
-    recp->zindex = zindex;
-
-    CKI(  pp_taxis_add(taxis, recp->time, &tindex, heaplist)  );
-    recp->tindex = tindex;
-
-    /* ===================================================== */
-    if (at_end_rec) {
-     /* ====== THINGS DONE ONLY AT END RECORD OF EACH VARIABLE ====== */
-
-      fvar->lastrecno = rec;
-      nvrec = fvar->lastrecno - fvar->firstrecno + 1;
-      vrecs = recs + fvar->firstrecno;
-
-      /* now if the axes are not regular, free the axes, split the variable into a number of variables and try again... */
-      if (pp_set_disambig_index(zaxis, taxis, vrecs, nvrec, svindex)) {
-	
-	/* increment the supervar index, used later to show the connection between
-	 *  the separate variables into which this one will be split
-	 */
-	svindex++;
-
-	/* now re-sort this part of the record list, now that we have set the disambig index */
-	qsort(vrecs, nvrec, sizeof(PPrec*), pp_compare_records);  
-
-	/* now go back to the start record of the variable; set to one less because it
-	 * will get incremented in the "for" loop reinitialisation
-	 */
-	rec = fvar->firstrecno - 1;
-
-	/* and free the stuff assoc with the var we won't be using */
-	if (!dont_free_horiz_axes) {
-	  CKI(  pp_genaxis_free(xaxis,heaplist)  );
-	  CKI(  pp_genaxis_free(yaxis,heaplist)  );
-	}
-	CKI(  pp_genaxis_free(zaxis,heaplist)  );
-	CKI(  pp_genaxis_free(taxis,heaplist)  );
-	CKI(  pp_free(fvar,heaplist)  );
-
-	continue;
-      }
-
-      /*------------------------------------------------------------*/
-
-      /*
-       * For each axis, see if it matches an axis which already exists from a previous
-       * variable.
-       *
-       * If so, then free the structure and point to the existing occurrence instead.
-       *
-       * If not, then add to the list.
-       */
-
-      /* x */
-      CKI(  added = pp_list_add_or_find(xaxes, &xaxis, pp_genaxis_compare, 0, 
-					(dont_free_horiz_axes ? NULL : (free_func) pp_genaxis_free),
-					NULL, heaplist)  );
-      if (added)
-	ncvars++;
-
-      /* y */
-      CKI(  added = pp_list_add_or_find(yaxes, &yaxis, pp_genaxis_compare, 0, 
-					(dont_free_horiz_axes ? NULL : (free_func) pp_genaxis_free),
-					NULL, heaplist)  );
-      if (added)
-	ncvars++;
-
-      /* z */
-      CKI(  added = pp_list_add_or_find(zaxes, &zaxis, pp_genaxis_compare, 0, 
-					(free_func) pp_genaxis_free,
-					NULL, heaplist)  );
-      if (added) {
-	ncvars++;
-	if (pp_zaxis_lev_type(zaxis) == hybrid_sigmap_lev_type) {
-	  /* two more coord vars (a and b coeffs) */
-	  ncvars+=2;
-	  have_hybrid_sigmap=1;
-	}
-	if (pp_zaxis_lev_type(zaxis) == hybrid_height_lev_type) {
-	  /* two more coord vars (a and b coeffs) */
-	  ncvars+=2;
-	}
-      }
-
-      /* t */
-      CKI(  added = pp_list_add_or_find(taxes, &taxis, pp_genaxis_compare, 0, 
-					(free_func) pp_genaxis_free,
-					NULL, heaplist)  );
-      if (added) {
-	ncvars++;
-	if (pp_taxis_is_time_mean(taxis)) {
-	  /* need to make sure we have the mean dim (size 2),
-	   * also one more coordinate var
-	   */	  
-	  have_time_mean=1;
-	  ncvars++;
-	}
-      }
-
-      /* associate var with these axes */
-      CKI(   pp_list_add(fvar->axes,xaxis,heaplist)   );
-      CKI(   pp_list_add(fvar->axes,yaxis,heaplist)   );
-      CKI(   pp_list_add(fvar->axes,zaxis,heaplist)   );
-      CKI(   pp_list_add(fvar->axes,taxis,heaplist)   );
-      
-      /* get the rotated grid, if any 
-       * (NB this is done *after* the pp_list_add_or_find stuff above, because 
-       * otherwise the axis pointers could get orphaned if the axes are found to 
-       * be duplicates)
-       */
-      CKP(  fvar->rotgrid = pp_get_rotgrid(xaxis,yaxis,rotgrids,heaplist)  );
-
-      /* add the variable */
-      CKI(   pp_list_add(fieldvars, fvar, heaplist)   );
-      
-      /* ===================================================== */
-    }
-  }
-
-    
-  /*  ====================================================================
-   *  Having completed the loop over records, we now know the number of
-   *  dimensions and variables, so we can finally do the relevant calls
-   *  to allocate these arrays and populate them usefully.
+  /*  ==================================================================== 
+   *  we now know the number of dimensions and variables, so we can do the
+   *  relevant calls to allocate these arrays and populate them usefully.
    *  ====================================================================
    */
+
   /* FIRST ALLOCATE THE ARRAYS, and initialise some values */
-  nfvars = pp_list_size(fieldvars);
+  pp_get_num_dims(xaxes, yaxes, zaxes, taxes, have_time_mean, &ndims, &tmdimid);
+  pp_get_num_vars(fieldvars, ncvars, &nvars);
+  CKP(   cudims = pp_init_cu_dims(file, ndims)   );
+  CKP(   cuvars = pp_init_cu_vars(file, nvars, heaplist)   );
 
-  if (nfvars <= 0) {
-    CuError(CU_EOPEN,"No valid fields in file\n");
-    ERR; /* not the most elegant dealing with this error - ideally would free this file */
-  }
-  ndims = pp_list_size(xaxes) + pp_list_size(yaxes) + pp_list_size(zaxes) + pp_list_size(taxes);
+  /* initialise the dimension and variable IDs */
+  dimid = 0;
+  varid = 0;
 
-  if (have_time_mean){    
-    tmdimid=ndims;
-    ndims++;
-  }
-  if (have_hybrid_sigmap) {
-    /* will need a scalar variable called "p0" */
-   ncvars++;
- }
+  /* add the dimensions and the corresponding coordinate variables  */
+  CKI(  pp_add_dims_and_coord_vars(xaxes, yaxes, zaxes, taxes, tmdimid,
+				   cudims, cuvars, &dimid, &varid, heaplist)  );
 
-  CKP(   cudims = CuCreateDims(file,ndims)   );
+  /* (conditionally) add nv dimension */
+  CKI(  pp_add_nv_dim(have_time_mean, tmdimid, cudims, &dimid)  );
 
-  /* need a grid_mapping variable for every rotation mapping,
-   * and need lon and lat variables for every rotated grid
-   */
-  ncvars += pp_list_size(rotmaps) + 2*pp_list_size(rotgrids);
+  /* (conditionally) add p0 variable */
+  CKI(  pp_add_p0_var(have_hybrid_sigmap, cuvars, &varid, heaplist)  );
 
-  nvars = ncvars + nfvars;
+  /* add pole variable for rotated grids */
+  CKI(  pp_add_rotmap_pole_vars(rotmaps, cuvars, &varid, heaplist)  );
 
-  CKP(   cuvars = CuCreateVars(file,nvars)   );
-
-  for (dimid=0; dimid<ndims; dimid++) {
-    dim=&cudims[dimid];
-    dim->var = (CuVar*)0;
-    dim->coord = (CuVar*)0;
-    dim->datatype = realtype;
-    dim->dimtype = CuGlobalDim;
-
-    /* uncomment if internal structure is to be used
-     *   CKP(   dim->internp = pp_malloc(sizeof(PPdim), heaplist)   );
-     *   ppdim=(PPdim*)dim->internp;
-     */
-  }
-  for (varid=0; varid<nvars; varid++) {
-    var=&cuvars[varid];
-    var->datatype = realtype;
-    CKP(   var->internp = pp_malloc(sizeof(PPvar), heaplist)   );
-    ppvar=(PPvar*)var->internp;
-    ppvar->firstrecno=-1;
-    ppvar->lastrecno=-1;
-    ppvar->data=NULL;
-    CKP(   ppvar->atts = pp_list_new(heaplist)   );
-  }
-
-
-  /* 
-   * NOW POPULATE THE STRUCTURES
-   *
-   * The procedure will be to loop over all the axes, adding dimensions and
-   * variables associated with those axes.
-   *
-   * Having done that, any dimensions not associated with axes will be added,
-   * and then the field variables will be added.
-   */
-
-  dimid=0;
-  varid=0;
-
-  for (axistype=0; axistype<num_axistype; axistype++) {
-    switch(axistype){
-    case xaxistype: axislist=xaxes; break;
-    case yaxistype: axislist=yaxes; break;
-    case zaxistype: axislist=zaxes; break;
-    case taxistype: axislist=taxes; break;
-    default: pp_switch_bug("cdunifpp_process");
-    }
-    pp_list_startwalk(axislist,&handle);
-    idim=0;
-
-    while ((axis=pp_list_walk(&handle,0))!=NULL) {
-      dim=&cudims[dimid];
-      var=&cuvars[varid];
-      ppdim=(PPdim*) dim->internp;
-      ppvar=(PPvar*) var->internp;
-      
-      dim->coord = var;
-
-      axis->dimid=dimid;
-      dim->len=pp_genaxis_len(axis);
-      CKP(  ppvar->data=pp_genaxis_getCF(axis,dimnamestem,units,ppvar->atts,heaplist)  );
-      sprintf(dim->name,dimnamestem,idim);
-      if (units != NULL) {
-	strncpy(dim->units,units,CU_MAX_NAME);
-	dim->units[CU_MAX_NAME]='\0';
-      }
-      strncpy(var->name,dim->name,CU_MAX_NAME);
-      var->name[CU_MAX_NAME]='\0';
-      var->ndims=1;
-      var->dims[0] = dimid;
-      varid++;
-      /* now add certain variables for hybrid_sigmap z axis */
-      if (axistype == zaxistype && pp_zaxis_lev_type(axis) == hybrid_sigmap_lev_type) {
-      
-	catts=ppvar->atts; /* attribute list for the main coord var */
-
-	/* Hybrid sigma-p A coefficient */
-	var=&cuvars[varid];
-	ppvar=(PPvar*) var->internp;
-	sprintf(var->name,"z%d_hybrid_sigmap_acoeff",idim);
-	varnamea=var->name;
-	CKP(   ppvar->data = pp_genaxis_to_values(axis,hybrid_sigmap_a_type,heaplist)   );
-	CKI(   pp_add_string_att(ppvar->atts,"units","Pa",heaplist)   );
-	CKI(   pp_add_string_att(ppvar->atts,"long_name",
-				 "atmospheric hybrid sigma-pressure 'A' coefficient",heaplist)   );
-	var->ndims=1;
-	var->dims[0] = dimid;
-	varid++;
-
-	/* Hybrid sigma-p B coefficient */
-	var=&cuvars[varid];
-	ppvar=(PPvar*) var->internp;
-	sprintf(var->name,"z%d_hybrid_sigmap_bcoeff",idim);
-	varnameb=var->name;
-	CKP(   ppvar->data = pp_genaxis_to_values(axis,hybrid_sigmap_b_type,heaplist)   );
-	CKI(   pp_add_string_att(ppvar->atts,"long_name",
-				 "atmospheric hybrid sigma-pressure 'B' coefficient",heaplist)   );
-	var->ndims=1;
-	var->dims[0] = dimid;
-	varid++;
-	
-	snprintf(formulaterms,MAX_ATT_LEN,"ap: %s b: %s ps: ps p0: p0",varnamea,varnameb);
-
-	CKI(   pp_add_string_att(catts,"formula_terms",formulaterms,heaplist)   );
-	CKI(   pp_add_string_att(catts,"standard_name","atmosphere_hybrid_sigma_pressure_coordinate",heaplist)   );
-
-	CKI(   pp_add_string_att(catts,"comments",
-				 "The \"ps\" term in formula_terms is set to \"ps\" variable. "
-				 "This variable may or may not be provided.",heaplist)   );
-      }
-
-      /* now add certain variables for hybrid_height z axis */
-      if (axistype == zaxistype && pp_zaxis_lev_type(axis) == hybrid_height_lev_type) {
-      
-	catts=ppvar->atts; /* attribute list for the main coord var */
-
-	/* Hybrid height A coefficient */
-	var=&cuvars[varid];
-	ppvar=(PPvar*) var->internp;
-	sprintf(var->name,"z%d_hybrid_height_acoeff",idim);
-	varnamea=var->name;
-	CKP(   ppvar->data = pp_genaxis_to_values(axis,hybrid_height_a_type,heaplist)   );
-	CKI(   pp_add_string_att(ppvar->atts,"units","m",heaplist)   );
-	var->ndims=1;
-	var->dims[0] = dimid;
-	varid++;
-
-	/* Hybrid height B coefficient */
-	var=&cuvars[varid];
-	ppvar=(PPvar*) var->internp;
-	sprintf(var->name,"z%d_hybrid_height_bcoeff",idim);
-	varnameb=var->name;
-	CKP(   ppvar->data = pp_genaxis_to_values(axis,hybrid_height_b_type,heaplist)   );
-	var->ndims=1;
-	var->dims[0] = dimid;
-	varid++;
-	
-	snprintf(formulaterms,MAX_ATT_LEN,"a: %s b: %s orog: orography",varnamea,varnameb);
-
-	CKI(   pp_add_string_att(catts,"formula_terms",formulaterms,heaplist)   );
-	CKI(   pp_add_string_att(catts,"standard_name","atmosphere_hybrid_sigma_pressure_coordinate",heaplist)   );
-
-	CKI(   pp_add_string_att(catts,"comments",
-				 "The \"orog\" term in formula_terms is set to \"orography\" variable. "
-				 "This variable may or may not be provided.",heaplist)   );
-      }
-
-
-      /* add the boundary variable for time mean */
-      if (axistype == taxistype && pp_taxis_is_time_mean(axis)) {
-	catts=ppvar->atts; /* attribute list for the main coord var */
-
-	var=&cuvars[varid];
-	ppvar=(PPvar*) var->internp;
-	sprintf(var->name,"time_bnd%d",idim);
-	CKP(   ppvar->data = pp_taxis_to_boundary_values(axis->axis,heaplist)   );
-	var->ndims=2;
-	var->dims[0]=dimid;
-	var->dims[1]=tmdimid;
-	
-	CKI(   pp_add_string_att(catts,"bounds",var->name,heaplist)   );
-
-	varid++;
-      }
-      dimid++;
-      idim++;      
-    } /* end loop over axes of given */
-  } /* end loop over axis types */
-
-  /* add nv dimension if we had time mean */
-  if (have_time_mean) {
-
-    dim=&cudims[dimid];
-
-    strcpy(dim->name,"nv");
-    dim->len=2;
-    
-    /* Should have tmdimid=dimid, but actually we already set it above (it evaluates to ndims)
-     * as we needed it before we got here.  So just do a check here.
-     */
-    if ( tmdimid != dimid ) {
-      pp_error_mesg("cdunifpp_process","ID wrong for 'nv' dimension?");
-      ERR;
-    }
-
-    dimid++;
-  }
-
-  /* add p0 variable if we had hybrid_sigmap coords */
-  if (have_hybrid_sigmap) {
-     
-    var=&cuvars[varid];
-    ppvar=(PPvar*) var->internp;
-    sprintf(var->name,"p0");
-    var->ndims=0;
-    CKI(   pp_add_string_att(ppvar->atts,"long_name",
-			     "reference pressure value for atmospheric hybrid sigma-pressure coordinates",
-			     heaplist)   );
-    /* single value consisting of p0 */
-    CKP(   ppvar->data = pp_data_new(realtype,1,heaplist)   );
-    ((Freal*)(ppvar->data->values))[0]=reference_pressure;
-    varid++;
-  }
-
-  /* add any rotated_pole variables */
-  rotmapid=0;
-  pp_list_startwalk(rotmaps,&handle);
-  while ((rotmap=pp_list_walk(&handle,0))!=NULL) {
-    
-    var=&cuvars[varid];
-    ppvar=(PPvar*) var->internp;
-    sprintf(var->name,"rotated_pole%d",rotmapid);
-
-    strncpy(rotmap->name,var->name,CU_MAX_NAME);
-    rotmap->name[CU_MAX_NAME]='\0';
-
-    /* single value of arbitrary type; set as integer = 0 */
-    var->datatype=inttype;
-    var->ndims=0;
-    CKP(   ppvar->data = pp_data_new(inttype,1,heaplist)   );
-    ((Freal*)(ppvar->data->values))[0]=0;
-
-    /* and add attributes */
-    catts=ppvar->atts;
-    CKI(  pp_add_string_att(catts,"grid_mapping_name","rotated_latitude_longitude",heaplist)  );
-    CKI(  pp_add_att(catts,"grid_north_pole_longitude",realtype,1,&rotmap->pole_lon,heaplist)  );
-    CKI(  pp_add_att(catts,"grid_north_pole_latitude",realtype,1,&rotmap->pole_lat,heaplist)  );
-    CKI(  pp_add_att(catts,"north_pole_grid_longitude",realtype,1,&rotmap->truepole_gridlon,heaplist)  );
-
-    rotmapid++;
-    varid++;
-  }
-
-  /* and add any lon, lat variables for rotated grids */
-  rotgridid=0;
-  pp_list_startwalk(rotgrids,&handle);
-  while ((rotgrid=pp_list_walk(&handle,0))!=NULL) {
-
-    lonvar=&cuvars[varid];
-    lonppvar=(PPvar*) lonvar->internp;
-    varid++;
-
-    latvar=&cuvars[varid];
-    latppvar=(PPvar*) latvar->internp;
-    varid++;
-
-    xaxis = rotgrid->xaxis;
-    yaxis = rotgrid->yaxis;
-      
-    sprintf(lonvar->name,"true_lon%d",rotgridid);
-    sprintf(latvar->name,"true_lat%d",rotgridid);
-
-    sprintf(rotgrid->coords,"%s %s",lonvar->name,latvar->name);
-
-    lonvar->ndims=2;
-    latvar->ndims=2;
-
-    lonvar->dims[0]=yaxis->dimid;
-    latvar->dims[0]=yaxis->dimid;
-
-    lonvar->dims[1]=xaxis->dimid;
-    latvar->dims[1]=xaxis->dimid;
-
-    CKI(   pp_calc_rot_grid(rotgrid,&lonppvar->data,&latppvar->data,heaplist)   );
-    CKI(  pp_add_string_att(lonppvar->atts,"long_name","longitude",heaplist)  );
-    CKI(  pp_add_string_att(latppvar->atts,"long_name","latitude",heaplist)  );
-
-    CKI(  pp_add_string_att(lonppvar->atts,"standard_name","longitude",heaplist)  );
-    CKI(  pp_add_string_att(latppvar->atts,"standard_name","latitude",heaplist)  );
-
-    CKI(  pp_add_string_att(lonppvar->atts,"units","degrees_east",heaplist)  );
-    CKI(  pp_add_string_att(latppvar->atts,"units","degrees_north",heaplist)  );
-
-    CKI(  pp_add_att(lonppvar->atts,"modulo",realtype,1,&lon_modulo,heaplist)  );
-
-    rotgridid++;
-  }
+  /* add any lon, lat variables for rotated grids */
+  CKI(  pp_add_rotgrid_lon_lat_vars(rotgrids, cuvars, &varid, heaplist)  );
 
   /* sanity check - the variable ID for the next variable to be added should 
    * now match the number of coordinate variables
    */
   if ( varid != ncvars ) {
-    pp_error_mesg("cdunifpp_process","wrong number of coord vars?");
+    pp_error_mesg("cdunifpp_process", "wrong number of coord vars?");
     ERR;
   }
-  
 
-  /* add all the attributes for coord variables
-   * (didn't do inside the loop because more complicated
-   * for hybrid z coords / t mean)
+  /* add all the attributes for all coord variables
+   * (including any extra special case vars we added)
    */
-  for (cvarid=0; cvarid<ncvars; cvarid++) {
-    var=&cuvars[cvarid];
-    ppvar=(PPvar*) var->internp;
-    CKI(   pp_copy_and_free_atts(file,var,ppvar->atts,heaplist)   );
-  }
-
+  CKI(  pp_add_coord_var_atts(file, cuvars, ncvars, heaplist)  );
   
-
-  /*========================================================
-   * Okay we've done all the variables related to dimensions
+  /* Okay we've done all the variables related to dimensions
    * Add the field variables.
-   *========================================================
    */
-  pp_list_startwalk(fieldvars,&handle);
-  while ((fvar=pp_list_walk(&handle,0))!=NULL) {
-    var=&cuvars[varid];
-    ppvar=(PPvar*) var->internp;
-    atts = ppvar->atts;
-    hdrp = &fvar->firstrec->hdr;
+  CKI(  pp_add_field_vars(fieldvars, file, cudims, cuvars, &varid, heaplist)  );
 
-    CKI(   pp_var_lookup(hdrp, &fvar->stashmeta)   );
-
-    CKI(   pp_get_var_name(varid, fvar->stashmeta.shortname, cuvars)   );
-    
-    var->ndims=4; /* rpw axeslist len */
-
-    /*
-     *  Axes in fvar->axes list are fastest varying first (lon,lat,lev,time)
-     *  But require them in netCDF-like order (time,lev,lat,lon), so
-     *  reverse the order while copying into var->dims.
-     */
-    idim=var->ndims;
-    pp_list_startwalk(fvar->axes,&thandle);
-    while ((axis=pp_list_walk(&thandle,0)) != NULL) {
-      var->dims[--idim] = axis->dimid;
-    }
-
-    var->datatype = pp_get_var_type(hdrp);
-
-    ppvar->firstrecno = fvar->firstrecno;
-    ppvar->lastrecno = fvar->lastrecno;
-
-    CKI(   pp_var_get_extra_atts(var, fvar, cudims, atts, heaplist)   );
-   
-    CKI(   pp_copy_and_free_atts(file, var, atts, heaplist)   );
-
-    varid++;
-  }
-
-  /* sanity check - the variable ID for the next variable to be added (if there was one,
+  /* sanity check - the variable ID for the next variable to be added (if there was one, 
    * which there isn't), should now match the total number of variables
    */
   if ( varid != nvars ) {
-    pp_error_mesg("cdunifpp_process","wrong number of vars?");
+    pp_error_mesg("cdunifpp_process", "wrong number of vars?");
     ERR;
   }
-
   
   /* set numbers in file structure */
-  file->ndims=ndims;
-  file->nvars=nvars;
-  file->recdim=-1;
+  file->ndims = ndims;
+  file->nvars = nvars;
+  file->recdim = -1;
 
   /* set global attributes */
   CKP(   gatts = pp_get_global_attributes(file->controlpath, ppfile, heaplist)   );
-  CKI(   pp_copy_and_free_atts(file,NULL,gatts,heaplist)   );
+  CKI(   pp_copy_and_free_atts(file, NULL, gatts, heaplist)   );
 
-  /*========================================================
-   * All done and ready for dimget / varget.
-   *========================================================
-   */
-
+  /* All done and ready for dimget / varget */
   /* free what memory we can */
   CKI(   pp_free_tmp_vars(xaxes, yaxes, zaxes, taxes, fieldvars, heaplist)   );
 
@@ -762,10 +174,10 @@ int pp_test_skip_var(const PPhdr *hdrp, const PPlandmask *landmask) {
   /* ADD ANY MORE VARIABLE SKIPPING CASES HERE. */
 
   if (skip_reason != NULL) {
-    CuError(CU_EOPEN,"skipping variable stash code=%d,%d,%d because: %s",
-	    pp_get_var_stash_model(hdrp),
-	    pp_get_var_stash_section(hdrp),
-	    pp_get_var_stash_item(hdrp),
+    CuError(CU_EOPEN, "skipping variable stash code=%d, %d, %d because: %s", 
+	    pp_get_var_stash_model(hdrp), 
+	    pp_get_var_stash_section(hdrp), 
+	    pp_get_var_stash_item(hdrp), 
 	    skip_reason);
     return 1;
 
@@ -782,7 +194,7 @@ int pp_initialise_records(PPrec **recs, int nrec, PPlist *heaplist) {
   PPrec *recp;
   PPhdr *hdrp;
 
-  for (rec=0; rec<nrec ; rec++) {
+  for (rec=0; rec < nrec ; rec++) {
 
     recp = recs[rec];
     hdrp = &recp->hdr;
@@ -829,7 +241,7 @@ int pp_set_disambig_index(PPgenaxis *zaxis, PPgenaxis *taxis, PPrec **recs, int 
   if (pp_var_has_regular_z_t(zaxis, taxis, recs, nvrec))
     return 0;
 
-  for (vrec=0; vrec<nvrec; vrec++) {
+  for (vrec=0; vrec < nvrec; vrec++) {
     vrecp = recs[vrec];
     
     zindex = vrecp->zindex;
@@ -927,7 +339,7 @@ int pp_get_cell_methods (const PPlist *axes, const PPhdr *hdrp,
 {
   PPdimnames dim_names;
 
-  strcpy(cellmethods,"");
+  strcpy(cellmethods, "");
 
   CKI(   pp_store_dim_names(&dim_names, axes, cudims)   );
 
@@ -995,10 +407,10 @@ int pp_append_string(char *string, const char *add_string, int maxlength) {
  *
  *  Inputs: var, fvar, cudims
  */
-int pp_var_get_extra_atts(const CuVar *var,			   
+int pp_var_get_extra_atts(const CuVar *var, 			   
 			  const PPfieldvar *fvar, 
-			  const CuDim *cudims,
-			  PPlist *atts,
+			  const CuDim *cudims, 
+			  PPlist *atts, 
 			  PPlist *heaplist)
 {
 
@@ -1048,6 +460,13 @@ int pp_var_get_extra_atts(const CuVar *var,
     CKI(   pp_add_string_att(atts, "coordinates", fvar->rotgrid->coords, heaplist)   );
   }
 
+  /* raw PP headers */
+  if (hdrp->rawhdr) {
+    CKI(   pp_add_att(atts, "pp_int_hdr", inttype, n_int_hdr, hdrp->rawhdr->ihdr , heaplist)   );
+    CKI(   pp_add_att(atts, "pp_real_hdr", realtype, n_real_hdr, hdrp->rawhdr->rhdr , heaplist)   );
+  }
+
+
   /* add supervar attribute */
   svindex = fvar->firstrec->supervar_index;
   if (svindex >= 0) {
@@ -1070,34 +489,34 @@ PPlist *pp_get_global_attributes(const char *filename, const PPfile *ppfile, PPl
 
   PPlist *gatts;
   int bigend;
-  char input_uri[MAX_ATT_LEN+1],current_directory[MAX_ATT_LEN+1];
+  char input_uri[MAX_ATT_LEN+1], current_directory[MAX_ATT_LEN+1];
   Fint intattval;
 
   CKP(   gatts = pp_list_new(heaplist)   );
 
   /* global attributes: */
 
-  CKI(   pp_add_string_att(gatts, "history","PP/UM file read by cdunif", heaplist)   );
+  CKI(   pp_add_string_att(gatts, "history", "PP/UM file read by cdunif", heaplist)   );
 
   /*-------------------------*/
   /* input_uri */
   if (filename[0]=='/') {
-    snprintf(input_uri,MAX_ATT_LEN,"file://%s",filename);
+    snprintf(input_uri, MAX_ATT_LEN, "file://%s", filename);
   }
   else {
-    if(getcwd(current_directory,MAX_ATT_LEN)!=NULL) {
-      snprintf(input_uri,MAX_ATT_LEN,"file://%s/%s",current_directory,filename);
+    if(getcwd(current_directory, MAX_ATT_LEN) != NULL) {
+      snprintf(input_uri, MAX_ATT_LEN, "file://%s/%s", current_directory, filename);
     } else {
       /* better than nothing */
-      snprintf(input_uri,MAX_ATT_LEN,"%s",filename);
+      snprintf(input_uri, MAX_ATT_LEN, "%s", filename);
     }
   }
   input_uri[MAX_ATT_LEN]='\0';
-  CKI(   pp_add_string_att(gatts,"input_uri",input_uri,heaplist)   );
+  CKI(   pp_add_string_att(gatts, "input_uri", input_uri, heaplist)   );
   /*-------------------------*/
 
   intattval=ppfile->wordsize;
-  CKI(   pp_add_att(gatts,"input_word_length",inttype,1,&intattval,heaplist)   );
+  CKI(   pp_add_att(gatts, "input_word_length", inttype, 1, &intattval, heaplist)   );
 
 #ifdef LITTLE_ENDIAN_MACHINE
   bigend = ppfile->swap;
@@ -1105,14 +524,14 @@ PPlist *pp_get_global_attributes(const char *filename, const PPfile *ppfile, PPl
   bigend = !ppfile->swap;
 #endif
 
-  CKI(   pp_add_string_att(gatts,"input_byte_ordering", 
+  CKI(   pp_add_string_att(gatts, "input_byte_ordering", 
 			   bigend ? "big_endian" : "little_endian", heaplist)   );
 
   if (ppfile->type == um_type)
-    CKI(   pp_add_string_att(gatts,"input_file_format","UM ancillary",heaplist)   );
+    CKI(   pp_add_string_att(gatts, "input_file_format", "UM ancillary", heaplist)   );
 
   if (ppfile->type == pp_type)
-    CKI(   pp_add_string_att(gatts,"input_file_format","PP",heaplist)   );
+    CKI(   pp_add_string_att(gatts, "input_file_format", "PP", heaplist)   );
 
   return gatts;
 
@@ -1121,7 +540,873 @@ PPlist *pp_get_global_attributes(const char *filename, const PPfile *ppfile, PPl
 
 /* ====================================================================================== */
 
-/* Routine to free all the main temporary variables allocated in pp_process(),
+int pp_set_landmask(int nrec, PPrec **recs, PPfile *ppfile, PPlist *rotmaps, PPlist *heaplist)
+{
+  /* 
+   *  find the land mask variable (if present) and if so, then store it in ppfile->landmask
+   *  (also adding any associated rotated grid mappings to rotmaps)
+   */
+  int rec;
+  PPrec *recp;
+  PPhdr *hdrp;
+  PPgenaxis *xaxis, *yaxis;
+  PPlandmask *landmask;
+
+  for (rec = 0; rec < nrec ; rec++) {
+
+    recp = recs[rec];
+    hdrp = &recp->hdr;    
+
+    if (pp_var_is_land_mask(hdrp)) {
+      
+      CKP(   landmask = pp_malloc(sizeof(PPlandmask), heaplist)   );
+
+      CKI(  pp_set_horizontal_axes(recp, ppfile, &xaxis, &yaxis, rotmaps, heaplist)  );
+
+      CKP(   landmask->data = pp_data_new(inttype, pp_genaxis_len(xaxis) * pp_genaxis_len(yaxis), heaplist)   ); /* JAK 2005-01-05 */
+
+      /* read in land mask data values */
+
+      landmask->xaxis = xaxis;
+      landmask->yaxis = yaxis;
+      CKP(   landmask->data->values = pp_read_data_record(recp, ppfile, heaplist)   );
+
+      ppfile->landmask = landmask;
+
+    }	
+  }
+  return 0;
+  ERRBLKI("pp_set_landmask");
+}
+
+/* ====================================================================================== */
+
+/*
+ * scan records for field vars and add all to fieldvars list
+ * these are structures containing limited metadata which are populated during the first pass
+ * through the records; these are then later added to external 'cuvars' list on the call to
+ * pp_add_field_vars
+ * as well as associated axes lists and return some miscellanous other info per call list
+ */
+
+int pp_get_fvars(int nrec, PPrec **recs, PPfile *ppfile, 
+		 PPlist *fieldvars, 
+		 PPlist *xaxes, PPlist *yaxes, PPlist *zaxes, PPlist *taxes, 
+		 PPlist *rotmaps, PPlist *rotgrids, 
+		 int *ncvarsp, int *have_time_mean_p, int *have_hybrid_sigmap_p, 
+		 PPlist *heaplist)
+{
+  int rec;
+  int at_start_rec, at_end_rec = 0;
+  PPrec *recp, **vrecs;
+  PPhdr *hdrp;
+  PPgenaxis *xaxis, *yaxis, *zaxis, *taxis; /* JAK 2005-01-05 */
+  PPfieldvar *fvar;
+  int zindex, tindex;
+  int nvrec;  
+
+  int dont_free_horiz_axes = 0;
+  int svindex = 1;
+
+  xaxis = yaxis = NULL;
+  fvar = NULL;
+  zaxis = NULL;
+  taxis = NULL;
+
+  *ncvarsp = 0;
+  *have_hybrid_sigmap_p = 0;
+  *have_time_mean_p = 0;
+
+  
+    /* ====== START LOOP OVER RECORDS ====== */
+
+  for (rec=0; rec < nrec ; rec++) {
+
+    recp = recs[rec];
+    hdrp = &recp->hdr;
+
+    /* we are at start record of a variable at the very start, or if at we were at the
+     * end record last time
+     */
+    at_start_rec = ( rec == 0 || at_end_rec );
+
+    /* we are at end record of a variable at the very end, or if the header shows a 
+     * difference from the next record which constitutes a different variable
+     */
+    at_end_rec = ( rec == nrec-1 ||
+		   pp_records_from_different_vars(recs[rec+1], recp));
+    
+    /*------------------------------*/
+    /* allow for variables which are unsupported for some reason */
+
+    if (at_start_rec)
+      if (pp_test_skip_var(hdrp, ppfile->landmask))
+	continue;
+      
+    /* -------
+    if (at_start_rec) 
+      puts("++++++ START OF VARIABLE +++++++++");
+    printf("processing record %d / %d\n", rec, nrec);
+    pp_dump_header(hdrp);
+    ------ */
+
+    if (at_start_rec)
+      CKI(  pp_get_new_fvar(rec, recp, ppfile, rotmaps, 
+			    &fvar, &xaxis, &yaxis, &zaxis, &taxis, 
+			    &dont_free_horiz_axes, heaplist)  );
+
+
+    /* ====== THINGS DONE FOR EVERY PP RECORD ====== */
+
+    CKI(  pp_zaxis_add(zaxis, recp->lev, &zindex, heaplist)  );
+    recp->zindex = zindex;
+
+    CKI(  pp_taxis_add(taxis, recp->time, &tindex, heaplist)  );
+    recp->tindex = tindex;
+
+    /* ===================================================== */
+    if (at_end_rec) {
+     /* ====== THINGS DONE ONLY AT END RECORD OF EACH VARIABLE ====== */
+
+      fvar->lastrecno = rec;
+      nvrec = fvar->lastrecno - fvar->firstrecno + 1;
+      vrecs = recs + fvar->firstrecno;
+
+      /* now if the axes are not regular, free the axes, split the variable into a number of variables and try again... */
+      if (pp_set_disambig_index(zaxis, taxis, vrecs, nvrec, svindex)) {
+	
+	/* increment the supervar index, used later to show the connection between
+	 *  the separate variables into which this one will be split
+	 */
+	svindex++;
+
+	/* now re-sort this part of the record list, now that we have set the disambig index */
+	qsort(vrecs, nvrec, sizeof(PPrec*), pp_compare_records);  
+
+	/* now go back to the start record of the variable; set to one less because it
+	 * will get incremented in the "for" loop reinitialisation
+	 */
+	rec = fvar->firstrecno - 1;
+
+	/* and free the stuff assoc with the var we won't be using */
+	if (!dont_free_horiz_axes) {
+	  CKI(  pp_genaxis_free(xaxis, heaplist)  );
+	  CKI(  pp_genaxis_free(yaxis, heaplist)  );
+	}
+	CKI(  pp_genaxis_free(zaxis, heaplist)  );
+	CKI(  pp_genaxis_free(taxis, heaplist)  );
+	CKI(  pp_free(fvar, heaplist)  );
+
+	continue;
+      }
+
+      /* add these axes to the field variable */
+      CKI(  pp_add_axes_to_fvar(fvar, xaxis, yaxis, zaxis, taxis, 
+				xaxes, yaxes, zaxes, taxes, rotgrids, 
+				dont_free_horiz_axes, 
+				ncvarsp, have_hybrid_sigmap_p, have_time_mean_p, 
+				heaplist)  );
+
+      /*------------------------------------------------------------*/
+
+      /* add the variable */
+      CKI(   pp_list_add(fieldvars, fvar, heaplist)   );
+      
+    }
+  }
+  /* finally, as one of the outputs from this routine is the number of coordinate variables,
+   * allow for a couple of possible additions (FIXME: is this the best place for this code?)
+   */
+
+  /* (1) if have hybrid coords, will need a scalar variable called "p0" */
+  if (*have_hybrid_sigmap_p)
+    (*ncvarsp)++;
+
+  /* (2) need a grid_mapping variable for every rotation mapping, 
+   * and need lon and lat variables for every rotated grid
+   */
+  *ncvarsp += pp_list_size(rotmaps) + 2 * pp_list_size(rotgrids);
+
+  return 0;
+  ERRBLKI("pp_get_fvars");
+}
+
+/* ====================================================================================== */
+
+
+/*
+ *  routine to get new fvar structure for a variable, based on its first record
+ *  also return the axes, and an integer indicating whether the landmask was used
+ */
+
+int pp_get_new_fvar(int recno, PPrec *recp, PPfile *ppfile, PPlist *rotmaps, 
+		    PPfieldvar **fvarp, 
+		    PPgenaxis **xaxisp, PPgenaxis **yaxisp, PPgenaxis **zaxisp, PPgenaxis **taxisp, 
+		    int *landmask_used_p, 
+		    PPlist *heaplist)
+{
+  int landmask_used = 0;
+  PPhdr *hdrp;
+  PPfieldvar *fvar;
+  PPgenaxis *xaxis, *yaxis, *zaxis, *taxis; /* JAK 2005-01-05 */
+
+  hdrp = &recp->hdr;
+
+  /* get PPvar structure, and initialise certain structure members for tidiness */
+  CKP(   fvar = pp_malloc(sizeof(PPfieldvar), heaplist)   );
+  CKP(   fvar->axes = pp_list_new(heaplist)  );  /* JAK 2005-01-05 */
+  fvar->firstrecno = recno;
+  fvar->firstrec = recp;
+
+  if (pp_get_var_compression(hdrp) == 2) {
+    /* land/sea mask compression: for horiz axes use those of LSM */
+    xaxis = ppfile->landmask->xaxis;
+    yaxis = ppfile->landmask->yaxis;
+    landmask_used = 1;
+  } else {
+    CKI(  pp_set_horizontal_axes(recp, ppfile, &xaxis, &yaxis, rotmaps, heaplist)  );
+  }
+
+  CKP(   zaxis=pp_genaxis_new(zaxis_type, zdir, heaplist)   );
+  CKI(  pp_zaxis_set(zaxis, hdrp)  );
+  
+  CKP(   taxis=pp_genaxis_new(taxis_type, tdir, heaplist)   );
+  CKI(  pp_taxis_set(taxis, hdrp)  );
+  
+  /* return to caller */
+  *fvarp = fvar;
+  *xaxisp = xaxis;
+  *yaxisp = yaxis;
+  *zaxisp = zaxis;
+  *taxisp = taxis;
+  *landmask_used_p = landmask_used;
+
+  return 0;
+  ERRBLKI("pp_get_new_fvar");
+}
+
+
+/* ====================================================================================== */
+
+/* Add supplied axis information to the field variable, together with any associated rotated grid info
+ *
+ * For each axis, see if it matches an axis which already exists from a previous variable.
+ * If so, then free the structure [Note side-effect!] and point to the existing occurrence instead.
+ * If not, then add to the list.
+ *
+ * Also updates the number of coordinate variables, and whether we have hybrid levels and
+ * time mean.
+ */
+
+int pp_add_axes_to_fvar(PPfieldvar *fvar, 
+			PPgenaxis *xaxis, PPgenaxis *yaxis, PPgenaxis *zaxis, PPgenaxis *taxis, 
+			PPlist *xaxes, PPlist *yaxes, PPlist *zaxes, PPlist *taxes, 
+			PPlist *rotgrids, 
+			int dont_free_horiz_axes, 
+			int *ncvarsp, int *have_hybrid_sigmap_p, int *have_time_mean_p, 
+			PPlist *heaplist)
+{
+  int added;
+  int ncvars_new = 0;
+
+  /* x */
+  CKI(  added = pp_list_add_or_find(xaxes, &xaxis, pp_genaxis_compare, 0, 
+				    (dont_free_horiz_axes ? NULL : (free_func) pp_genaxis_free), 
+				    NULL, heaplist)  );
+  if (added)
+    ncvars_new++;
+  
+  /* y */
+  CKI(  added = pp_list_add_or_find(yaxes, &yaxis, pp_genaxis_compare, 0, 
+				    (dont_free_horiz_axes ? NULL : (free_func) pp_genaxis_free), 
+				    NULL, heaplist)  );
+  if (added)
+    ncvars_new++;
+  
+  /* z */
+  CKI(  added = pp_list_add_or_find(zaxes, &zaxis, pp_genaxis_compare, 0, 
+				    (free_func) pp_genaxis_free, 
+				    NULL, heaplist)  );
+  if (added) {
+    ncvars_new++;
+    if (pp_zaxis_lev_type(zaxis) == hybrid_sigmap_lev_type) {
+      /* two more coord vars (a and b coeffs) */
+      ncvars_new += 2;
+      *have_hybrid_sigmap_p = 1;
+    }
+    if (pp_zaxis_lev_type(zaxis) == hybrid_height_lev_type) {
+      /* two more coord vars (a and b coeffs) */
+      ncvars_new += 2;
+    }
+  }
+  
+  /* t */
+  CKI(  added = pp_list_add_or_find(taxes, &taxis, pp_genaxis_compare, 0, 
+				    (free_func) pp_genaxis_free, 
+				    NULL, heaplist)  );
+  if (added) {
+    ncvars_new++;
+    if (pp_taxis_is_time_mean(taxis)) {
+      /* need to make sure we have the mean dim (size 2), 
+       * also one more coordinate var
+       */	  
+      *have_time_mean_p = 1;
+      ncvars_new++;
+    }
+  }
+  
+  /* associate var with these axes */
+  CKI(   pp_list_add(fvar->axes, xaxis, heaplist)   );
+  CKI(   pp_list_add(fvar->axes, yaxis, heaplist)   );
+  CKI(   pp_list_add(fvar->axes, zaxis, heaplist)   );
+  CKI(   pp_list_add(fvar->axes, taxis, heaplist)   );
+  
+  /* get the rotated grid, if any 
+   * (NB this is done *after* the pp_list_add_or_find stuff above, because 
+   * otherwise the axis pointers could get orphaned if the axes are found to 
+   * be duplicates)
+   */
+  CKP(  fvar->rotgrid = pp_get_rotgrid(xaxis, yaxis, rotgrids, heaplist)  );
+ 
+  *ncvarsp += ncvars_new;
+
+  return 0;
+  ERRBLKI("pp_add_axes_to_fvar");
+}
+
+/* ====================================================================================== */
+
+/*
+ * routine to get the number of dims that will be needed for output.
+ * Also return dimid of the "nv" dimension used when time mean is present.
+ *
+ */
+
+int pp_get_num_dims(PPlist *xaxes, PPlist *yaxes, PPlist *zaxes, PPlist *taxes, int have_time_mean,
+		    int *ndimsp, int *tmdimidp)
+{
+  *ndimsp = pp_list_size(xaxes) + pp_list_size(yaxes) + pp_list_size(zaxes) + pp_list_size(taxes);
+  if (have_time_mean){    
+    *tmdimidp = *ndimsp;
+    (*ndimsp)++;
+  } else
+    *tmdimidp = -1;
+  return 0;
+}
+
+/* ====================================================================================== */
+
+/*
+ * routine to get the number of vars that will be needed for output.
+ *
+ * NOTE: the number of coordinate variables is input to this routine,
+ * and has been set in pp_get_fvars()
+ */
+
+int pp_get_num_vars(PPlist *fieldvars, int ncvars, 
+		    int *nvarsp)
+{
+  int nfvars;
+
+  nfvars = pp_list_size(fieldvars);
+
+  if (nfvars <= 0) {
+    CuError(CU_EOPEN, "No valid fields in file\n");
+    ERR; /* not the most elegant dealing with this error - ideally would free this file */
+  }
+
+  *nvarsp = ncvars + nfvars;
+
+  return 0;
+  
+  ERRBLKI("pp_get_num_vars");
+}
+
+/* ====================================================================================== */
+
+/*
+ * Allocate CuDim array and pre-fill certain elements
+ */
+
+CuDim *pp_init_cu_dims(CuFile *file, int ndims)
+{
+  CuDim *cudims, *dim;
+  int dimid;
+
+  cudims = CuCreateDims(file, ndims);
+  for (dimid = 0; dimid < ndims; dimid++) {
+    dim = &cudims[dimid];
+    dim->var = (CuVar*)0;
+    dim->coord = (CuVar*)0;
+    dim->datatype = realtype;
+    dim->dimtype = CuGlobalDim;
+    
+    /* uncomment if internal structure is to be used
+     *   CKP(   dim->internp = pp_malloc(sizeof(PPdim), heaplist)   );
+     *   ppdim=(PPdim*)dim->internp;
+     */
+  }
+
+  return cudims;
+}
+
+/* ====================================================================================== */
+
+/* 
+ * Allocate CuVar array and pre-fill certain elements
+ */
+CuVar *pp_init_cu_vars(CuFile *file, int nvars, PPlist *heaplist)
+{
+  CuVar *cuvars, *var;  
+  PPvar *ppvar;
+  int varid;
+
+  CKP(   cuvars = CuCreateVars(file, nvars)   );
+
+  for (varid = 0; varid < nvars; varid++) {
+    var = &cuvars[varid];
+    var->datatype = realtype;
+    CKP(   var->internp = pp_malloc(sizeof(PPvar), heaplist)   );
+    ppvar = (PPvar*)var->internp;
+    ppvar->firstrecno = -1;
+    ppvar->lastrecno = -1;
+    ppvar->data = NULL;
+    CKP(   ppvar->atts = pp_list_new(heaplist)   );
+  }
+
+  return cuvars;
+
+  ERRBLKP("pp_init_cu_vars");
+}
+
+/* ====================================================================================== */
+/* add nv dimension if we had time mean */
+int pp_add_nv_dim(int have_time_mean, int tmdimid, CuDim *cudims, int *ndimsp)
+{
+  CuDim *dim;
+
+  if (have_time_mean) {
+
+    dim = &cudims[*ndimsp];
+
+    strcpy(dim->name, "nv");
+    dim->len = 2;
+
+    (*ndimsp)++;
+    
+    /* Because this gets called after adding other dimensions,
+     * the time mean dimension should be the last dimension (i.e. its ID = ndim - 1)
+     * at this stage.  So do a check here.
+     */
+    if ( tmdimid != *ndimsp - 1 ) {
+      pp_error_mesg("cdunifpp_process", "ID wrong for 'nv' dimension?");
+      ERR;
+    }
+
+  }
+  return 0;
+
+  ERRBLKI("pp_add_nv_dim");
+}
+/* ====================================================================================== */
+
+
+/*
+ * routine to add the p0 variable corresponding to any hybrid levels
+ * increments the number of variables accordingly
+ */
+
+int pp_add_p0_var(int have_hybrid_sigmap, CuVar *cuvars, int *nvarsp, PPlist *heaplist)
+{
+  CuVar *var;  
+  PPvar *ppvar;
+  /* add p0 variable if we had hybrid_sigmap coords */
+  if (have_hybrid_sigmap) {
+     
+    var = &cuvars[*nvarsp];
+    ppvar = (PPvar*) var->internp;
+    sprintf(var->name, "p0");
+    var->ndims = 0;
+    CKI(   pp_add_string_att(ppvar->atts, "long_name", 
+			     "reference pressure value for atmospheric hybrid sigma-pressure coordinates", 
+			     heaplist)   );
+    /* single value consisting of p0 */
+    CKP(   ppvar->data = pp_data_new(realtype, 1, heaplist)   );
+    ((Freal*)(ppvar->data->values))[0] = reference_pressure;
+    (*nvarsp)++;
+  }
+
+  return 0;
+  ERRBLKI("pp_add_p0_var");
+}
+
+/* ====================================================================================== */
+
+/*
+ * routine to add pole variables corresponding to any rotated grids
+ * increments the number of variables accordingly
+ */
+
+int pp_add_rotmap_pole_vars(PPlist *rotmaps, CuVar *cuvars, int *nvarsp, PPlist *heaplist)
+{
+  int rotmapid;
+  PPlisthandle handle;
+  CuVar *var;  
+  PPvar *ppvar;
+  PProtmap *rotmap;
+  PPlist *catts;
+
+  /* add any rotated_pole variables */
+  rotmapid = 0;
+  pp_list_startwalk(rotmaps, &handle);
+  while ((rotmap = pp_list_walk(&handle, 0)) != NULL) {
+    
+    var = &cuvars[*nvarsp];
+    ppvar = (PPvar*) var->internp;
+    sprintf(var->name, "rotated_pole%d", rotmapid);
+
+    strncpy(rotmap->name, var->name, CU_MAX_NAME);
+    rotmap->name[CU_MAX_NAME] = '\0';
+
+    /* single value of arbitrary type; set as integer = 0 */
+    var->datatype = inttype;
+    var->ndims = 0;
+    CKP(   ppvar->data = pp_data_new(inttype, 1, heaplist)   );
+    ((Freal*)(ppvar->data->values))[0] = 0;
+
+    /* and add attributes */
+    catts = ppvar->atts;
+    CKI(  pp_add_string_att(catts, "grid_mapping_name", "rotated_latitude_longitude", heaplist)  );
+    CKI(  pp_add_att(catts, "grid_north_pole_longitude", realtype, 1, &rotmap->pole_lon, heaplist)  );
+    CKI(  pp_add_att(catts, "grid_north_pole_latitude", realtype, 1, &rotmap->pole_lat, heaplist)  );
+    CKI(  pp_add_att(catts, "north_pole_grid_longitude", realtype, 1, &rotmap->truepole_gridlon, heaplist)  );
+
+    rotmapid++;
+    (*nvarsp)++;
+  }
+  return 0;
+
+  ERRBLKI("pp_add_rotmap_pole_vars");
+}
+
+/* ====================================================================================== */
+
+/*
+ * routine to add lon, lat variables corresponding to any rotated grids
+ * increments the number of variables accordingly
+ */
+
+int pp_add_rotgrid_lon_lat_vars(PPlist *rotgrids,
+				CuVar *cuvars, int *nvarsp,
+				PPlist *heaplist)
+{
+  int rotgridid;
+  CuVar *lonvar, *latvar;  
+  PPvar *lonppvar, *latppvar;
+  PPgenaxis *xaxis, *yaxis; /* JAK 2005-01-05 */
+  PPlisthandle handle;
+  PProtgrid *rotgrid;
+
+  rotgridid = 0;
+  pp_list_startwalk(rotgrids, &handle);
+  while ((rotgrid = pp_list_walk(&handle, 0)) != NULL) {
+
+    lonvar = &cuvars[*nvarsp];
+    lonppvar = (PPvar*) lonvar->internp;
+    (*nvarsp)++;
+
+    latvar = &cuvars[*nvarsp];
+    latppvar = (PPvar*) latvar->internp;
+    (*nvarsp)++;
+
+    xaxis = rotgrid->xaxis;
+    yaxis = rotgrid->yaxis;
+      
+    sprintf(lonvar->name, "true_lon%d", rotgridid);
+    sprintf(latvar->name, "true_lat%d", rotgridid);
+
+    sprintf(rotgrid->coords, "%s %s", lonvar->name, latvar->name);
+
+    lonvar->ndims = 2;
+    latvar->ndims = 2;
+
+    lonvar->dims[0] = yaxis->dimid;
+    latvar->dims[0] = yaxis->dimid;
+
+    lonvar->dims[1] = xaxis->dimid;
+    latvar->dims[1] = xaxis->dimid;
+
+    CKI(   pp_calc_rot_grid(rotgrid, &lonppvar->data, &latppvar->data, heaplist)   );
+    CKI(  pp_add_string_att(lonppvar->atts, "long_name", "longitude", heaplist)  );
+    CKI(  pp_add_string_att(latppvar->atts, "long_name", "latitude", heaplist)  );
+
+    CKI(  pp_add_string_att(lonppvar->atts, "standard_name", "longitude", heaplist)  );
+    CKI(  pp_add_string_att(latppvar->atts, "standard_name", "latitude", heaplist)  );
+
+    CKI(  pp_add_string_att(lonppvar->atts, "units", "degrees_east", heaplist)  );
+    CKI(  pp_add_string_att(latppvar->atts, "units", "degrees_north", heaplist)  );
+
+    CKI(  pp_add_att(lonppvar->atts, "modulo", realtype, 1, &lon_modulo, heaplist)  );
+
+    rotgridid++;
+  }
+  return 0;
+  
+  ERRBLKI("pp_add_rotgrid_lon_lat_vars");
+}
+
+/* ====================================================================================== */
+
+int pp_add_coord_var_atts(CuFile *file, CuVar *cuvars, int ncvars, PPlist *heaplist)
+{
+  int cvarid;
+  CuVar *var;
+  PPvar *ppvar;
+  
+  for (cvarid = 0; cvarid < ncvars; cvarid++) {
+    var = &cuvars[cvarid];
+    ppvar = (PPvar*) var->internp;
+    CKI(   pp_copy_and_free_atts(file, var, ppvar->atts, heaplist)   );
+  }
+
+  return 0;
+  ERRBLKI("pp_add_rotgrid_lon_lat_vars");
+}
+
+/* ====================================================================================== */
+
+/*
+ * Routine to add dimensions and associated coordinate variables
+ * to cudims and cuvars.
+ * Also updates numbers of dims and vars
+ */
+int pp_add_dims_and_coord_vars(
+       PPlist *xaxes, PPlist *yaxes, PPlist *zaxes, PPlist *taxes, int tmdimid, 
+       CuDim *cudims, CuVar *cuvars, int *ndimsp, int *nvarsp, 
+       PPlist *heaplist)
+{
+  PPlist *axislist;
+  PPaxistype axistype;
+  int idim; /* dim number of given type */
+  int dimid;
+  int varid;
+  PPlisthandle handle;
+  PPgenaxis *axis;  /*JAK 2005-01-10 */
+  CuDim *dim;
+  CuVar *var;
+  /* PPdim *ppdim; */
+  PPvar *ppvar;
+  char dimnamestem[CU_MAX_NAME], units[CU_MAX_NAME];
+  char *varnamea, *varnameb;
+  char formulaterms[MAX_ATT_LEN+1];
+  PPlist *catts;
+
+  varid = *nvarsp;
+  dimid = *ndimsp;
+
+  for (axistype = 0; axistype < num_axistype; axistype++) {
+    switch(axistype){
+    case xaxistype: axislist = xaxes; break;
+    case yaxistype: axislist = yaxes; break;
+    case zaxistype: axislist = zaxes; break;
+    case taxistype: axislist = taxes; break;
+    default: pp_switch_bug("cdunifpp_process");
+    }
+    pp_list_startwalk(axislist, &handle);
+    idim = 0;
+
+    while ((axis = pp_list_walk(&handle, 0)) != NULL) {
+      dim = &cudims[dimid];
+      var = &cuvars[varid];
+      /* ppdim = (PPdim*) dim->internp; */
+      ppvar = (PPvar*) var->internp;
+      
+      dim->coord = var;
+
+      axis->dimid = dimid;
+      dim->len = pp_genaxis_len(axis);
+      CKP(  ppvar->data = pp_genaxis_getCF(axis, dimnamestem, units, ppvar->atts, heaplist)  );
+      sprintf(dim->name, dimnamestem, idim);
+      if (units != NULL) {
+	strncpy(dim->units, units, CU_MAX_NAME);
+	dim->units[CU_MAX_NAME] = '\0';
+      }
+      strncpy(var->name, dim->name, CU_MAX_NAME);
+      var->name[CU_MAX_NAME] = '\0';
+      var->ndims = 1;
+      var->dims[0] = dimid;
+      varid++;
+      /* now add certain variables for hybrid_sigmap z axis */
+      if (axistype == zaxistype && pp_zaxis_lev_type(axis) == hybrid_sigmap_lev_type) {
+      
+	catts = ppvar->atts; /* attribute list for the main coord var */
+
+	/* Hybrid sigma-p A coefficient */
+	var = &cuvars[varid];
+	ppvar = (PPvar*) var->internp;
+	sprintf(var->name, "z%d_hybrid_sigmap_acoeff", idim);
+	varnamea = var->name;
+	CKP(   ppvar->data = pp_genaxis_to_values(axis, hybrid_sigmap_a_type, heaplist)   );
+	CKI(   pp_add_string_att(ppvar->atts, "units", "Pa", heaplist)   );
+	CKI(   pp_add_string_att(ppvar->atts, "long_name", 
+				 "atmospheric hybrid sigma-pressure 'A' coefficient", heaplist)   );
+	var->ndims = 1;
+	var->dims[0] = dimid;
+	varid++;
+
+	/* Hybrid sigma-p B coefficient */
+	var = &cuvars[varid];
+	ppvar = (PPvar*) var->internp;
+	sprintf(var->name, "z%d_hybrid_sigmap_bcoeff", idim);
+	varnameb = var->name;
+	CKP(   ppvar->data = pp_genaxis_to_values(axis, hybrid_sigmap_b_type, heaplist)   );
+	CKI(   pp_add_string_att(ppvar->atts, "long_name", 
+				 "atmospheric hybrid sigma-pressure 'B' coefficient", heaplist)   );
+	var->ndims = 1;
+	var->dims[0] = dimid;
+	varid++;
+	
+	snprintf(formulaterms, MAX_ATT_LEN, "ap: %s b: %s ps: ps p0: p0", varnamea, varnameb);
+
+	CKI(   pp_add_string_att(catts, "formula_terms", formulaterms, heaplist)   );
+	CKI(   pp_add_string_att(catts, "standard_name", "atmosphere_hybrid_sigma_pressure_coordinate", heaplist)   );
+
+	CKI(   pp_add_string_att(catts, "comments", 
+				 "The \"ps\" term in formula_terms is set to \"ps\" variable. "
+				 "This variable may or may not be provided.", heaplist)   );
+      }
+
+      /* now add certain variables for hybrid_height z axis */
+      if (axistype == zaxistype && pp_zaxis_lev_type(axis) == hybrid_height_lev_type) {
+      
+	catts = ppvar->atts; /* attribute list for the main coord var */
+
+	/* Hybrid height A coefficient */
+	var = &cuvars[varid];
+	ppvar = (PPvar*) var->internp;
+	sprintf(var->name, "z%d_hybrid_height_acoeff", idim);
+	varnamea = var->name;
+	CKP(   ppvar->data = pp_genaxis_to_values(axis, hybrid_height_a_type, heaplist)   );
+	CKI(   pp_add_string_att(ppvar->atts, "units", "m", heaplist)   );
+	var->ndims = 1;
+	var->dims[0] = dimid;
+	varid++;
+
+	/* Hybrid height B coefficient */
+	var = &cuvars[varid];
+	ppvar = (PPvar*) var->internp;
+	sprintf(var->name, "z%d_hybrid_height_bcoeff", idim);
+	varnameb = var->name;
+	CKP(   ppvar->data = pp_genaxis_to_values(axis, hybrid_height_b_type, heaplist)   );
+	var->ndims = 1;
+	var->dims[0] = dimid;
+	varid++;
+	
+	snprintf(formulaterms, MAX_ATT_LEN, "a: %s b: %s orog: orography", varnamea, varnameb);
+
+	CKI(   pp_add_string_att(catts, "formula_terms", formulaterms, heaplist)   );
+	CKI(   pp_add_string_att(catts, "standard_name", "atmosphere_hybrid_sigma_pressure_coordinate", heaplist)   );
+
+	CKI(   pp_add_string_att(catts, "comments", 
+				 "The \"orog\" term in formula_terms is set to \"orography\" variable. "
+				 "This variable may or may not be provided.", heaplist)   );
+      }
+
+
+      /* add the boundary variable for time mean */
+      if (axistype == taxistype && pp_taxis_is_time_mean(axis)) {
+	catts = ppvar->atts; /* attribute list for the main coord var */
+
+	var = &cuvars[varid];
+	ppvar = (PPvar*) var->internp;
+	sprintf(var->name, "time_bnd%d", idim);
+	CKP(   ppvar->data = pp_taxis_to_boundary_values(axis->axis, heaplist)   );
+	var->ndims = 2;
+	var->dims[0] = dimid;
+	var->dims[1] = tmdimid;
+	
+	CKI(   pp_add_string_att(catts, "bounds", var->name, heaplist)   );
+
+	varid++;
+      }
+      dimid++;
+      idim++;      
+    } /* end loop over axes of given */
+  } /* end loop over axis types */
+
+  *nvarsp = varid;
+  *ndimsp = dimid;
+  return 0;
+
+  
+
+  ERRBLKI("pp_add_dims_and_coord_vars");
+}
+
+/* ====================================================================================== */
+
+
+/*
+ * routine to add field variables to cuvars corresponding to field vars already parsed
+ * increments the number of variables accordingly
+ */
+
+int pp_add_field_vars(PPlist *fieldvars, CuFile *file, CuDim *cudims, 
+		      CuVar *cuvars, int *nvarsp, PPlist *heaplist)
+{
+  PPlisthandle handle, thandle;
+  PPvar *ppvar;
+  PPlist *atts;
+  CuVar *var;  
+  PPhdr *hdrp;
+  PPfieldvar *fvar;
+  int idim;
+  PPgenaxis *axis;  /*JAK 2005-01-10 */
+
+  pp_list_startwalk(fieldvars, &handle);
+  while ((fvar = pp_list_walk(&handle, 0)) != NULL) {
+    var = &cuvars[*nvarsp];
+    ppvar = (PPvar*) var->internp;
+    atts = ppvar->atts;
+    hdrp = &fvar->firstrec->hdr;
+
+    CKI(   pp_var_lookup(hdrp, &fvar->stashmeta)   );
+
+    CKI(   pp_get_var_name(*nvarsp, fvar->stashmeta.shortname, cuvars)   );
+    
+    var->ndims = 4; /* rpw axeslist len */
+
+    /*
+     *  Axes in fvar->axes list are fastest varying first (lon, lat, lev, time)
+     *  But require them in netCDF-like order (time, lev, lat, lon), so
+     *  reverse the order while copying into var->dims.
+     */
+    idim = var->ndims;
+    pp_list_startwalk(fvar->axes, &thandle);
+    while ((axis = pp_list_walk(&thandle, 0)) != NULL) {
+      var->dims[--idim] = axis->dimid;
+    }
+
+    var->datatype = pp_get_var_type(hdrp);
+
+    ppvar->firstrecno = fvar->firstrecno;
+    ppvar->lastrecno = fvar->lastrecno;
+
+    CKI(   pp_var_get_extra_atts(var, fvar, cudims, atts, heaplist)   );
+   
+    CKI(   pp_copy_and_free_atts(file, var, atts, heaplist)   );
+
+    (*nvarsp)++;
+  }
+  return 0;
+
+  ERRBLKI("pp_add_field_vars");
+}
+
+
+/* ====================================================================================== */
+
+/* Routine to free all the main temporary variables allocated in pp_process(), 
  * which will not be needed afterwards.
  */
 
@@ -1130,32 +1415,32 @@ int pp_free_tmp_vars(PPlist *xaxes, PPlist *yaxes, PPlist *zaxes, PPlist *taxes,
 {
 
   /* free all the axes */
-  /* JAK when do more general x,y axes will need to worry about
+  /* JAK when do more general x, y axes will need to worry about
    * freeing x and y axes values too
    */
   PPlisthandle handle;
   PPgenaxis *zaxis, *taxis;
   PPfieldvar *fvar;
 
-  pp_list_startwalk(zaxes,&handle);
-  while ((zaxis=pp_list_walk(&handle,0))!=NULL) {
-    CKI(   pp_genaxis_free(zaxis,heaplist)   );
+  pp_list_startwalk(zaxes, &handle);
+  while ((zaxis=pp_list_walk(&handle, 0)) != NULL) {
+    CKI(   pp_genaxis_free(zaxis, heaplist)   );
   }
-  pp_list_startwalk(taxes,&handle);
-  while ((taxis=pp_list_walk(&handle,0))!=NULL) {
-    CKI(   pp_genaxis_free(taxis,heaplist)   );
+  pp_list_startwalk(taxes, &handle);
+  while ((taxis=pp_list_walk(&handle, 0)) != NULL) {
+    CKI(   pp_genaxis_free(taxis, heaplist)   );
   }
-  CKI(   pp_list_free(xaxes,1,heaplist)   );
-  CKI(   pp_list_free(yaxes,1,heaplist)   );
-  CKI(   pp_list_free(zaxes,0,heaplist)   );
-  CKI(   pp_list_free(taxes,0,heaplist)   );
+  CKI(   pp_list_free(xaxes, 1, heaplist)   );
+  CKI(   pp_list_free(yaxes, 1, heaplist)   );
+  CKI(   pp_list_free(zaxes, 0, heaplist)   );
+  CKI(   pp_list_free(taxes, 0, heaplist)   );
 
   /* free all the field vars */ 
-  pp_list_startwalk(fieldvars,&handle);
-  while ((fvar=pp_list_walk(&handle,0))!=NULL) {
-    CKI(   pp_list_free(fvar->axes,0,heaplist)   );
+  pp_list_startwalk(fieldvars, &handle);
+  while ((fvar=pp_list_walk(&handle, 0)) != NULL) {
+    CKI(   pp_list_free(fvar->axes, 0, heaplist)   );
   }
-  CKI(   pp_list_free(fieldvars,1,heaplist)   );
+  CKI(   pp_list_free(fieldvars, 1, heaplist)   );
 
   return 0;
 

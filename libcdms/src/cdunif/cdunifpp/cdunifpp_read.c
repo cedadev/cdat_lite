@@ -493,7 +493,14 @@ int pp_read_all_headers(CuFile *file)
       recs[rec]=recp;
       hdrp=&recp->hdr;
       
-      pp_store_header(hdrp,hdr);
+      pp_store_header(hdrp, hdr);
+
+      if (ppfile->store_raw_headers) {
+	CKI(  pp_store_raw_header(hdrp, hdr, heaplist)  );
+      }
+      else {
+	hdrp->rawhdr = NULL;
+      }
 
       recp->recno = rec;
       
@@ -631,12 +638,33 @@ int pp_read_all_headers(CuFile *file)
   ERRBLKI("pp_read_all_headers");
 }
 
-int pp_store_header(PPhdr *hdrp, const void *hdr){
+int pp_store_raw_header(PPhdr *hdrp, const void *hdr, PPlist *heaplist)
+{
+  const Fint *ihdr;
+  const Freal *rhdr;
+  PPrawhdr *rawhdr;
+
+
+  ihdr = (Fint*) hdr;
+  rhdr = (Freal*) (ihdr + n_int_hdr);
+
+  CKP(  rawhdr = pp_malloc(sizeof(PPrawhdr), heaplist)  );
+  memcpy(rawhdr->ihdr, ihdr, bytes_int_hdr);
+  memcpy(rawhdr->rhdr, rhdr, bytes_real_hdr);
+  hdrp->rawhdr = rawhdr;
+
+  return 0;
+  ERRBLKI("pp_store_raw_header");
+}
+
+
+int pp_store_header(PPhdr *hdrp, const void *hdr)
+{
   const Fint *ihdr;
   const Freal *rhdr;
   
   ihdr = (Fint*) hdr;
-  rhdr = (Freal*) (ihdr + 45);
+  rhdr = (Freal*) (ihdr + n_int_hdr);
 
 #ifdef PP_STORE_LBYR
   hdrp->LBYR   =ihdr[ 0];     
@@ -831,8 +859,7 @@ int pp_store_header(PPhdr *hdrp, const void *hdr){
 #ifdef PP_STORE_BMKS
     hdrp->BMKS  =rhdr[18];    
 #endif
-
-  return 0;
+    return 0;
 }
 
 /*

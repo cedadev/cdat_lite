@@ -32,6 +32,9 @@ int cuopenread_pp(const char* controlpath, const char* datapath){
   if((   file = pp_create_file(controlpath)   )==NULL) goto err_no_close;
   ppfile = file->internp;  
 
+  /* set any vars supplied via environment */
+  pp_set_vars_from_env(ppfile);
+
   /* open file */
   if((   ppfile->fh=fopen(controlpath,"r")   )==NULL) goto err_no_close;
 

@@ -8,6 +8,7 @@ OBJS = \
      cdunifpp_compare.o \
      cdunifpp_data.o \
      cdunifpp_debug.o \
+     cdunifpp_env.o \
      cdunifpp_error.o \
      cdunifpp_filetype.o \
      cdunifpp_linklist.o \
@@ -79,6 +80,9 @@ cdunifpp_data.o: cdunifpp_data.c $(HEADERS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(EXTRAHDR) -c $<
 
 cdunifpp_debug.o: cdunifpp_debug.c $(HEADERS)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(EXTRAHDR) -c $<
+
+cdunifpp_env.o: cdunifpp_env.c $(HEADERS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(EXTRAHDR) -c $<
 
 cdunifpp_error.o: cdunifpp_error.c $(HEADERS)
