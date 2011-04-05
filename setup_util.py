@@ -160,6 +160,10 @@ def makeExtension(name, package_dir=None, sources=None,
     library_dirs += [os.path.abspath(x) 
                      for x in ['Packages/%s/Lib' % package_dir, netcdf_libdir]]
 
+    # Remove any files or directories that don't exist
+    include_dirs = [x for x in include_dirs if os.path.exists(x)]
+    library_dirs = [x for x in library_dirs if os.path.exists(x)]
+
     libraries = []
 
     # If NetCDF4 support add hdf5 libraries

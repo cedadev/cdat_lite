@@ -138,6 +138,41 @@ installation or try this recipe after downloading the virtualenv::
 
 .. _virtualenv: http://pypi.python.org/pypi/virtualenv
 
+
+Platform-specific installation notes
+------------------------------------
+
+OS X
+''''
+
+Christopher Lee contributed the following experiences installing on OS X 10.6.7.
+
+My particular Macbook has an Intel CPU, and the default on the Mac is
+to compile for the architecture x86_64. In order to override this
+(because python is 32 bit, and the netcdf libraries I use are also 32
+bit) I needed to pass in "-arch i386" to the compiler. I also needed
+the little endian flag '-DBYTESWAP' when compiling the netcdf
+interface (inside libcdms). The -DBYTESWAP flag should be included by
+the libcdms configure script, where there is a section for 'darwin'
+(OS X), but it's currently configured without BYTESWAP (line
+6182). The problem here is that OS X used to run on PowerPC CPUs,
+which don't need the BYTESWAP flag. I'm not sure if this is your
+configure script or if it's from the cdat package.
+
+I included the -arch i386 and -DBYTESWAP in the setup.py in the
+libcdms section, and the setup works fine.
+
+After running python setup.py build ; python setup.py install ; I
+still get an error when importing cdms2. This problem is caused by the
+way that libcdms is linked to the netcdf libraries. The 'normal' Mac
+method is to link with absolute paths, but libcdms is linked with
+relative paths (the libraries are references with @rpath). The result
+is that LD_LIBRARY_PATH environment variable is often empty. I'm not
+sure how to fix this in the 'Mac' way with absolute paths, but I added
+my $NETCDF_HOME/lib directory to the variable and cdms2 now imports
+without error.
+
+
 Testing the installation
 ========================
 
