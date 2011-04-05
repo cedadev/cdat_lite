@@ -171,11 +171,17 @@ def makeExtension(name, package_dir=None, sources=None,
         libraries += ['hdf5_hl', 'hdf5', 'm', 'z']
         library_dirs += [hdf5_libdir]
 
+    # To force recompilation of extensions every time say it depends on
+    # libcdms/config.status.  Problems with link conflicts when switching
+    # between netcdf libraries suggest this might be necessary.
+    depends = ['libcdms/config.status']
+
     e = Extension(name, sources,
                   libraries=libraries,
                   include_dirs=include_dirs,
                   library_dirs=library_dirs,
-                  define_macros=macros)
+                  define_macros=macros,
+                  depends=depends)
 
     return e
 
