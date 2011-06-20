@@ -6,7 +6,10 @@
 
 #--------------------------------------------------------------------------------
 
-
+# Previous versions of cdat_lite used the NETCDF_HOME variable.  netcdf4-python uses NETCDF4_DIR.
+# This supports both options
+NETCDF_ENV_VARS = ['NETCDF_HOME', 'NETCDF4_DIR']
+HDF5_ENV_VARS = ['HDF5_HOME', 'HDF5_DIR']
 
 import sys, os, shutil
 from glob import glob
@@ -38,12 +41,11 @@ class DepFinder(object):
 
     """
 
-    def __init__(self, depname, homeenv, includefile, libfile):
+    def __init__(self, depname, prefixes, includefile, libfile):
 
         self.depname = depname
-        self.homeenv = homeenv
-        self.prefixes = [os.environ.get(homeenv), '/usr', '/usr/local',
-                         os.environ.get('HOME')]
+        self.prefixes = prefixes + ['/usr', '/usr/local',
+                                    os.environ.get('HOME')]
         self.includefile = includefile
         self.libfile = libfile
 
@@ -86,9 +88,9 @@ class DepFinder(object):
             print '''===================================================
 %s installation not found.
         
-Please set the %s environment variable and re-run setup.py
+Please see README for instructions on detecting dependencies
 
-''' % (self.depname, self.homeenv)
+'''
             raise SystemExit
         else:
             return include, lib
@@ -117,14 +119,16 @@ def check_ifnetcdf4(netcdf4_incdir):
 
 
 
-
-netcdf_incdir, netcdf_libdir = DepFinder('NetCDF', 'NETCDF_HOME',
+prefixes = [os.environ.get(x) for x in NETCDF_ENV_VARS if x]
+netcdf_incdir, netcdf_libdir = DepFinder('NetCDF', prefixes,
                                          includefile='netcdf.h',
                                          libfile='libnetcdf.a').find()
 # If using NetCDF4 find the HDF5 libraries
 if check_ifnetcdf4(netcdf_incdir):
     print 'NetCDF4 detected.  Including HDF libraries'
-    hdf5_incdir, hdf5_libdir = DepFinder('HDF5', 'HDF5_HOME',
+
+    prefixes = [os.environ.get(x) for x in HDF5_ENV_VARS if x]
+    hdf5_incdir, hdf5_libdir = DepFinder('HDF5', prefixes,
                                                  includefile='hdf5.h', libfile='libhdf5.a').find()
     with_netcdf4 = True
 else:
