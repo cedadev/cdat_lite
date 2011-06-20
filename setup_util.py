@@ -4,12 +4,6 @@
 
 """
 
-#--------------------------------------------------------------------------------
-
-# Previous versions of cdat_lite used the NETCDF_HOME variable.  netcdf4-python uses NETCDF4_DIR.
-# This supports both options
-NETCDF_ENV_VARS = ['NETCDF_HOME', 'NETCDF4_DIR']
-HDF5_ENV_VARS = ['HDF5_HOME', 'HDF5_DIR']
 
 import sys, os, shutil
 from glob import glob
@@ -18,6 +12,23 @@ from setuptools import setup, Extension
 from distutils.command.build_ext import build_ext as build_ext_orig
 from distutils.cmd import Command
 import distutils.ccompiler
+
+#--------------------------------------------------------------------------------
+
+# Previous versions of cdat_lite used the NETCDF_HOME variable.  netcdf4-python uses NETCDF4_DIR.
+# This supports both options
+NETCDF_ENV_VARS = ['NETCDF_HOME', 'NETCDF4_DIR']
+HDF5_ENV_VARS = ['HDF5_HOME', 'HDF5_DIR']
+
+# Module-level variables set in functions
+netcdf_incdir = None
+netcdf_libdir = None
+with_netcdf4 = None
+hdf5_incdir = None
+hdf5_libdir = None
+
+#--------------------------------------------------------------------------------
+
 
 #
 # Numpy detection code.  We want to be able to run commands like
@@ -118,22 +129,25 @@ def check_ifnetcdf4(netcdf4_incdir):
     return isnetcdf4
 
 
+def config_netcdf():
+    global netcdf_incdir, netcdf_libdir, with_netcdf4, hdf5_incdir, hdf5_libdir
 
-prefixes = [os.environ.get(x) for x in NETCDF_ENV_VARS if x]
-netcdf_incdir, netcdf_libdir = DepFinder('NetCDF', prefixes,
-                                         includefile='netcdf.h',
-                                         libfile='libnetcdf.a').find()
-# If using NetCDF4 find the HDF5 libraries
-if check_ifnetcdf4(netcdf_incdir):
-    print 'NetCDF4 detected.  Including HDF libraries'
+    prefixes = [os.environ.get(x) for x in NETCDF_ENV_VARS if x]
+    netcdf_incdir, netcdf_libdir = DepFinder('NetCDF', prefixes,
+                                             includefile='netcdf.h',
+                                             libfile='libnetcdf.a').find()
 
-    prefixes = [os.environ.get(x) for x in HDF5_ENV_VARS if x]
-    hdf5_incdir, hdf5_libdir = DepFinder('HDF5', prefixes,
+    # If using NetCDF4 find the HDF5 libraries
+    if check_ifnetcdf4(netcdf_incdir):
+        print 'NetCDF4 detected.  Including HDF libraries'
+
+        prefixes = [os.environ.get(x) for x in HDF5_ENV_VARS if x]
+        hdf5_incdir, hdf5_libdir = DepFinder('HDF5', prefixes,
                                                  includefile='hdf5.h', libfile='libhdf5.a').find()
-    with_netcdf4 = True
-else:
-    hdf5_incdir = False
-    with_netcdf4 = False
+        with_netcdf4 = True
+    else:
+        hdf5_incdir = False
+        with_netcdf4 = False
 
 
 
@@ -322,3 +336,5 @@ class build_ext(build_ext_orig):
 
 
 
+# bootstrap module
+config_netcdf()
