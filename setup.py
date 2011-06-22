@@ -27,6 +27,8 @@ CDAT_HOME_URL = 'http://www-pcmdi.llnl.gov/software-portal/cdat'
 #     in <cdat-release>.
 #  3. The cdunifpp version is stated in long_description not in the version.  Any
 #     change to the cdunifpp version naturally triggers a new <cdat-lite-version>.
+
+#!TODO: rethink versioning
 cdat_release = '6.0.alpha'
 cdat_tag = '-4'
 cdunifpp_version = '0.13'
@@ -48,6 +50,7 @@ buildLibTree(packageRoots={'unidata': 'Packages/unidata/Lib',
                            'Properties': 'Packages/Properties/Lib',
                            'regrid2': 'Packages/regrid2/Lib',
                            'ncml': 'Packages/ncml/Lib',
+                           'AutoAPI': 'Packages/AutoAPI/Lib',
                            },
              mods=['Packages/cdms2/MV2.py', 'Packages/cdat_info.py'],
              )

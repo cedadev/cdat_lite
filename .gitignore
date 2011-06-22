@@ -27,7 +27,7 @@ lib/ncml/
 lib/regrid2/
 lib/unidata/
 lib/xmgrace/
-
+lib/AutoAPI/
 
 # Defaults
 TAGS

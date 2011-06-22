@@ -48,7 +48,7 @@ class AbstractVariable(CdmsObj, Slab):
         if variableNode is not None and variableNode.tag !='variable':
             raise CDMSError, 'Node is not a variable node'
         CdmsObj.__init__(self, variableNode)
-        val = self.__cdms_internals__ + ['id','domain']
+        val = self.__cdms_internals__ + ['id','domain',"autoApiInfo"]
         self.___cdms_internals__ = val 
         Slab.__init__(self)
         self.id = None                  # Transient variables key on this to create a default ID
@@ -353,8 +353,8 @@ class AbstractVariable(CdmsObj, Slab):
             pass
         else:
             raise CDMSError, 'Invalid missing value %s'%`value`
-        
-        self.missing_value = value
+
+        self._missing = value
 
 
     def getTime(self):
@@ -580,9 +580,7 @@ class AbstractVariable(CdmsObj, Slab):
         result = self.subSlice(*specs, **keys)
 
         # return a scalar for 0-D slices
-        if not hasattr(result, 'mask'):
-            return result
-        elif isitem and result.size==1 and (not _numeric_compatibility) and not result.mask.item():
+        if isitem and result.size==1 and (not _numeric_compatibility) and not result.mask.item():
             result = result.item()
         return result
 
@@ -1262,9 +1260,6 @@ class AbstractVariable(CdmsObj, Slab):
 
     def __sqrt__(self): 
         return MV.sqrt(self)
-
-    def __mod__(self,other):
-        return MV.mod(self,other)
 
     def astype (self, tc):
         "return self as array of given type."
