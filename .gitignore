@@ -4,6 +4,32 @@ doc/doctrees
 dist
 tmp
 
+# All Makefiles unless explicitly excluded
+Makefile
+config.log
+config.status
+
+# Patches
+*.patch
+
+# Obvious parts of the lib tree
+lib/MV2.py
+lib/Properties/
+lib/cdat_info.py
+lib/cdat_lite/scripts/cddump.py
+lib/cdat_lite/scripts/cdscan.py
+lib/cdat_lite/scripts/convertcdms.py
+lib/cdms2/
+lib/cdtime.so
+lib/cdutil/
+lib/genutil/
+lib/ncml/
+lib/regrid2/
+lib/unidata/
+lib/xmgrace/
+
+
+# Defaults
 TAGS
 .ant-targets-build.xml
 *~

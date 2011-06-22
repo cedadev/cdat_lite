@@ -291,7 +291,7 @@ class build_ext(build_ext_orig):
         self._system('cd libcdms ; '
                      'CFLAGS="-fPIC" '
                      'CC=%(cc)s '
-                     'sh ./configure --disable-drs --disable-hdf '
+                     'sh ./configure --disable-drs --disable-hdf --disable-grib2 '
                      '--disable-ql --with-ncinc=%(ncinc)s --with-ncincf=%(ncinc)s --with-nclib=%(nclib)s %(nc4)s'
                      % dict(ncinc=netcdf_config.netcdf_incdir, nclib=netcdf_config.netcdf_libdir,
                             cc=cc, nc4=nc4_defs))
