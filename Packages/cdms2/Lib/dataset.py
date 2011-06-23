@@ -1583,10 +1583,16 @@ class CdmsFile(CdmsObj, cuDataset, AutoAPI.AutoAPI):
             coords = grid.writeToFile(self)
             if coords is not None:
                 coordattr = "%s %s"%(coords[0].id, coords[1].id)
-                if attributes is None:
-                    attributes = {'coordinates': coordattr}
-                else:
-                    attributes['coordinates'] = coordattr
+
+        #
+        #!KEEPME: This block has been moved out of the block above to cover rotated grids.
+        #
+        if 'coordattr' in locals():
+            if attributes is None:
+                attributes = {'coordinates': coordattr}
+            else:
+                attributes['coordinates'] = coordattr
+            
 
         # Create the new variable
         datatype = cdmsNode.NumericToCdType.get(var.typecode())
