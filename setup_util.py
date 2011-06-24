@@ -4,17 +4,29 @@
 
 """
 
-#--------------------------------------------------------------------------------
-
-
 
 import sys, os, shutil
 from glob import glob
+import subprocess as S
 
 from setuptools import setup, Extension
 from distutils.command.build_ext import build_ext as build_ext_orig
 from distutils.cmd import Command
 import distutils.ccompiler
+
+#--------------------------------------------------------------------------------
+
+# Previous versions of cdat_lite used the NETCDF_HOME variable.  netcdf4-python uses NETCDF4_DIR.
+# This supports both options
+NETCDF_ENV_VARS = ['NETCDF_HOME', 'NETCDF4_DIR']
+HDF5_ENV_VARS = ['HDF5_HOME', 'HDF5_DIR']
+
+
+#--------------------------------------------------------------------------------
+
+
+class ConfigException(Exception):
+    pass
 
 #
 # Numpy detection code.  We want to be able to run commands like
@@ -25,11 +37,18 @@ try:
     has_numpy = True
 except:
     has_numpy = False
+    raise SystemExit("""
+==========================================================================
+numpy not available.  cdat_lite requires numpy to be installed first.  
+
+It is recommended to install numpy by downloading the source and running
+'python setup.py install'.  Easy_install is unreliable with this package.
+
+==========================================================================
+""")
+
 def get_numpy_include():
-    if has_numpy:
-        return os.path.abspath(numpy.get_include())
-    else:
-        print >>sys.stderr, "Warning: numpy not available.  cdat_lite will not build without it."
+    return os.path.abspath(numpy.get_include())
 
 
 class DepFinder(object):
@@ -38,12 +57,11 @@ class DepFinder(object):
 
     """
 
-    def __init__(self, depname, homeenv, includefile, libfile):
+    def __init__(self, depname, prefixes, includefile, libfile):
 
         self.depname = depname
-        self.homeenv = homeenv
-        self.prefixes = [os.environ.get(homeenv), '/usr', '/usr/local',
-                         os.environ.get('HOME')]
+        self.prefixes = prefixes + ['/usr', '/usr/local',
+                                    os.environ.get('HOME')]
         self.includefile = includefile
         self.libfile = libfile
 
@@ -86,9 +104,9 @@ class DepFinder(object):
             print '''===================================================
 %s installation not found.
         
-Please set the %s environment variable and re-run setup.py
+Please see README for instructions on detecting dependencies
 
-''' % (self.depname, self.homeenv)
+'''
             raise SystemExit
         else:
             return include, lib
@@ -118,23 +136,6 @@ def check_ifnetcdf4(netcdf4_incdir):
 
 
 
-netcdf_incdir, netcdf_libdir = DepFinder('NetCDF', 'NETCDF_HOME',
-                                         includefile='netcdf.h',
-                                         libfile='libnetcdf.a').find()
-# If using NetCDF4 find the HDF5 libraries
-if check_ifnetcdf4(netcdf_incdir):
-    print 'NetCDF4 detected.  Including HDF libraries'
-    hdf5_incdir, hdf5_libdir = DepFinder('HDF5', 'HDF5_HOME',
-                                                 includefile='hdf5.h', libfile='libhdf5.a').find()
-    with_netcdf4 = True
-else:
-    hdf5_incdir = False
-    with_netcdf4 = False
-
-
-
-
-
 def makeExtension(name, package_dir=None, sources=None,
                   include_dirs=None, library_dirs=None, macros=None):
     """Convenience function for building extensions from the Packages directory.
@@ -155,21 +156,20 @@ def makeExtension(name, package_dir=None, sources=None,
         sources = glob('Packages/%s/Src/*.c' % package_dir)
 
     include_dirs += [os.path.abspath(x) 
-                     for x in ['Packages/%s/Include' % package_dir, 
-                               netcdf_incdir]]
+                     for x in ['Packages/%s/Include' % package_dir] + 
+                              netcdf_config.include_dirs
+                     ]
     library_dirs += [os.path.abspath(x) 
-                     for x in ['Packages/%s/Lib' % package_dir, netcdf_libdir]]
+                     for x in ['Packages/%s/Lib' % package_dir] + 
+                              netcdf_config.library_dirs
+                     ]
+    
 
     # Remove any files or directories that don't exist
     include_dirs = [x for x in include_dirs if os.path.exists(x)]
     library_dirs = [x for x in library_dirs if os.path.exists(x)]
 
-    libraries = []
-
-    # If NetCDF4 support add hdf5 libraries
-    if hdf5_incdir:
-        libraries += ['hdf5_hl', 'hdf5', 'm', 'z']
-        library_dirs += [hdf5_libdir]
+    libraries = netcdf_config.libraries
 
     # To force recompilation of extensions every time say it depends on
     # libcdms/config.status.  Problems with link conflicts when switching
@@ -259,15 +259,11 @@ class build_ext(build_ext_orig):
         numpy_inc = get_numpy_include()
         if numpy_inc:
             self.include_dirs += [numpy_inc]
-        self.include_dirs += [os.path.abspath('libcdms/include')]
-        self.library_dirs += [netcdf_libdir, os.path.abspath('libcdms/lib')]
+        self.include_dirs += [os.path.abspath('libcdms/include')] + netcdf_config.include_dirs
+        self.library_dirs += netcdf_config.library_dirs + [os.path.abspath('libcdms/lib')]
 
-        self.libraries += ['cdms', 'netcdf']
+        self.libraries += ['cdms'] + netcdf_config.libraries
 
-        # If NetCDF4 support add hdf5 libraries
-        if hdf5_incdir:
-            self.libraries += ['hdf5_hl', 'hdf5', 'm', 'z']
-            self.library_dirs += [hdf5_libdir]
 
     def run(self):
 
@@ -293,9 +289,9 @@ class build_ext(build_ext_orig):
             cc = distutils.ccompiler.new_compiler().compiler[0]
 
         # If NetCDF4 support we need to add HDF5 libraries in.
-        if hdf5_incdir:
+        if netcdf_config.with_netcdf4:
             nc4_defs = '--with-hdf5inc=%s --with-hdf5lib=%s' % (
-                hdf5_incdir, hdf5_libdir)
+                netcdf_config.hdf5_incdir, netcdf_config.hdf5_libdir)
         else:
             nc4_defs = ''
 
@@ -304,7 +300,7 @@ class build_ext(build_ext_orig):
                      'CC=%(cc)s '
                      'sh ./configure --disable-drs --disable-hdf '
                      '--disable-ql --with-ncinc=%(ncinc)s --with-ncincf=%(ncinc)s --with-nclib=%(nclib)s %(nc4)s'
-                     % dict(ncinc=netcdf_incdir, nclib=netcdf_libdir,
+                     % dict(ncinc=netcdf_config.netcdf_incdir, nclib=netcdf_config.netcdf_libdir,
                             cc=cc, nc4=nc4_defs))
         
         self._system('cd libcdms ; make db_util ; make cdunif')
@@ -318,3 +314,148 @@ class build_ext(build_ext_orig):
 
 
 
+class NetCDFConfig(object):
+    netcdf_incdir = None
+    netcdf_libdir = None
+    with_netcdf4 = None
+    hdf5_incdir = None
+    hdf5_libdir = None
+    library_dirs = []
+    libraries = []
+    include_dirs = []
+    
+
+    def __init__(self):
+        self.detect_ncconfig()
+        self.config_netcdf()
+        self.print_report()
+
+    def print_report(self):
+        print '''\
+=================================================================
+NetCDF configuration detection results
+-----------------------------------------------------------------
+
+  include-directories: %s
+  library-directories: %s
+  libraries:           %s
+  netcdf-include-dir:  %s
+  netcdf-library-dir:  %s
+''' % (' '.join(self.include_dirs), 
+       ' '.join(self.library_dirs),
+       ' '.join(self.libraries), 
+       self.netcdf_incdir, 
+       self.netcdf_libdir,
+       )
+        if self.with_netcdf4:
+            print '''\
+  has-netcdf4:         Yes
+  hdf5-include-dir:    %s
+  hdf5-library-dir:    %s''' %  (self.hdf5_incdir, self.hdf5_libdir)
+        else:
+            print '''\
+  has-netcdf4:         No
+'''
+        print '''\
+=================================================================
+'''    
+
+    def detect_ncconfig(self):
+        # Detect nc-config
+        print 'Looking for nc-config ... ',
+        rc = S.call('which nc-config', shell=True, stderr=None, stdout=S.PIPE)
+        if rc == 0:
+            print 'yes'
+            self._has_ncconfig = True
+        else:
+            print 'no'
+            self._has_ncconfig = False
+
+    def config_netcdf(self):
+        if self._has_ncconfig:
+            self.ncconfig_includes()
+            self.ncconfig_libs()
+            self.ncconfig_nc4()
+
+        else:
+            prefixes = [os.environ.get(x) for x in NETCDF_ENV_VARS if x]
+            self.netcdf_incdir, self.netcdf_libdir = DepFinder('NetCDF', prefixes,
+                                                               includefile='netcdf.h',
+                                                               libfile='libnetcdf.a').find()
+
+            # If using NetCDF4 find the HDF5 libraries
+            if check_ifnetcdf4(self.netcdf_incdir):
+                prefixes = [os.environ.get(x) for x in HDF5_ENV_VARS if x]
+                self.hdf5_incdir, self.hdf5_libdir = DepFinder('HDF5', prefixes,
+                                                               includefile='hdf5.h', libfile='libhdf5.a').find()
+                self.with_netcdf4 = True
+            else:
+                self.hdf5_incdir = False
+                self.with_netcdf4 = False
+
+    def ncconfig_nc4(self):
+        has_nc4 = self.run_ncconfig('--has-nc4')[0]
+        if 'yes' in has_nc4:
+            self.with_netcdf4 = True
+        else:
+            self.with_netcdf4 = False
+
+    def ncconfig_libs(self):
+        """
+        distutils and libcdms needs info in a different form to nc-config.
+        This function mines for it.
+        
+        """
+        libs = self.run_ncconfig('--libs')[0].split()
+        for lib in libs:
+            if lib[:2] == '-L':
+                self.library_dirs.append(lib[2:])
+            elif lib[:2] == '-l':
+                self.libraries.append(lib[2:])
+            else:
+                raise Exception("Unrecognised nc-config library option: %s" % lib)
+
+        # Now detect netcdf_libdir and hdf5_libdir
+        for path in self.library_dirs:
+            if glob(os.path.join(path, 'libnetcdf.*')):
+                self.netcdf_libdir = path
+            if glob(os.path.join(path, 'libhdf5.*')):
+                self.hdf5_libdir = path
+
+
+    def ncconfig_includes(self):
+        """
+        As ncconfig_libs but for includes
+
+        """
+
+        incs = self.run_ncconfig('--cflags')[0].split()
+        for inc in incs:
+            if inc[:2] == '-I':
+                self.include_dirs.append(inc[2:])
+            else:
+                #!TODO: should be warning?
+                raise Exception("Unrecognised nc-config cflag %s" % inc)
+            
+        # Now detect netcdf_incdir and hdf5_incdir
+        for path in self.include_dirs:
+            if os.path.exists(os.path.join(path, 'netcdf.h')):
+                self.netcdf_incdir = path
+            if os.path.exists(os.path.join(path, 'hdf5.h')):
+                self.hdf5_incdir = path
+        
+
+
+    def run_ncconfig(self, args):
+        p = S.Popen('nc-config %s' % args, shell=True,
+                    stdout=S.PIPE, stderr=S.PIPE, close_fds=True)
+        if p.wait() != 0:
+            raise ConfigException('nc-config failed: %s' % p.stderr.read().strip())
+
+        return [x.strip() for x in p.stdout]
+
+
+
+
+# bootstrap module
+netcdf_config = NetCDFConfig()
