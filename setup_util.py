@@ -37,11 +37,18 @@ try:
     has_numpy = True
 except:
     has_numpy = False
+    raise SystemExit("""
+==========================================================================
+numpy not available.  cdat_lite requires numpy to be installed first.  
+
+It is recommended to install numpy by downloading the source and running
+'python setup.py install'.  Easy_install is unreliable with this package.
+
+==========================================================================
+""")
+
 def get_numpy_include():
-    if has_numpy:
-        return os.path.abspath(numpy.get_include())
-    else:
-        print >>sys.stderr, "Warning: numpy not available.  cdat_lite will not build without it."
+    return os.path.abspath(numpy.get_include())
 
 
 class DepFinder(object):
