@@ -65,18 +65,22 @@ Selecting your NetCDF installation
 
 cdat-lite will work with NetCDF3 or NetCDF4 but because it is
 referenced by shared libraries (the python C extension modules) it
-must be compiled as position independent code.  It is probably easiest
-to install NetCDF as a shared library (use ``--enable-shared`` in the
-NetCDF ``configure`` script).  Alternatively, you can configure NetCDF with::
+must be compiled as position independent code.  If you have a NetCDF4
+installation you almost certainly are using shared libraries and even
+if you wish to use NetCDF3 it is probably easiest to install NetCDF as
+a shared library (use ``--enable-shared`` in the NetCDF ``configure``
+script).  Alternatively, you can configure NetCDF with::
 
   $ ./configure --with-pic ...
 
 If you are using NetCDF4 you will also need to configure HDF5 with ``--enable-shared`` or ``--with-pic``.
 
-cdat-lite will look for a NetCDF installation in several places and
-prompt you if it can't find it.  If your NetCDF is installed somewhere
-unusual, or if you want to select a specific installation, set the
-NETCDF_HOME variable.  E.g.::
+If you have the command ``nc-config`` in your path cdat-lite will
+detect all library and include dependencies.  Otherwise cdat-lite will
+look for a NetCDF installation in several places.
+
+If your NetCDF is installed somewhere unusual, or if you want to
+select a specific installation, set the NETCDF_HOME variable.  E.g.::
 
   # sh users
   $ export NETCDF_HOME=/usr/local/netcdf
@@ -90,6 +94,8 @@ installation which you can configure in a similar way::
   $ export HDF5_HOME=/usr/local/hdf5
   # csh users
   $ setenv HDF5_HOME /usr/local/hdf5
+
+For compatibility with the ``netcdf4-python`` package cdat-lite also accepts ``NETCDF4_DIR`` AND ``HDF5_DIR`` as synonims for these environment variables.
 
 Note, you don't need these environment variables set to run cdat_lite,
 although the libraries must be findable by your system's dynamic
