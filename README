@@ -1,26 +1,40 @@
 =========
-CDAT-Lite
+cdat-lite
 =========
 
 .. contents::
 
 .. sectnum::
 
-CDAT-Lite is a Python package for managing and analysing climate
+Cdat-lite is a Python package for managing and analysing climate
 science data.  It is a subset of the Climate Data Analysis Tools
 (CDAT_) developed by PCMDI_ at Lawrence Livermore National Laboratory.
 
-CDAT-lite aims to compliment CDAT by focussing on it's core data
+Cdat-lite aims to compliment CDAT by focussing on it's core data
 management and analysis components and by offering a radically
 different installation system to CDAT.  As a result it is much more
 lightweight (hence the name): CDAT's source distribution is the order
-of 1Gb whereas CDAT-lite is under 5Mb.
+of 1Gb whereas cdat-lite is under 5Mb.
 
-From 6.0-alpha-3 CDAT-lite no longer comes with the CF Checker.  This should be available as a separate easy_installable package shortly.
+Cdat-lite is designed to work with the `CF checker`_ package.
 
 .. _CDAT: http://www2-pcmdi.llnl.gov/cdat
 .. _PCMDI: http://www2-pcmdi.llnl.gov/
+.. _`CF checker`: http://pypi.python.org/pypi/cfchecker
 
+
+cdat-lite versioning
+====================
+
+Cdat-lite is a project that tracks versions of 2 other projects (CDAT
+and cdunifpp).  From version 6.0rc1 the cdat-lite version will not be
+based directly on the CDAT version.  This is because CDAT updates it's
+version very seldomly and stays as an "alpha" distribution for long
+periods when the parts included in cdat-lite are generally stable.
+
+Full details of which versions of CDAT and cdunifpp a cdat-lite
+distribution includes is available in the setup.py file and the
+PKG_INFO metadata.
 
 Installing cdat-lite
 ====================
@@ -212,7 +226,7 @@ visualisation components and the graphical user interface VCDAT.
 What is the difference between CDAT and cdat-lite?
 --------------------------------------------------
 
-Differences between CDAT and CDAT-lite can be classified as
+Differences between CDAT and cdat-lite can be classified as
 differences in scope, i.e. which packages are included, and installation system.
 
 cdat-lite contains the 'cdms2' package and a few related

@@ -17,22 +17,21 @@ CDAT_LITE_URL = 'http://proj.badc.rl.ac.uk/ndg/wiki/CdatLite'
 CDAT_LICENCE_URL = 'http://www-pcmdi.llnl.gov/software-portal/cdat/docs/cdat-license'
 CDAT_HOME_URL = 'http://www-pcmdi.llnl.gov/software-portal/cdat'
 
-# cdat-lite versioning is complicated as it is a repackage of cdat-cdunifpp.  There are
-# therefore 3 version numbers to consider: CDAT, cdunifpp and cdat-lite.  Once we start
-# using versions of CDAT from the PCMDI SVN the version string could become very long
-# indeed therefore the following strategy is used:
+# cdat-lite versioning is complicated as it is a repackage of
+# cdat-cdunifpp.  There are therefore 3 version numbers to consider:
+# CDAT, cdunifpp and cdat-lite.  If CDAT is on an unstable version
+# that doesn't mean that cdms2 is unstable, therefore it is
+# missleading to base the cdat-lite verison directly on the CDAT
+# version.  Therefore we do the following:
 #
-#  1. Eggs are quoted with the version: <cdat-release>-<cdat-lite-version>
-#  2. If a PCMDI SVN version of CDAT is used it is stated in long_description not
-#     in <cdat-release>.
-#  3. The cdunifpp version is stated in long_description not in the version.  Any
-#     change to the cdunifpp version naturally triggers a new <cdat-lite-version>.
+#  1. cdat-lite distributions are versioned independently of CDAT and cdunifpp 
+#  2. Other version numbers are described in the PKG_INFO description.
 
-#!TODO: rethink versioning
+cdat_lite_version = '6.0rc1'
+
 cdat_release = '6.0.alpha'
-cdat_tag = '-4'
+cdat_tag = '-ge3b1a45'
 cdunifpp_version = '0.13'
-
 
 
 description = "Core components of the Climate Data Analysis tools.  This software is based on CDAT-%(cdat_release)s%(cdat_tag)s and cdunfpp%(cdunifpp_version)s." % globals()
@@ -81,7 +80,7 @@ try:
     setup(name='cdat_lite',
           description=description,
           long_description=long_description,
-          version='%s%s' % (cdat_release, cdat_tag),
+          version=cdat_lite_version,
           url = CDAT_LITE_URL,
           download_url = NDG_EGG_REPOSITORY,
           maintainer = 'Stephen Pascoe',
