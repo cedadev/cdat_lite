@@ -10,7 +10,7 @@ Cdat-lite is a Python package for managing and analysing climate
 science data.  It is a subset of the Climate Data Analysis Tools
 (CDAT_) developed by PCMDI_ at Lawrence Livermore National Laboratory.
 
-Cdat-lite aims to compliment CDAT by focussing on it's core data
+Cdat-lite aims to complement CDAT by focusing on its core data
 management and analysis components and by offering a radically
 different installation system to CDAT.  As a result it is much more
 lightweight (hence the name): CDAT's source distribution is the order
@@ -28,8 +28,8 @@ cdat-lite versioning
 
 Cdat-lite is a project that tracks versions of 2 other projects (CDAT
 and cdunifpp).  From version 6.0rc1 the cdat-lite version will not be
-based directly on the CDAT version.  This is because CDAT updates it's
-version very seldomly and stays as an "alpha" distribution for long
+based directly on the CDAT version.  This is because CDAT updates its
+version very seldom and stays as an "alpha" distribution for long
 periods when the parts included in cdat-lite are generally stable.
 
 Full details of which versions of CDAT and cdunifpp a cdat-lite
@@ -144,7 +144,7 @@ Installing as an unprivileged user
 
 If you don't have write access to your python distribution you can use
 the tool virtualenv_ to create a local python environment with
-it's own ``easy_install`` executable which you can then use to install
+its own ``easy_install`` executable which you can then use to install
 cdat-lite.  In combination with ``NETCDF_HOME``, ``HDF5_HOME`` and
 ``LD_LIBRARY_PATH`` it should be possible to install all dependencies
 of cdat-lite locally.  See the virtualenv_ for details on
@@ -252,8 +252,8 @@ packages are:
 
  * xmgrace
 
-CDAT bundles virtually all dependencies together in it's source
-distribution -- even Python itself.  This has it's advantages as it
+CDAT bundles virtually all dependencies together in its source
+distribution -- even Python itself.  This has its advantages as it
 simplifies satisfying dependencies and avoids version conflicts
 between dependencies.  However, if you want to integrate CDAT's data
 management components into your existing Python architecture CDAT can

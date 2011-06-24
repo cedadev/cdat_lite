@@ -27,7 +27,7 @@ CDAT_HOME_URL = 'http://www-pcmdi.llnl.gov/software-portal/cdat'
 #  1. cdat-lite distributions are versioned independently of CDAT and cdunifpp 
 #  2. Other version numbers are described in the PKG_INFO description.
 
-cdat_lite_version = '6.0rc1'
+cdat_lite_version = '6.0rc2'
 
 cdat_release = '6.0.alpha'
 cdat_tag = '-ge3b1a45'
