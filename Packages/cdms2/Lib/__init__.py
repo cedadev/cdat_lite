@@ -1,16 +1,15 @@
 """
 CDMS module-level API
 """
-try:
-    import cdat_info,os,sys
-    if cdat_info.ping is False:
-        import urllib2,os
-        urllib2.urlopen("http://uv-cdat.llnl.gov/UVCDATLogger/%s/%s/cdat/start" % (os.getlogin(),sys.platform))
-        cdat_info.ping = True
-except:
-    cdat_info.ping = False
-    pass
-__all__ = ["cdmsobj", "axis", "coord", "grid", "hgrid", "avariable", "sliceut", "error", "variable", "fvariable", "tvariable", "dataset", "database", "cache", "selectors", "MV2", "convention", "bindex", "auxcoord", "gengrid", "gsHost", "gsStatVar"]
+import cdat_info
+cdat_info.pingPCMDIdb("cdat","start")
+
+__all__ = ["cdmsobj", "axis", "coord", "grid", "hgrid", "avariable", \
+"sliceut", "error", "variable", "fvariable", "tvariable", "dataset", \
+"database", "cache", "selectors", "MV2", "convention", "bindex", \
+"auxcoord", "gengrid", "gsHost", "gsStaticVariable", "gsTimeVariable", \
+"gsRegrid", "mvBaseWriter", "mvSphereMesh", "mvVsWriter"]
+
 # Errors
 from error import CDMSError
 
@@ -28,7 +27,7 @@ from axis import createAxis, createEqualAreaAxis, createGaussianAxis, createUnif
 from grid import createGenericGrid, createGlobalMeanGrid, createRectGrid, createUniformGrid, createZonalGrid, setClassifyGrids, createGaussianGrid, writeScripGrid
 
 # Dataset functions
-from dataset import createDataset, openDataset, getNetcdfShuffleFlag, getNetcdfDeflateFlag, getNetcdfDeflateLevelFlag, setNetcdfShuffleFlag, setNetcdfDeflateFlag, setNetcdfDeflateLevelFlag, setCompressionWarnings
+from dataset import createDataset, openDataset, useNetcdf3, getNetcdfShuffleFlag, getNetcdfDeflateFlag, getNetcdfDeflateLevelFlag, setNetcdfShuffleFlag, setNetcdfDeflateFlag, setNetcdfDeflateLevelFlag, setCompressionWarnings
 open = openDataset
 
 # Database functions
@@ -43,12 +42,18 @@ from avariable import order2index, orderparse, setNumericCompatibility, getNumer
 # TV
 from tvariable import asVariable, createVariable, isVariable
 
+# Gridspec is not installed by default so just pass on if it isn't installed
 try:
-    from gsHost import GsHost
-    from gsstaticvariable import GsStaticVariable
-    from gstimevariable import GsTimeVariable
+    from gsStaticVariable import StaticFileVariable
+    from gsTimeVariable import TimeFileVariable
+    from mvSphereMesh import SphereMesh
+    from mvBaseWriter import BaseWriter
+    from mvVsWriter import VsWriter
+    from mvVTKSGWriter import VTKSGWriter
+    from mvVTKUGWriter import VTKUGWriter
 except:
     pass
-#from restApi import esgfConnection
+
+from restApi import esgfConnection
 
 MV = MV2

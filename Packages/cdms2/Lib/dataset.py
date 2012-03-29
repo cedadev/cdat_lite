@@ -29,11 +29,12 @@ from cdmsNode import CdDatatypes
 import convention
 import typeconv
 import AutoAPI
+
 try:
- import gsHost
- from pycf import libCFConfig as libcf
+    import gsHost
+    from pycf import libCFConfig as libcf
 except:
-    pass
+    libcf = None
 
 try:
     import cache
@@ -100,6 +101,7 @@ def setCompressionWarnings(value=None):
     return _showCompressWarnings
 
 def setNetcdfShuffleFlag(value):        
+    """ Sets NetCDF shuffle flag value"""
     if value not in [True,False,0,1]:
         raise CDMSError, "Error NetCDF Shuffle flag must be 1/0 or true/False"
     if value in [0,False]:
@@ -107,6 +109,7 @@ def setNetcdfShuffleFlag(value):
     else:
         Cdunif.CdunifSetNCFLAGS("shuffle",1)
 def setNetcdfDeflateFlag(value):
+    """ Sets NetCDF deflate flag value"""
     if value not in [True,False,0,1]:
         raise CDMSError, "Error NetCDF deflate flag must be 1/0 or true/False"
     if value in [0,False]:
@@ -115,18 +118,29 @@ def setNetcdfDeflateFlag(value):
         Cdunif.CdunifSetNCFLAGS("deflate",1)
         
 def setNetcdfDeflateLevelFlag(value):
+    """ Sets NetCDF deflate level flag value"""
     if value not in [0,1,2,3,4,5,6,7,8,9]:
         raise CDMSError, "Error NetCDF deflate_level flag must be an integer < 10"
     Cdunif.CdunifSetNCFLAGS("deflate_level",value)
 
 def getNetcdfShuffleFlag():
+    """ Returns NetCDF shuffle flag value"""
     return Cdunif.CdunifGetNCFLAGS("shuffle")
 
 def getNetcdfDeflateFlag():
+    """ Returns NetCDF deflate flag value"""
     return Cdunif.CdunifGetNCFLAGS("deflate")
 
 def getNetcdfDeflateLevelFlag():
+    """ Returns NetCDF deflate level flag value"""
     return Cdunif.CdunifGetNCFLAGS("deflate_level")
+def useNetcdf3():
+    """ Turns off (0) NetCDF flags for shuffle/defalte/defaltelevel
+    Output files are generated as NetCDF3 Classic after that
+    """
+    setNetcdfShuffleFlag(0)
+    setNetcdfDeflateFlag(0)
+    setNetcdfDeflateLevelFlag(0)
 
 # Create a tree from a file path.
 # Returns the parse tree root node.
@@ -164,7 +178,7 @@ def createDataset(path,template=None):
 # 'uri' is a Uniform Resource Identifier, referring to a cdunif file, XML file,
 #   or LDAP URL of a catalog dataset entry.
 # 'mode' is 'r', 'r+', 'a', or 'w'
-def openDataset(uri,mode='r',template=None,dods=1,dpath=None):
+def openDataset(uri,mode='r',template=None,dods=1,dpath=None, hostObj=None):
     """
     Options:::
 mode :: (str) ('r') mode to open the file in read/write/append
@@ -184,18 +198,28 @@ file :: (cdms2.dataset.CdmsFile) (0) file to read from
     if scheme in ('','file'):
         path = os.path.expanduser(path)
         root,ext = os.path.splitext(path)
+
         if ext in ['.xml','.cdml']:
             if mode!='r': raise ModeNotSupported,mode
             datanode = load(path)
         else:
-            file = CdmsFile(path,mode)
-            try:
-             if hasattr(file, libcf.CF_FILETYPE):
-                if getattr(file, libcf.CF_FILETYPE) == libcf.CF_GLATT_FILETYPE_HOST:
-                    file = gsHost.open(path, mode)
-            except:
-                pass
-            return file
+            # If the doesn't exist allow it to be created
+            if not os.path.exists(path): return CdmsFile(path,mode)
+            
+            # The file exists
+            file1 = CdmsFile(path,"r")
+            if libcf is not None:
+                if hasattr(file1, libcf.CF_FILETYPE):
+                    if getattr(file1, libcf.CF_FILETYPE) == libcf.CF_GLATT_FILETYPE_HOST:
+                        file = gsHost.open(path, mode)
+                    else:
+                        file = CdmsFile(path, mode, hostObj = hostObj)
+                else:
+                    file = CdmsFile(path, mode)
+                file1.close()
+                return file
+            else:
+                return CdmsFile(path, mode)
     elif scheme in ['http', 'gridftp']:
         
         if (dods):
@@ -822,7 +846,7 @@ class Dataset(CdmsObj, cuDataset):
 ##                                             'mode')
 
 class CdmsFile(CdmsObj, cuDataset, AutoAPI.AutoAPI):
-    def __init__(self, path, mode):
+    def __init__(self, path, mode, hostObj = None):
         CdmsObj.__init__(self, None)
         cuDataset.__init__(self)
         value = self.__cdms_internals__+['datapath',
@@ -840,16 +864,24 @@ class CdmsFile(CdmsObj, cuDataset, AutoAPI.AutoAPI):
         self.id = path
         self._mode_ = mode
         try:
+            if mode[0].lower()=="w":
+                try:
+                    os.remove(path)
+                except:
+                    pass
             _fileobj_ = Cdunif.CdunifFile (path, mode)
-        except:
-            raise CDMSError, 'Cannot open file %s'%path
+        except Exception,err:
+            raise CDMSError, 'Cannot open file %s (%s)'%(path,err)
         self._file_ = _fileobj_   # Cdunif file object
         self.variables = {}
         self.axes = {}
         self.grids = {}
         self.xlinks = {}
         self._gridmap_ = {}
-        self.autoApiInfo.expose.update(["sync","close","createAxis","createVirtualAxis","copyAxis","createRectGrid","copyGrid","createVariable","searchPattern","matchPattern","searchPredicate","createVariableCopy","write","getVariable","getVariables","getAxis","getGrid","getBoundsAxis"])
+        self.autoApiInfo.expose.update(["sync","close","createAxis","createVirtualAxis", \
+            "copyAxis","createRectGrid","copyGrid","createVariable","searchPattern",     \
+            "matchPattern","searchPredicate","createVariableCopy","write","getVariable", \
+            "getVariables","getAxis","getGrid","getBoundsAxis"])
 
         # self.attributes returns the Cdunif file dictionary. 
 ##         self.replace_external_attributes(self._file_.__dict__)
@@ -863,6 +895,18 @@ class CdmsFile(CdmsObj, cuDataset, AutoAPI.AutoAPI):
         self._convention_ = convention.getDatasetConvention(self)
 
         try:
+            
+            # A mosaic variable with coordinates attached, but the coordinate variables reside in a
+            # different file. Add the coordinate variables to the mosaic variables list.
+            if not hostObj is None:
+                for name in self._file_.variables.keys():
+                    if 'coordinates' in dir(self._file_.variables[name]):
+                        coords = self._file_.variables[name].coordinates.split()
+                        for coord in coords:
+                            if not coord in self._file_.variables.keys():
+                                cdunifvar = Cdunif.CdunifFile(hostObj.gridVars[coord][0], mode)
+                                self._file_.variables[coord] = cdunifvar.variables[coord]
+                
             # Get lists of 1D and auxiliary coordinate axes
             coords1d = self._convention_.getAxisIds(self._file_.variables)
             coordsaux = self._convention_.getAxisAuxIds(self._file_.variables, coords1d)
@@ -884,6 +928,8 @@ class CdmsFile(CdmsObj, cuDataset, AutoAPI.AutoAPI):
             # Build axis list
             for name in self._file_.dimensions.keys():
                 if name in coords1d:
+                    cdunifvar = self._file_.variables[name]
+                elif name in coordsaux:
                     cdunifvar = self._file_.variables[name]
                 else:
                     cdunifvar = None
@@ -1576,22 +1622,6 @@ class CdmsFile(CdmsObj, cuDataset, AutoAPI.AutoAPI):
 
             axislist.append(newaxis)
 
-        # Create grid as necessary
-        if grid is None:
-            grid = var.getGrid()
-        if grid is not None:
-            coords = grid.writeToFile(self)
-            if coords is not None:
-                coordattr = "%s %s"%(coords[0].id, coords[1].id)
-                if attributes is None:
-                    attributes = var.attributes.update({'coordinates': coordattr})
-                else:
-                    attributes['coordinates'] = coordattr
-
-        # Create the new variable
-        datatype = cdmsNode.NumericToCdType.get(var.typecode())
-        newvar = self.createVariable(newname, datatype, axislist)
-
         # Copy variable metadata
         if attributes is None:
             attributes = var.attributes
@@ -1607,6 +1637,23 @@ class CdmsFile(CdmsObj, cuDataset, AutoAPI.AutoAPI):
             if attributes.has_key("name"):
                 if attributes['name']!=var.id:
                     del(attributes['name'])
+
+        # Create grid as necessary
+        if grid is None:
+            grid = var.getGrid()
+        if grid is not None:
+            coords = grid.writeToFile(self)
+            if coords is not None:
+                coordattr = "%s %s"%(coords[0].id, coords[1].id)
+                if attributes is None:
+                    attributes = {'coordinates': coordattr}
+                else:
+                    attributes['coordinates'] = coordattr
+
+        # Create the new variable
+        datatype = cdmsNode.NumericToCdType.get(var.typecode())
+        newvar = self.createVariable(newname, datatype, axislist)
+
         for attname,attval in attributes.items():
             if attname not in ["id", "datatype", "parent"]:
                 setattr(newvar, attname, attval)
@@ -1722,98 +1769,6 @@ class CdmsFile(CdmsObj, cuDataset, AutoAPI.AutoAPI):
 
         return v
 
-    def is_gridspec_grid_file( self ):
-        """returns True is self is a Gridspec file representing a known grid type,
-        otherwise False"""
-        return ( hasattr(self,'Conventions') and
-                 self.Conventions.find('Gridspec')>=0 and
-                 hasattr(self,'gs_filetypes') and
-                 self.gs_filetypes.find('Curvilinear_Tile')>=0 )
-
-    def gridspec_file_contents( self ):
-        """returns the important contents of the gridspec file representing a
-        curvilinear grid"""
-        from coord import TransientAxis2D
-        filename = self.id
-        filebase = os.path.basename(filename)
-        filepath = os.path.dirname(filename)
-
-        # Is this a Gridspec file, for a curvilinear tile?  If not, raise an error.
-        if ( not self.is_gridspec_grid_file() ):
-            print "File " + filename + " is not a Gridspec Curvilinear Tile file."
-            self.close()
-            raise IOError
-
-        # Save any Gridspec attributes from the file.
-        gs_attr = { 'filebase':filebase, 'filepath':filepath }
-        gs_attr['history'] = getattr( self, 'history', "" )
-        gs_attr['long_name'] = getattr( self, 'long_name', None )
-        # gs_geometryType is no longer required of Gridspec files, but as yet
-        # there is no other proposal for describing the geometry (July 2010)
-        gs_attr['gs_geometryType'] = getattr( self, 'gs_geometryType', None )
-        # gs_discretizationType is no longer required of Gridspec files, but it's
-        # harmless and may come in useful
-        gs_attr['gs_discretizationType'] = getattr( self, 'gs_discretizationType', None )
-
-        # Deduce the lon,lat variables x,y from the Gridspec file
-        # as described in the standard...
-        if ( hasattr( self, 'gs_lonv') ):
-            x = self(self.gs_lonv)
-        else:
-            # find a variable x with x.standard_name == 'longitude'
-            x = None
-            for nom in self.variables.keys():
-                if ( getattr( self[nom], 'standard_name', '' ) == 'longitude' ):
-                    x = self(nom)
-                    break
-                if ( getattr( self[nom], 'standard_name', '' ) ==
-                     'geographic_longitude' ):
-                    # temporary for file conversions
-                    x = self(nom)
-                    break
-        if ( hasattr( self, 'gs_latv') ):
-            y = self(self.gs_latv)
-        else:
-            # find a variable y with y.standard_name == 'latitude'
-            y = None
-            for nom in self.variables.keys():
-                if ( getattr( self[nom], 'standard_name', '' ) == 'latitude' ):
-                    y = self(nom)
-                    break
-                if ( getattr( self[nom], 'standard_name', '' ) ==
-                     'geographic_latitude' ):
-                    # temporary for file conversions
-                    y = self(nom)
-                    break
-        # Formerly, this is all it took:
-        # x = self('gs_x')
-        # y = self('gs_y')
-        assert( type(x)!=type(None) )
-        assert( type(y)!=type(None) )
-        
-        ax = TransientAxis2D( x )
-        ay = TransientAxis2D( y )
-        return ( ax, ay, gs_attr )
-
-    def readg( self ):
-        """Read a Gridspec grid defined by self (already open for reading).
-        Presently only curvilinear grids are supported.
-        Return the grid, a TransientCurveGrid."""
-        from cdms2.hgrid import TransientCurveGrid
-        ax, ay, gs_attr = self.gridspec_file_contents()
-        g = TransientCurveGrid( ay, ax )
-        g.history = gs_attr['history']
-        g.gsfile = gs_attr['filebase']
-        g.gspath = gs_attr['filepath']
-        g.long_name = gs_attr['long_name']
-        # gs_geometryType is no longer required of Gridspec files, but as yet
-        # there is no other proposal for describing the geometry (July 2010)
-        g.gs_geometryType = gs_attr['gs_geometryType']
-        # gs_discretizationType is no longer required of Gridspec files, but it's
-        # harmless and may come in useful
-        g.gs_discretizationType = gs_attr['gs_discretizationType']
-        return g
-
     def write_it_yourself( self, obj ):
         """Tell obj to write itself to self (already open for writing), using its
         writeg method (AbstractCurveGrid has such a method, for example).  If no
@@ -1882,7 +1837,7 @@ class CdmsFile(CdmsObj, cuDataset, AutoAPI.AutoAPI):
         """
         return self.grids.get(id)
 
-    def getBoundsAxis(self, n):
+    def getBoundsAxis(self, n,boundid=None):
         """Get a bounds axis of length n. Create the bounds axis if necessary.
         :::
         Input:::
@@ -1892,10 +1847,12 @@ class CdmsFile(CdmsObj, cuDataset, AutoAPI.AutoAPI):
         axis :: (cdms2.axis.FileAxis/cdms2.axis.FileVirtualAxis) (0) bound axis
         :::
         """
-        if n==2:
-            boundid = "bound"
-        else:
-            boundid = "bound_%d"%n
+        if boundid is None:
+            if n==2:
+                boundid = "bound"
+            else:
+                boundid = "bound_%d"%n
+            
         if self.axes.has_key(boundid):
             boundaxis = self.axes[boundid]
         else:

@@ -8,3 +8,5 @@ from retrieve import WeightsMaker,  WeightedGridMaker, VariableConditioner, Vari
 from vertical import sigma2Pressure, reconstructPressureFromHybrid, logLinearInterpolation, linearInterpolation
 from create_landsea_mask import generateLandSeaMask
 from sftbyrgn import generateSurfaceTypeByRegionMask
+import cdat_info
+cdat_info.pingPCMDIdb("cdat","start")

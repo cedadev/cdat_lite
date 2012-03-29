@@ -10,9 +10,10 @@ import re
 from cdmsobj import Max32int
 from variable import DatasetVariable
 from error import CDMSError
-from Cdunif import CdunifError
 from sliceut import reverseSlice
 from avariable import AbstractVariable
+from cdms2 import Cdunif
+from Cdunif import CdunifError
 
 FileClosed = "Cannot read from closed file, variable: "
 FileClosedWrite = "Cannot write to a closed file, variable: "
@@ -167,11 +168,11 @@ class FileVariable(DatasetVariable):
             raise CDMSError, FileClosed+self.id
         return len(self._obj_)
 
-    def __repr__(self):
-        if self.parent is not None:
-            return "<Variable: %s, file: %s, shape: %s>"%(self.id, self.parent.id, `self.shape`)
-        else:
-            return "<Variable: %s, file: **CLOSED**>"%self.id
+#    def __repr__(self):
+#        if self.parent is not None:
+#            return "<Variable: %s, file: %s, shape: %s>"%(self.id, self.parent.id, `self.shape`)
+#        else:
+#            return "<Variable: %s, file: **CLOSED**>"%self.id
 
 
     shape = property(_getShape,None)
