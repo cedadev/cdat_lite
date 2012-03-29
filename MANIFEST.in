@@ -1,4 +1,4 @@
-include ez_setup.py setup_util.py
+include ez_setup.py setup_util.py fulltest.cfg
 
 exclude lib/cdat_info.py lib/cdtime.so lib/MV2.py
 prune lib/cdms2
