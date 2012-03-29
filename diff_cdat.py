@@ -22,7 +22,7 @@ def diff_package(pkg, name, cdat_path, exclude, tag=None):
     cdat_pkg = os.path.join(cdat_path, pkg)
     patch = '%s%s.patch' % (name, tagstr)
     exclude_args = reduce(list.__add__, (['-x', "'%s'" % x] for x in exclude))
-    cmd = ['diff', '-ru'] + exclude_args + [pkg, cdat_pkg]
+    cmd = ['diff', '-Nru'] + exclude_args + [pkg, cdat_pkg]
     print ' '.join(cmd)
     p = subprocess.Popen(' '.join(cmd), stdout=subprocess.PIPE, shell=True)
     
