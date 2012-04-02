@@ -1,5 +1,5 @@
 # Adapted for numpy/ma/cdms2 by convertcdms.py
-import numpy.oldnumeric as N
+import numpy as N
 from nose.tools import *
 
 def test_arange():
@@ -17,8 +17,8 @@ def test_intTypecode():
     # typecode character identifiers.
     # Work-arround: Use Numeric-23.1 as PCMDI are doing.
     
-    x = N.zeros((10,), typecode='i')
-    y = N.ones((10,), typecode='l')
+    x = N.zeros((10,), dtype='i')
+    y = N.ones((10,), dtype='l')
 
     # Raises exception on 64-bit
     try:

@@ -6,14 +6,14 @@ as arrays of arrays of scalars.
 """
 
 import pkg_resources, cdms2 as cdms, sys
-import numpy.oldnumeric as Numeric
+import numpy as N
 import numpy
 
 def test_attributeType():
     fn = pkg_resources.resource_filename('cdat_lite.test', 'testpp.pp')
     f = cdms.open(fn)
     assert f.input_word_length == [4,]
-    assert type(f.input_word_length) == type(Numeric.zeros(1))
+    assert type(f.input_word_length) == type(N.zeros(1))
 
     # numpy returns special scalar types.  This test should pass now.
     assert f.input_word_length.dtype == numpy.dtype('int32')

@@ -7,8 +7,8 @@ Test axis features of CDMS.
 """
 
 import tempfile, os
-import cdms2 as cdms, numpy.oldnumeric.ma as MA
-import numpy.oldnumeric as N
+import cdms2 as cdms, numpy.ma as MA
+import numpy as N
 
 def test_createAxis():
     # On 64-bit systems this test fails due to attempted long to int
