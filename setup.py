@@ -30,7 +30,8 @@ CDAT_HOME_URL = 'http://www-pcmdi.llnl.gov/software-portal/cdat'
 cdat_lite_version = '6.0rc2'
 
 cdat_release = '6.0.alpha'
-cdat_tag = '-ge3b1a45'
+
+cdat_tag = '-g82e6c52'
 cdunifpp_version = '0.13'
 
 
