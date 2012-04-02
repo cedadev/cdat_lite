@@ -5,6 +5,7 @@
 #!TODO: test for numpy first.  install_requires won't work.
 
 import sys, os, shutil
+import os.path as op
 
 from ez_setup import use_setuptools
 use_setuptools()
@@ -27,7 +28,11 @@ CDAT_HOME_URL = 'http://www-pcmdi.llnl.gov/software-portal/cdat'
 #  1. cdat-lite distributions are versioned independently of CDAT and cdunifpp 
 #  2. Other version numbers are described in the PKG_INFO description.
 
-cdat_lite_version = '6.0rc2'
+# Detect version from cdat_lite package
+import imp
+imp_args = imp.find_module('cdat_lite', [op.join(op.dirname(__file__), 'lib')])
+cdat_lite = imp.load_module('cdat_lite', *imp_args)
+cdat_lite_version = cdat_lite.__version__
 
 cdat_release = '6.0.alpha'
 
