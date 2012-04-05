@@ -1,0 +1,10 @@
+
+* Bugs reported by Martin Dix@csiro.au
+
+Expecting patches or pull request from Martin on some of the below.
+
+** TODO Add __x66_64 in crayio.h and util.h so that the endianness is set correctly
+** TODO Fix an uninitialised pointer in cdunifpp_read.c (affected reading fieldsfiles, not PP files)
+** TODO Change file position variables from long to size_t. On our systems gcc has 32 bit longs. Icc has 64 bit longs but I couldn’t get the linking with netcdf to work with icc.
+** TODO Use a more accurate calculation of regular grid axis values (were getting the North Pole at 90.00008 which upset some plotting packages)
+
