@@ -4,11 +4,6 @@ Migrating to CDAT-5.0 full release
 I have applied a patch to libcdms to unify it with cdat-5.0 (excluding
 cdunifpp which is out of date in the CDAT trunk).  
 
-TODO
-----
-
- 1. Tests are failing on latest 64-bit ubuntu.
-
 Test switching
 --------------
 
@@ -30,8 +25,3 @@ OPeNDAP support can be enabled via the latest NetCDF4 beta without
 configuring it in libcdms/configure.  Therefore
 cdat_info.CDMS_INCLUDE_DAP is always 'no' even if DAP is enabled.
 
-Buildbot
---------
-
-I'm trying to automate the build process with buildbot.  Checkins will
-be automatically build on esg-dev1.badc.rl.ac.uk
