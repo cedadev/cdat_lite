@@ -594,6 +594,9 @@ int pp_read_all_headers(CuFile *file)
 	recs[rec]=recp;
 	hdrp=&recp->hdr;
       	pp_store_header(hdrp,hdr);
+	/* Set this for UM fieldsfile, else testing an uninitialised variable 
+           in pp_var_get_extra_atts later. */
+	hdrp->rawhdr = NULL;
 	CKI(  pp_free(hdr,heaplist)  );
 
 	/* work out datalen and disklen */
