@@ -444,7 +444,7 @@ int pp_read_all_headers(CuFile *file)
   PPlist *heaplist;
 
   Fint start_lookup, nlookup1, nlookup2, lbbegin, dataset_type, start_data;
-  long hdr_start, hdr_size, lbbegin_offset, datapos;
+  size_t hdr_start, hdr_size, lbbegin_offset, datapos;
 
   int *valid;
   PPhdr *hdrp;  
@@ -605,7 +605,7 @@ int pp_read_all_headers(CuFile *file)
 	 * start record rather than start address
 	 */
 	if (hdrp->LBBEGIN != 0) {
-	  recp->datapos=hdrp->LBBEGIN*ppfile->wordsize; 
+	  recp->datapos=(size_t)hdrp->LBBEGIN*ppfile->wordsize; 
 	} else {
 	  recp->datapos = datapos;
 	}
@@ -874,10 +874,10 @@ int pp_store_header(PPhdr *hdrp, const void *hdr)
  * this routine has a stab at calculating it anyway.
  */
 
-int pp_evaluate_lengths (const PPhdr *hdrp, const PPfile *ppfile, long *datalenp, long *disklenp) {
+size_t pp_evaluate_lengths (const PPhdr *hdrp, const PPfile *ppfile, size_t *datalenp, size_t *disklenp) {
 
-  long datalen;
-  long disklen;
+  size_t datalen;
+  size_t disklen;
 
   if (hdrp->LBPACK != 0) {
     datalen=0;
@@ -953,7 +953,7 @@ PPdata *pp_read_extradata(const PPrec *rec, const PPfile *ppfile, PPlist *heapli
   const PPhdr *hdrp;
   FILE *fh;
   int pack, nread;
-  long pos, epos;
+  size_t pos, epos;
   Fint ic, ia, ib;
 
   PPdata *data;
@@ -1003,7 +1003,7 @@ int pp_extra_has_vector(const PPextravec extra, const PPrec *rec, const PPfile *
   FILE *fh;
   int pack;
   int nread;
-  long pos, epos;
+  size_t pos, epos;
   char *errmess;
   Fint ic, ia, ib;
 
