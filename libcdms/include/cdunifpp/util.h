@@ -144,7 +144,7 @@ typedef unsigned long long int uint64;
 #define INTEGER int
 #endif
 
-#if defined __alpha || defined __i386
+#if defined __alpha || defined __i386 || defined __x86_64 
 #define LITTLE__ENDIAN
 #else
 #define BIG__ENDIAN
