@@ -14,7 +14,7 @@ from setuptools import setup, Extension, find_packages
 from setup_util import build_ext, makeExtension, buildLibTree, copyScripts, netcdf_config
 
 NDG_EGG_REPOSITORY = 'http://ndg.nerc.ac.uk/dist/'
-CDAT_LITE_URL = 'http://proj.badc.rl.ac.uk/ndg/wiki/CdatLite'
+CDAT_LITE_URL = 'http://proj.badc.rl.ac.uk/cedaservices/wiki/CdatLite'
 CDAT_LICENCE_URL = 'http://www-pcmdi.llnl.gov/software-portal/cdat/docs/cdat-license'
 CDAT_HOME_URL = 'http://www-pcmdi.llnl.gov/software-portal/cdat'
 
