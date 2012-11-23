@@ -47,3 +47,42 @@ def test_castAxis():
     print 'ax.shape = %s' % (ax.shape,)
     
     assert n.shape == ax.shape
+
+
+def test_axis_segfault():
+    from cdms import MV2
+
+    # Contributed by Lawson Hanson
+    month = 'January'
+    year  = '2012'
+    miss_value = -9999.0
+
+    data = ['34.006348', '28.314002', '29.269668', '33.698551', '34.177242']
+
+    Rad_global_month = MV2.zeros([len(data)],MV2.float)
+    time_day = MV2.zeros([len(data)],MV2.float)
+    tim = cdms.createAxis(time_day)
+    tim.designateTime()
+    tim.id = "time"
+    tim.units = 'days since 2012-01-01'
+
+    for i in range(len(time_day)):
+        Rad_global_month[i] = data[i]
+        tim[i] = float(i)
+        
+    # Create a temporary file
+    fd, f = tempfile.mkstemp('.nc')
+    os.close(fd)
+    try:
+        out = cdms.open(f,'w')
+            
+        rad_total_month = cdms.createVariable(Rad_global_month,id = 'accum_swfcdown_'+month,axis=[tim],typecode='f')
+        rad_total_month.setAxisList([tim]) 
+
+        print rad_total_month,tim
+        print len(rad_total_month),len(tim)
+
+        out.write(rad_total_month)
+    finally:
+        out.close()
+        os.remove(f)
