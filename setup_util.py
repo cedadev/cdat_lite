@@ -14,6 +14,8 @@ from distutils.command.build_ext import build_ext as build_ext_orig
 from distutils.cmd import Command
 import distutils.ccompiler
 
+import warnings
+
 #--------------------------------------------------------------------------------
 
 # Previous versions of cdat_lite used the NETCDF_HOME variable.  netcdf4-python uses NETCDF4_DIR.
@@ -434,8 +436,7 @@ NetCDF configuration detection results
             if inc[:2] == '-I':
                 self.include_dirs.append(inc[2:])
             else:
-                #!TODO: should be warning?
-                raise Exception("Unrecognised nc-config cflag %s" % inc)
+                warings.warn("Unrecognised nc-config cflag %s" % inc)
             
         # Now detect netcdf_incdir and hdf5_incdir
         for path in self.include_dirs:
