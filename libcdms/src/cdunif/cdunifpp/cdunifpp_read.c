@@ -529,7 +529,8 @@ int pp_read_all_headers(CuFile *file)
     CKI(   fseek(fh,159*ppfile->wordsize,SEEK_SET)  );
     ERRIF(   pp_read_words(&start_data, 1,  convert_int, ppfile)   !=1);
 
-    fieldsfile = (dataset_type == 3);
+    /* fieldsfiles includes ancillary files and initial dumps */
+    fieldsfile = (dataset_type == 1 || dataset_type == 3 || dataset_type == 4);
 
     /* (first dim of lookup documented as being 64 or 128, so 
      * allow header longer than n_hdr (64) -- discarding excess -- but not shorter)
