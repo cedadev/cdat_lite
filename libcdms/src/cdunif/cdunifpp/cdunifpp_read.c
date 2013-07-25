@@ -303,7 +303,7 @@ void *pp_read_data_record(const PPrec *rec, const PPfile *ppfile, PPlist *heapli
     npoint_used = 0;
 
     for (ipt = 0; ipt < npoint; ipt++) {
-      if (landmask_vals[ipt] == valid_landmask_value) {
+      if (abs(landmask_vals[ipt]) == valid_landmask_value) {
 
 	if (npoint_used >= rec->datalen) {
 	  CuError(CU_EINTERN,"Uncompressing tried to use more compressed data than available");
