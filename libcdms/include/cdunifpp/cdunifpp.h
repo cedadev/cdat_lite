@@ -785,9 +785,9 @@ struct pp_hdr {
 struct pp_rec {
   int recno; /* record number */
   PPhdr hdr; /* header structure */
-  long datapos; /* file pos data start (after any fortran record length int) in bytes */
-  long disklen; /* length on disks (words) -- including padding + before unpacking */
-  long datalen; /* data length (words) */ 
+  size_t datapos; /* file pos data start (after any fortran record length int) in bytes */
+  size_t disklen; /* length on disks (words) -- including padding + before unpacking */
+  size_t datalen; /* data length (words) */ 
 
   PPlevel *lev;
   PPtime *time;
@@ -1025,7 +1025,7 @@ void *pp_read_header(const PPfile *, PPlist *);
 int pp_read_all_headers(CuFile *);
 int pp_store_raw_header(PPhdr *, const void *, PPlist *);
 int pp_store_header(PPhdr *, const void *);
-int pp_evaluate_lengths (const PPhdr *, const PPfile *, long *, long *);
+size_t pp_evaluate_lengths (const PPhdr *, const PPfile *, size_t *, size_t *);
 PPdata *pp_read_extradata(const PPrec *, const PPfile *, PPlist *, const PPextravec);
 int pp_extra_has_vector(const PPextravec,const PPrec *, const PPfile *);
 

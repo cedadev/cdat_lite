@@ -31,13 +31,10 @@ PPdata *pp_regaxis_to_values(const PPregaxis *a, PPlist *heaplist)
 {
   PPdata *data;
   int i;
-  Freal val;
 
   CKP(   data=pp_data_new(realtype,a->n,heaplist)   );
-  val = a->start;
   for (i=0; i < a->n; i++) {
-    ((Freal*)(data->values))[i]=val;
-    val += a->interval;
+    ((Freal*)(data->values))[i]= a->start+i*a->interval;
   }
   return data;
   
