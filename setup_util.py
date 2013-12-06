@@ -435,6 +435,12 @@ NetCDF configuration detection results
         for inc in incs:
             if inc[:2] == '-I':
                 self.include_dirs.append(inc[2:])
+            elif inc[:2] == '-D':
+                macro = inc[2:]
+                value = None
+                if '=' in macro:
+                    macro, value = macro.split('=')
+                self.define_macros.append((macro, value))
             else:
                 warings.warn("Unrecognised nc-config cflag %s" % inc)
             
