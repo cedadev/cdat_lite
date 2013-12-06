@@ -50,7 +50,7 @@ def test_castAxis():
 
 
 def test_axis_segfault():
-    from cdms import MV2
+    from cdms2 import MV2
 
     # Contributed by Lawson Hanson
     month = 'January'

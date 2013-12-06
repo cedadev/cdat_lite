@@ -625,6 +625,16 @@ int pp_get_fvars(int nrec, PPrec **recs, PPfile *ppfile,
     recp = recs[rec];
     hdrp = &recp->hdr;
 
+    /* Some fieldsfiles have header fields with missing values */
+    if (pp_var_is_missing(hdrp)) {
+	CuError(CU_EOPEN, "skipping variable stash code=%d, %d, %d because of %s", 
+		pp_get_var_stash_model(hdrp), 
+		pp_get_var_stash_section(hdrp), 
+		pp_get_var_stash_item(hdrp), 
+		"missing header data");
+	continue;
+    }
+
     /* we are at start record of a variable at the very start, or if at we were at the
      * end record last time
      */
