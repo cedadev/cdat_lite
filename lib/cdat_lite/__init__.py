@@ -1,3 +1,3 @@
 # Package containing cdat-lite stuff
 
-__version__ = '6.0rc3'
+__version__ = '6.0'
