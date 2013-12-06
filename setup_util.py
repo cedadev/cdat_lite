@@ -166,6 +166,10 @@ def makeExtension(name, package_dir=None, sources=None,
                               netcdf_config.library_dirs
                      ]
     
+    if macros:
+        define_macros = macros + netcdf_config.define_macros
+    else:
+        define_macros = netcdf_config.define_macros
 
     # Remove any files or directories that don't exist
     include_dirs = [x for x in include_dirs if os.path.exists(x)]
@@ -182,7 +186,7 @@ def makeExtension(name, package_dir=None, sources=None,
                   libraries=libraries,
                   include_dirs=include_dirs,
                   library_dirs=library_dirs,
-                  define_macros=macros,
+                  define_macros=define_macros,
                   depends=depends)
 
     return e
@@ -325,7 +329,7 @@ class NetCDFConfig(object):
     library_dirs = []
     libraries = []
     include_dirs = []
-    
+    define_macros = []
 
     def __init__(self):
         self.detect_ncconfig()
