@@ -518,7 +518,7 @@ PPlist *pp_get_global_attributes(const char *filename, const PPfile *ppfile, PPl
   intattval=ppfile->wordsize;
   CKI(   pp_add_att(gatts, "input_word_length", inttype, 1, &intattval, heaplist)   );
 
-#ifdef LITTLE_ENDIAN_MACHINE
+#ifdef LITTLE__ENDIAN
   bigend = ppfile->swap;
 #else
   bigend = !ppfile->swap;

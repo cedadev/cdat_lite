@@ -11,6 +11,19 @@
 
 #define BREAKATFIRSTINVALID 1
 
+
+/*---------------------------------------------------------
+ * reads n words from ppfile, storing them at ptr
+ * Number of bytes read from file is n * (file wordsize).
+ * No byte swapping or conversion is done.
+ * returns number of words read.
+ */
+
+size_t pp_read_words_raw(void *ptr, size_t n, const PPfile *ppfile) {
+  return fread(ptr, ppfile->wordsize, n, ppfile->fh);
+}
+
+
 /*---------------------------------------------------------
  * reads n words from ppfile, storing them at ptr
  *
@@ -43,14 +56,8 @@ size_t pp_read_words(void *ptr, size_t n, PPconvert conv, const PPfile *ppfile)
   CKP(ptr);
   
   if (ppfile->wordsize == wordsize || conv==convert_none) {
-    nread = fread(ptr, ppfile->wordsize, n, ppfile->fh);
-
-    /* NOTE: for 64-bit file packed with the CRAY32 method, the following call to swapbytes will 
-     * transpose pairs of 32-bit data values.  It is responsibility of calling routine to deal
-     * with this.
-     */
-    if (ppfile->swap)
-      pp_swapbytes(ptr,ppfile->wordsize,nread);
+    nread = pp_read_words_raw(ptr, n, ppfile);
+    pp_swapbytes_if_swapped(ptr, ppfile->wordsize, nread, ppfile);
   }
   else {
 
@@ -61,14 +68,13 @@ size_t pp_read_words(void *ptr, size_t n, PPconvert conv, const PPfile *ppfile)
     /* read and convert a word at a time - save allocating extra memory */
     for (i=0; i<n; i++) {
 
-      nread1 = fread(tmp, ppfile->wordsize, 1, ppfile->fh);
+      nread1 = pp_read_words_raw(tmp, 1, ppfile);
       if (nread1==0)
 	break;
 
       nread += nread1;
 
-      if (ppfile->swap)
-	pp_swapbytes(tmp, ppfile->wordsize, nread1);
+      pp_swapbytes_if_swapped(tmp, ppfile->wordsize, nread1, ppfile);
 
       /* gruesome switches on constants in the loop - hoping the optimiser will sort it out -
        * I'd rather not explicitly code copies of the loop inside the switch */
@@ -96,6 +102,17 @@ size_t pp_read_words(void *ptr, size_t n, PPconvert conv, const PPfile *ppfile)
 
   ERRBLK("pp_read_words",0);
 }
+
+/*---------------------------------------------------------*/
+
+int pp_swapbytes_if_swapped(void *ptr, int bytes, int nchunk, const PPfile *ppfile)
+{
+  if (ppfile->swap)
+    return pp_swapbytes(ptr, bytes, nchunk);
+  else
+    return 0;
+}
+
 
 /*---------------------------------------------------------*/
 
@@ -132,10 +149,6 @@ int pp_swapbytes(void *ptr, int bytes, int nchunk)
 
   ERRBLKI("pp_swapbytes");
 }
-
-/*---------------------------------------------------------*/
-
-
 
 /*---------------------------------------------------------*/
 
@@ -201,14 +214,14 @@ void *pp_read_data_record(const PPrec *rec, const PPfile *ppfile, PPlist *heapli
     packed_bytes = rec->disklen * ppfile->wordsize;
     CKP(   packed_data = pp_malloc(packed_bytes,heaplist)   );
 
-    nread = pp_read_words(packed_data, rec->disklen, convert_none, ppfile);
+    nread = pp_read_words_raw(packed_data, rec->disklen, ppfile);
     ERRIF(nread != rec->disklen);
 
     /* and allocate array for unpacked data*/
     bytes = rec->datalen * wordsize;
     CKP(   data = pp_malloc(bytes,heaplist)   );
 
-    /* NOW UNPACK ACCORDING TO PACKING TYPE: */
+    /* NOW UNPACK ACCORDING TO PACKING TYPE (including byte swapping where necessary). */
 
     switch(pack) {
 
@@ -224,6 +237,12 @@ void *pp_read_data_record(const PPrec *rec, const PPfile *ppfile, PPlist *heapli
       nint = rec->disklen * ppfile->wordsize / sizeof(int);
       mdi = *(Freal*)pp_get_var_fill_value(hdrp);
 
+      /* Note - even though we read in raw (unswapped) data from the file, we do not 
+	 byte swap prior to calling unwgdos, as the packed data contains a mixture
+	 of types of different lengths, so leave it to unwgdos() that knows about
+	 this and has appropriate byte swapping code.
+       */
+      
       CKI(   pp_unwgdos_wrap(packed_data, nint, data, rec->datalen, mdi, heaplist)   );
       
       break;
@@ -237,20 +256,7 @@ void *pp_read_data_record(const PPrec *rec, const PPfile *ppfile, PPlist *heapli
 	ERR;
       }
       
-      /* 
-       * in the event of a 64-bit file (which it probably is, else 32-bit packing is 
-       * redundant), and if we're on a little-endian machine, the file was written on
-       * a cray, so the 64-bit byte swapping (whether done by cdunifpp or previously)
-       * will have had the side-effect of swapping pairs of 32-bit words and we need
-       * to swap them back again.
-       *
-       * NB  LITTLE_ENDIAN_MACHINE  is defined (if at all) in cdunifpp.h
-       */
-      
-#ifdef LITTLE_ENDIAN_MACHINE
-      if (ppfile->wordsize == 8)
-	pp_swap32couplets(packed_data,packed_bytes);
-#endif
+      pp_swapbytes_if_swapped(packed_data, 4, nread, ppfile);
       
       for (ipt=0; ipt < rec->datalen ; ipt++)
 	*(((Freal*) (data)) + ipt) = *(((Freal4*) (packed_data)) + ipt);
@@ -334,37 +340,6 @@ void *pp_read_data_record(const PPrec *rec, const PPfile *ppfile, PPlist *heapli
 
   ERRBLKP("pp_read_data_record");
 }
-
-
-#ifdef LITTLE_ENDIAN_MACHINE
-int pp_swap32couplets(char *p,int nbytes)
-{
-  int i;
-  char a,b,c,d,e,f,g,h;
-  for (i=0; i<nbytes; i+=8) {
-
-    a = p[i+0];
-    b = p[i+1];
-    c = p[i+2];
-    d = p[i+3];
-    e = p[i+4];
-    f = p[i+5];
-    g = p[i+6];
-    h = p[i+7];
-
-    p[i+0] = e;
-    p[i+1] = f;
-    p[i+2] = g;
-    p[i+3] = h;
-
-    p[i+4] = a;
-    p[i+5] = b;
-    p[i+6] = c;
-    p[i+7] = d;
-  }
-  return 0;
-}
-#endif
 
 /*---------------------------------------------------------*/
 
@@ -493,14 +468,7 @@ int pp_read_all_headers(CuFile *file)
       recs[rec]=recp;
       hdrp=&recp->hdr;
       
-      pp_store_header(hdrp, hdr);
-
-      if (ppfile->store_raw_headers) {
-	CKI(  pp_store_raw_header(hdrp, hdr, heaplist)  );
-      }
-      else {
-	hdrp->rawhdr = NULL;
-      }
+      CKI(  pp_store_header(hdrp, ppfile, hdr, heaplist)  );
 
       recp->recno = rec;
       
@@ -594,10 +562,7 @@ int pp_read_all_headers(CuFile *file)
 	CKP(   recp=pp_malloc(sizeof(PPrec),heaplist)   );
 	recs[rec]=recp;
 	hdrp=&recp->hdr;
-      	pp_store_header(hdrp,hdr);
-	/* Set this for UM fieldsfile, else testing an uninitialised variable 
-           in pp_var_get_extra_atts later. */
-	hdrp->rawhdr = NULL;
+	CKI(  pp_store_header(hdrp, ppfile, hdr, heaplist)  );
 	CKI(  pp_free(hdr,heaplist)  );
 
 	/* work out datalen and disklen */
@@ -662,7 +627,10 @@ int pp_store_raw_header(PPhdr *hdrp, const void *hdr, PPlist *heaplist)
 }
 
 
-int pp_store_header(PPhdr *hdrp, const void *hdr)
+int pp_store_header(PPhdr *hdrp, 
+		    const PPfile *ppfile,
+		    const void *hdr,
+		    PPlist *heaplist)
 {
   const Fint *ihdr;
   const Freal *rhdr;
@@ -863,7 +831,16 @@ int pp_store_header(PPhdr *hdrp, const void *hdr)
 #ifdef PP_STORE_BMKS
     hdrp->BMKS  =rhdr[18];    
 #endif
+
+    if (ppfile->store_raw_headers) {
+      CKI(  pp_store_raw_header(hdrp, hdr, heaplist)  );
+    }
+    else {
+      hdrp->rawhdr = NULL;
+    }
+
     return 0;
+    ERRBLKI("pp_store_header");
 }
 
 /*

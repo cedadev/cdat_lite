@@ -19,6 +19,7 @@
 #include <time.h>
 #include <ctype.h>
 #include <unistd.h>
+#include "cdunifpp_endian.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -26,7 +27,7 @@
 
 /*---------------------------------------------------------*/
 
-#define CDUNIFPP_VERSION "0.13"
+#define CDUNIFPP_VERSION "0.14pre1"
 
 /*---------------------------------------------------------*/
 
@@ -62,21 +63,6 @@ typedef int Fint4;
 typedef long long Fint8;
 typedef float Freal4;
 typedef double Freal8;
-
-/*---------------------------------------------------------*/
-
-/* endian-ness - set or clear LITTLE_ENDIAN_MACHINE *
- * currently seems that BYTESWAP is set for us, so use that,
- * but could change to include endian.h and then
- * test using #if (__BYTE_ORDER == __LITTLE_ENDIAN)
- */
-#ifdef BYTESWAP
-#define LITTLE_ENDIAN_MACHINE
-#else
-#undef LITTLE_ENDIAN_MACHINE
-#endif
-
-/*---------------------------------------------------------*/
 
 /*longest string attribute value */
 #define MAX_ATT_LEN 120
@@ -1015,7 +1001,9 @@ int pp_add_field_vars(PPlist *, CuFile *, CuDim *, CuVar *, int *, PPlist *);
 int pp_free_tmp_vars(PPlist *, PPlist *, PPlist *, PPlist *, PPlist *, PPlist *);
 
 /* in cdunifpp_read.c: */
+size_t pp_read_words_raw(void *, size_t, const PPfile *);
 size_t pp_read_words(void *, size_t, PPconvert, const PPfile *);
+int pp_swapbytes_if_swapped(void *, int, int, const PPfile *);
 int pp_swapbytes(void *, int, int);
 void * pp_read_data_record(const PPrec *, const PPfile *, PPlist *);
 int pp_swap32couplets(char *,int);
@@ -1024,8 +1012,8 @@ int pp_skip_word(const PPfile *);
 void *pp_read_header(const PPfile *, PPlist *);
 int pp_read_all_headers(CuFile *);
 int pp_store_raw_header(PPhdr *, const void *, PPlist *);
-int pp_store_header(PPhdr *, const void *);
-size_t pp_evaluate_lengths (const PPhdr *, const PPfile *, size_t *, size_t *);
+int pp_store_header(PPhdr *, const PPfile *, const void *, PPlist *);
+size_t pp_evaluate_lengths (const PPhdr *, const PPfile *, long *, size_t *);
 PPdata *pp_read_extradata(const PPrec *, const PPfile *, PPlist *, const PPextravec);
 int pp_extra_has_vector(const PPextravec,const PPrec *, const PPfile *);
 

@@ -1,3 +1,5 @@
+#include "cdunifpp_endian.h"
+
 #if !defined(COS_HDR)
 #define COS_HDR
 
@@ -147,12 +149,6 @@ typedef unsigned long long int uint64;
 #endif
 #else
 #define INTEGER int
-#endif
-
-#if defined __alpha || defined __i386 || defined __x86_64 
-#define LITTLE__ENDIAN
-#else
-#define BIG__ENDIAN
 #endif
 
 #ifdef _CRAY
