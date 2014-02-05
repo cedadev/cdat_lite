@@ -1013,7 +1013,7 @@ void *pp_read_header(const PPfile *, PPlist *);
 int pp_read_all_headers(CuFile *);
 int pp_store_raw_header(PPhdr *, const void *, PPlist *);
 int pp_store_header(PPhdr *, const PPfile *, const void *, PPlist *);
-size_t pp_evaluate_lengths (const PPhdr *, const PPfile *, long *, size_t *);
+size_t pp_evaluate_lengths (const PPhdr *, const PPfile *, size_t *, size_t *);
 PPdata *pp_read_extradata(const PPrec *, const PPfile *, PPlist *, const PPextravec);
 int pp_extra_has_vector(const PPextravec,const PPrec *, const PPfile *);
 
