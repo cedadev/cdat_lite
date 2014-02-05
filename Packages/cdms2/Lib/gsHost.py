@@ -23,6 +23,7 @@ try:
 except:
     # raise ImportError, 'Error: could not import pycf'
     #print 'Error: could not import pycf'
+    pass
 
 def open(hostfile, mode = 'r'):
     """
