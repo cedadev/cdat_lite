@@ -9,6 +9,7 @@
 #define DLL_NETCDF
 #endif
 
+#include <limits.h>
 #include "Python.h"
 #include "numpy/arrayobject.h"
 #include "netcdf.h"
@@ -199,8 +200,16 @@ static void cdmapdatatype_cu(CuType cutype,nc_type *datatype){
 		*datatype = NC_SHORT;
 		break;
 	case CuInt:
+		*datatype = NC_INT;
+		break;
 	case CuLong:
-		*datatype = NC_LONG;
+#if LONG_MAX >> 62 == 1
+		*datatype = NC_INT64;
+#elif LONG_MAX >> 30 == 1
+		*datatype = NC_INT;
+#else
+#error Fix netCDF type corresponding to C long in Cdunifmodule.c
+#endif
 		break;
 	case CuFloat:
 		*datatype = NC_FLOAT;
