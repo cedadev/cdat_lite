@@ -19,6 +19,7 @@
 #include <time.h>
 #include <ctype.h>
 #include <unistd.h>
+#include <limits.h>
 #include "cdunifpp_endian.h"
 
 #ifndef M_PI
@@ -36,23 +37,37 @@
  * NOTE: Fint and Freal must be the same length as each other
  * and inttype and realtype must be set accordingly
  *
- * Currently, this *must* be four-byte, because there is NO CuType
- * corresponding to 8-byte integer on Linux/gcc (would need to be
+ * Currently, on 32-bit platforms this *must* be four-byte, because there is
+ * NO CuType corresponding to 8-byte integer on Linux/gcc (would need to be
  * long long, but CuLong corresponds to a long)
  *  sizes:   int = 4,  long = 4,  long long = 8
  * 
+ * However, on 64-bit platforms, use 8-byte.  In particular, this will allow 
+ * storing of headers containing LBBEGIN >= 2^32, i.e. >32GB files.
+ * 
+ *  sizes:   int = 4,  long = 8,  long long = 8
+ *
  */
 
+/* __WORDSIZE defined in limits.h - alternatively could #ifdef __x86_64__ */
+#if ( __WORDSIZE == 64 )  
+typedef long Fint;
+typedef double Freal;
+static const CuType inttype  = CuLong;
+static const CuType realtype = CuDouble;
+/* for float comparisons - related to word size */
+static const float tolerance = 1e-13;
+#else
 typedef int Fint;
 typedef float Freal;
-
 static const CuType inttype  = CuInt;
 static const CuType realtype = CuFloat;
+/* for float comparisons - related to word size */
+static const float tolerance = 1e-4;
+#endif
 
 static const int wordsize = sizeof(Fint);
 
-/* for float comparisons - related to word size */
-static const float tolerance = 1e-4;
 
 
 /* data types of exact length -- may need to change according to platform
@@ -1007,7 +1022,7 @@ int pp_swapbytes_if_swapped(void *, int, int, const PPfile *);
 int pp_swapbytes(void *, int, int);
 void * pp_read_data_record(const PPrec *, const PPfile *, PPlist *);
 int pp_swap32couplets(char *,int);
-int pp_skip_fortran_record(const PPfile *);
+size_t pp_skip_fortran_record(const PPfile *);
 int pp_skip_word(const PPfile *);
 void *pp_read_header(const PPfile *, PPlist *);
 int pp_read_all_headers(CuFile *);

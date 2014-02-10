@@ -129,7 +129,7 @@ int pp_process(CuFile *file)
     pp_error_mesg("cdunifpp_process", "wrong number of vars?");
     ERR;
   }
-  
+
   /* set numbers in file structure */
   file->ndims = ndims;
   file->nvars = nvars;

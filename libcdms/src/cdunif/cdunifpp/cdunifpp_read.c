@@ -347,7 +347,7 @@ void *pp_read_data_record(const PPrec *rec, const PPfile *ppfile, PPlist *heapli
  *  or -1 for end of file, or -2 for any error which may imply corrupt file
  * (return value of 0 is a legitimate empty record).
  */
-int pp_skip_fortran_record(const PPfile *ppfile)
+size_t pp_skip_fortran_record(const PPfile *ppfile)
 {
   Fint recsize, recsize2;
   FILE *f;
@@ -412,14 +412,14 @@ void *pp_read_header(const PPfile *ppfile, PPlist *heaplist)
 int pp_read_all_headers(CuFile *file)
 {
   FILE *fh;
-  int rec, nrec, recsize, filerec, nlrec;
+  int rec, nrec, filerec, nlrec;
   void *hdr;
   PPfile *ppfile;
   PPrec **recs,*recp;
   PPlist *heaplist;
 
   Fint start_lookup, nlookup1, nlookup2, lbbegin, dataset_type, start_data;
-  size_t hdr_start, hdr_size, lbbegin_offset, datapos;
+  size_t recsize, hdr_start, hdr_size, lbbegin_offset, datapos;
 
   int *valid;
   PPhdr *hdrp;  
