@@ -70,7 +70,7 @@ class DepFinder(object):
     def findLib(self, prefix):
         if prefix is None:
             return None
-        libs = ['lib']
+        libs = ['lib', 'lib64']
         if hasattr(sys, 'lib'):
             libs.append(sys.lib)
 
