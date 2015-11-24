@@ -209,7 +209,7 @@ def buildLibTree(packageRoots, mods=None, root='./lib'):
         for mod in mods:
             modpath = os.path.abspath(mod)
             linkpath = os.path.join(root, os.path.basename(mod))
-            if os.path.exists(linkpath):
+            if os.path.lexists(linkpath):
                 os.remove(linkpath)
             os.symlink(os.path.abspath(mod),
                        linkpath)
@@ -217,7 +217,7 @@ def buildLibTree(packageRoots, mods=None, root='./lib'):
     for package, dir in packageRoots.items():
         if package:
             sdir = os.path.join(root,package)
-            if os.path.exists(sdir):
+            if os.path.lexists(sdir):
                 shutil.rmtree(sdir)
             os.mkdir(sdir)
         for f in os.listdir(dir):
@@ -281,7 +281,7 @@ class build_ext(build_ext_orig):
         for file in files:
             dest = os.path.abspath(os.path.join(destDir, os.path.basename(file)))
             src = os.path.abspath(file)            
-            if os.path.exists(dest):
+            if os.path.lexists(dest):
                 os.remove(dest)
             os.symlink(src, dest)        
 
