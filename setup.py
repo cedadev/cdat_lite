@@ -83,14 +83,13 @@ if not netcdf_config.with_netcdf4:
 
 #------------------------------------------------------------------------------
 try:
-    setup(name='cdat_lite',
+    setup(name='cdat-lite',
           description=description,
           long_description=long_description,
           version=cdat_lite_version,
           url = CDAT_LITE_URL,
-          download_url = NDG_EGG_REPOSITORY,
-          maintainer = 'Stephen Pascoe',
-          maintainer_email = 'Stephen.Pascoe@stfc.ac.uk',
+          maintainer = 'Ag Stephens',
+          maintainer_email = 'ag.stephens@stfc.ac.uk',
           license = CDAT_LICENCE_URL,
 
           classifiers = [
