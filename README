@@ -1,3 +1,16 @@
+# UNSUPPORTED PACKAGE
+
+The cdat-lite package is no longer supported.  Existing versions are still available here but we do not plan to develop it further or support its use.
+
+This change is mainly because the installation of the full CDAT is now more straightforward than was the case at the time when cdat-lite was started.
+
+The recommended procedure for installing CDAT is to install it into a conda environment, and is described at https://github.com/CDAT/cdat/wiki/install
+
+
+---
+
+Original README follows.
+
 =========
 cdat-lite
 =========
