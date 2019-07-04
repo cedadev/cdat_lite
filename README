@@ -7,6 +7,18 @@ This change is mainly because the installation of the full CDAT is now more stra
 The recommended procedure for installing CDAT is to install it into a conda environment, and is described at https://github.com/CDAT/cdat/wiki/install
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 ---
 
 Original README follows.
